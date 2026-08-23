@@ -2282,12 +2282,12 @@ PM.createMainGUI = function()
         TextXAlignment = Enum.TextXAlignment.Right,
     })
 
-    PM.UI.ExecutorLabel = PM.mk("TextLabel", PM.UI.RightFrame, {
-        Name = "ExecutorLabel",
+    PM.UI.PlayerCountLabel = PM.mk("TextLabel", PM.UI.RightFrame, {
+        Name = "PlayerCountLabel",
         Size = UDim2.new(1, -32, 0, 14),
         Position = UDim2.new(0, 25, 0, 23),
         BackgroundTransparency = 1,
-        Text = "Executor",
+        Text = "0/0",
         TextColor3 = C.text,
         TextSize = 11,
         Font = Enum.Font.Gotham,
@@ -2364,25 +2364,17 @@ PM.createMainGUI = function()
         end
     end)
     
-    local function getExecutor()
-        if syn then return "Synapse X" end
-        if KRNL_LOADED then return "KRNL" end
-        if getexecutorname then return getexecutorname() end
-        if identifyexecutor then return identifyexecutor() end
-        if delta then return "Delta" end
-        if fluxus then return "Fluxus" end
-        if codex then return "Codex" end
-        if arceus then return "Arceus X" end
-        if wave then return "Wave" end
-        if trigon then return "Trigon" end
-        if hydrogen then return "Hydrogen" end
-        return "Unknown"
+    local function updatePlayerCount()
+        local currentPlayers = #PM.Svc.Players:GetPlayers()
+        local maxPlayers = PM.Svc.Players.MaxPlayers
+        if PM.UI.PlayerCountLabel then
+            PM.UI.PlayerCountLabel.Text = currentPlayers .. "/" .. maxPlayers
+        end
     end
     
-    local execName = getExecutor()
-    if PM.UI.ExecutorLabel then
-        PM.UI.ExecutorLabel.Text = execName
-    end
+    PM.Svc.Players.PlayerAdded:Connect(updatePlayerCount)
+    PM.Svc.Players.PlayerRemoving:Connect(updatePlayerCount)
+    updatePlayerCount()
     
     -- Fetch servers on execute and auto-refresh every 5 minutes
     task.spawn(function()
