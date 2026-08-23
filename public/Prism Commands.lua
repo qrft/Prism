@@ -107,7 +107,7 @@ local function setupTalkingDetection(plr)
     -- Monitor talking state
     game:GetService("RunService").Heartbeat:Connect(function()
         if not analyzer.Parent then return end
-        local isTalking = analyzer.RmsLevel > 0.05
+        local isTalking = analyzer.RmsLevel > 0.01
         PM.VCBypasser.talkingStates[plr.UserId] = isTalking
     end)
 end
