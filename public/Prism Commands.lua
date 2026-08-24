@@ -24,19 +24,12 @@
     nametags
     join other prism users
     better loading for emotes
+    better vcbypasser icons
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
+repeat task.wait() until getgenv().PrismMain
 local PM = getgenv().PrismMain
-if not PM then
-    -- Retry for up to 5 seconds waiting for Main.lua to load
-    for i = 1, 50 do
-        task.wait(0.1)
-        PM = getgenv().PrismMain
-        if PM then break end
-    end
-end
-if not PM then return end
 
 PM.Commands = PM.Commands or {}
 
@@ -79,6 +72,22 @@ local SPEAKER_UNMUTED_LEVELS = {
     "rbxasset://textures/ui/VoiceChat/SpeakerLight/Unmuted80.png",
     "rbxasset://textures/ui/VoiceChat/SpeakerLight/Unmuted100.png"
 }
+
+-- Helper function to wait for character to be ready
+local function waitForCharacterReady(plr)
+    if plr.Character then
+        local char = plr.Character
+        -- Check if character is already ready
+        if char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
+            return
+        end
+    end
+    -- Wait for character to load and become ready
+    if not plr.Character then
+        plr.CharacterAdded:Wait()
+    end
+    repeat task.wait() until plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Head")
+end
 
 -- Setup talking detection for a player
 local function setupTalkingDetection(plr)
@@ -200,7 +209,8 @@ local function createPlayerOverlay(plr)
     charAddedConn = plr.CharacterAdded:Connect(function(newChar)
         -- Cleanup old overlay and talking detection
         removePlayerOverlay(plr)
-        task.wait(0.5)
+        -- Wait for character to be ready
+        waitForCharacterReady(plr)
         -- Recreate after character loads
         setupTalkingDetection(plr)
         createPlayerOverlay(plr)
@@ -974,8 +984,7 @@ registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(arg
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LP then
             task.spawn(function()
-                if not p.Character then p.CharacterAdded:Wait() end
-                task.wait(0.5)
+                waitForCharacterReady(p)
                 setupTalkingDetection(p)
                 createPlayerOverlay(p)
             end)
@@ -986,8 +995,7 @@ registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(arg
     PM.VCBypasser.playerAddedConn = Players.PlayerAdded:Connect(function(p)
         if p ~= LP then
             task.spawn(function()
-                if not p.Character then p.CharacterAdded:Wait() end
-                task.wait(0.5)
+                waitForCharacterReady(p)
                 setupTalkingDetection(p)
                 createPlayerOverlay(p)
             end)
