@@ -17,7 +17,6 @@
     animation speeds
     animation cloning
     shaders (with presets / time of day control / all axons shader controls)
-    anti vcb muting others / self
     reanim (maybe)
     anti admin
     anti headsit / facebang / etc

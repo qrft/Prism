@@ -15,6 +15,305 @@ getgenv().PrismMain = {
 local PM = getgenv().PrismMain
 local LP = PM.Svc.Players.LocalPlayer
 
+-- Prism User Tracking API
+PM.PrismAPI = PM.PrismAPI or {}
+PM.PrismAPI.BaseURL = "https://prismscript.vercel.app/api/prism"
+PM.PrismAPI.Registered = false
+PM.PrismAPI.RegisterInterval = nil
+
+local HttpService = game:GetService("HttpService")
+
+-- Register current user as Prism user
+function PM.PrismAPI.register()
+    local LP = PM.Svc.Players.LocalPlayer
+    local success, result = pcall(function()
+        local body = HttpService:JSONEncode({
+            userId = LP.UserId,
+            username = LP.Name,
+            displayName = LP.DisplayName,
+            serverId = game.JobId,
+            placeId = game.PlaceId
+        })
+        local response = game:HttpPost(PM.PrismAPI.BaseURL .. "/register", body, Enum.HttpContentType.ApplicationJson, false)
+        return HttpService:JSONDecode(response)
+    end)
+    return success and result and result.success
+end
+
+-- Get all Prism users
+function PM.PrismAPI.getUsers()
+    local success, result = pcall(function()
+        local response = game:HttpGet(PM.PrismAPI.BaseURL .. "/users")
+        return HttpService:JSONDecode(response)
+    end)
+    if success and result then
+        return result.users or {}
+    end
+    return {}
+end
+
+-- Get servers with Prism users
+function PM.PrismAPI.getServers(excludeCurrent)
+    local url = PM.PrismAPI.BaseURL .. "/servers"
+    if excludeCurrent then
+        url = url .. "?exclude=" .. game.JobId
+    end
+    local success, result = pcall(function()
+        local response = game:HttpGet(url)
+        return HttpService:JSONDecode(response)
+    end)
+    if success and result then
+        return result.servers or {}
+    end
+    return {}
+end
+
+-- Unregister/opt-out
+function PM.PrismAPI.unregister()
+    local LP = PM.Svc.Players.LocalPlayer
+    local success, result = pcall(function()
+        local body = HttpService:JSONEncode({ userId = LP.UserId })
+        local response = game:HttpPost(PM.PrismAPI.BaseURL .. "/unregister", body, Enum.HttpContentType.ApplicationJson, false)
+        return HttpService:JSONDecode(response)
+    end)
+    PM.PrismAPI.Registered = false
+    if PM.PrismAPI.RegisterInterval then
+        task.cancel(PM.PrismAPI.RegisterInterval)
+        PM.PrismAPI.RegisterInterval = nil
+    end
+    return success and result and result.success
+end
+
+-- Auto-register and keep presence updated
+function PM.PrismAPI.startAutoRegister()
+    if PM.PrismAPI.Registered then return end
+    PM.PrismAPI.register()
+    PM.PrismAPI.Registered = true
+    -- Update every 30 seconds
+    PM.PrismAPI.RegisterInterval = task.spawn(function()
+        while PM.PrismAPI.Registered do
+            task.wait(30)
+            PM.PrismAPI.register()
+        end
+    end)
+end
+
+-- Prism Nametags
+PM.PrismNametags = PM.PrismNametags or {}
+PM.PrismNametags.active = false
+PM.PrismNametags.overlays = {}
+PM.PrismNametags.prismUserIds = {}
+
+-- Create Prism nametag for a player
+function PM.PrismNametags.create(plr)
+    if PM.PrismNametags.overlays[plr.UserId] then return end
+
+    local Players = PM.Svc.Players
+    local LP = Players.LocalPlayer
+
+    -- Create BillboardGui
+    local bill = Instance.new("BillboardGui")
+    bill.Name = "PrismNametag_" .. plr.Name
+    bill.Size = UDim2.new(0, 200, 0, 50)
+    bill.StudsOffset = Vector3.new(0, 3.5, 0)
+    bill.Adornee = plr.Character and plr.Character:FindFirstChild("Head")
+    bill.AlwaysOnTop = true
+    bill.MaxDistance = 100
+
+    -- Main card frame (env.lua style)
+    local card = Instance.new("Frame")
+    card.Name = "Card"
+    card.Size = UDim2.new(1, 0, 1, 0)
+    card.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
+    card.BackgroundTransparency = 0.25
+    card.BorderSizePixel = 0
+    card.Parent = bill
+
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = card
+
+    -- Green accent stroke (Prism user indicator)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.2
+    stroke.Color = Color3.fromRGB(0, 200, 70)
+    stroke.Parent = card
+
+    -- Avatar pfp
+    local pfp = Instance.new("ImageLabel")
+    pfp.Name = "Avatar"
+    pfp.Size = UDim2.new(0, 34, 0, 34)
+    pfp.Position = UDim2.new(0, 5, 0.5, -17)
+    pfp.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    pfp.BorderSizePixel = 0
+    pfp.Parent = card
+
+    local pfpCorner = Instance.new("UICorner")
+    pfpCorner.CornerRadius = UDim.new(1, 0)
+    pfpCorner.Parent = pfp
+
+    pcall(function()
+        pfp.Image = Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size48x48)
+    end)
+
+    -- Name label with @ prefix
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Name = "Name"
+    nameLbl.Size = UDim2.new(1, -48, 0, 20)
+    nameLbl.Position = UDim2.new(0, 44, 0, 4)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = "@" .. plr.Name
+    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLbl.TextSize = 11
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
+    nameLbl.Parent = card
+
+    -- Display name label
+    local dispLbl = Instance.new("TextLabel")
+    dispLbl.Name = "DisplayName"
+    dispLbl.Size = UDim2.new(1, -48, 0, 16)
+    dispLbl.Position = UDim2.new(0, 44, 0, 24)
+    dispLbl.BackgroundTransparency = 1
+    dispLbl.Text = plr.DisplayName
+    dispLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+    dispLbl.TextSize = 10
+    dispLbl.Font = Enum.Font.Gotham
+    dispLbl.TextXAlignment = Enum.TextXAlignment.Left
+    dispLbl.TextTruncate = Enum.TextTruncate.AtEnd
+    dispLbl.Parent = card
+
+    -- Prism badge
+    local badge = Instance.new("TextLabel")
+    badge.Name = "Badge"
+    badge.Size = UDim2.new(0, 36, 0, 16)
+    badge.Position = UDim2.new(1, -41, 0, 4)
+    badge.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    badge.BorderSizePixel = 0
+    badge.Text = "PRISM"
+    badge.TextColor3 = Color3.fromRGB(0, 200, 70)
+    badge.TextSize = 9
+    badge.Font = Enum.Font.GothamBold
+    badge.TextXAlignment = Enum.TextXAlignment.Center
+    badge.Parent = card
+
+    local badgeCorner = Instance.new("UICorner")
+    badgeCorner.CornerRadius = UDim.new(0, 4)
+    badgeCorner.Parent = badge
+
+    -- Parent to CoreGui
+    local CoreGui = PM.Svc.CoreGui
+    bill.Parent = CoreGui
+
+    PM.PrismNametags.overlays[plr.UserId] = bill
+
+    -- Handle character respawn
+    local charAddedConn
+    charAddedConn = plr.CharacterAdded:Connect(function(newChar)
+        if PM.PrismNametags.overlays[plr.UserId] then
+            PM.PrismNametags.overlays[plr.UserId]:Destroy()
+            PM.PrismNametags.overlays[plr.UserId] = nil
+        end
+        task.wait(0.5)
+        if PM.PrismNametags.active and PM.PrismNametags.prismUserIds[plr.UserId] then
+            PM.PrismNametags.create(plr)
+        end
+    end)
+
+    -- Update adornee on heartbeat
+    local RunService = PM.Svc.RunService
+    local heartbeatConn = RunService.Heartbeat:Connect(function()
+        if not bill.Parent then
+            charAddedConn:Disconnect()
+            heartbeatConn:Disconnect()
+            return
+        end
+
+        if plr.Character and plr.Character:FindFirstChild("Head") then
+            bill.Adornee = plr.Character.Head
+        end
+
+        -- Distance check
+        local visible = false
+        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            visible = dist <= 100
+        end
+        bill.Enabled = visible
+    end)
+end
+
+-- Remove Prism nametag for a player
+function PM.PrismNametags.remove(plr)
+    if PM.PrismNametags.overlays[plr.UserId] then
+        pcall(function() PM.PrismNametags.overlays[plr.UserId]:Destroy() end)
+        PM.PrismNametags.overlays[plr.UserId] = nil
+    end
+end
+
+-- Refresh Prism user list from API
+function PM.PrismNametags.refresh()
+    local users = PM.PrismAPI.getUsers()
+    PM.PrismNametags.prismUserIds = {}
+    for _, user in ipairs(users) do
+        PM.PrismNametags.prismUserIds[user.user_id] = true
+    end
+end
+
+-- Toggle Prism nametags
+function PM.PrismNametags.toggle()
+    if PM.PrismNametags.active then
+        -- Disable
+        PM.PrismNametags.active = false
+        for userId, _ in pairs(PM.PrismNametags.overlays) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                PM.PrismNametags.remove(plr)
+            end
+        end
+        PM.PrismNametags.prismUserIds = {}
+        if PM.PrismNametags.playerAddedConn then
+            PM.PrismNametags.playerAddedConn:Disconnect()
+            PM.PrismNametags.playerAddedConn = nil
+        end
+        if PM.PrismNametags.playerRemovingConn then
+            PM.PrismNametags.playerRemovingConn:Disconnect()
+            PM.PrismNametags.playerRemovingConn = nil
+        end
+        return false
+    else
+        -- Enable
+        PM.PrismNametags.active = true
+        PM.PrismNametags.refresh()
+        local Players = PM.Svc.Players
+        local LP = Players.LocalPlayer
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LP and PM.PrismNametags.prismUserIds[plr.UserId] then
+                task.spawn(function()
+                    if not plr.Character then plr.CharacterAdded:Wait() end
+                    PM.PrismNametags.create(plr)
+                end)
+            end
+        end
+        -- Handle new players
+        PM.PrismNametags.playerAddedConn = Players.PlayerAdded:Connect(function(p)
+            if p ~= LP and PM.PrismNametags.prismUserIds[p.UserId] then
+                task.spawn(function()
+                    if not p.Character then p.CharacterAdded:Wait() end
+                    PM.PrismNametags.create(p)
+                end)
+            end
+        end)
+        -- Handle leaving players
+        PM.PrismNametags.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
+            PM.PrismNametags.remove(p)
+        end)
+        return true
+    end
+end
+
 -- Early settings loading (before UI creation)
 local SETTINGS_FILE = "prism/prism_settings.json"
 if readfile then
@@ -311,10 +610,10 @@ PM.createMainGUI = function()
                 end
             end)
         elseif btn.name == "NameTags" then
-            PM.isNameTagsEnabled = true
+            PM.isNameTagsEnabled = false
             button.MouseButton1Click:Connect(function()
                 PM.playClickSound()
-                PM.isNameTagsEnabled = not PM.isNameTagsEnabled
+                PM.isNameTagsEnabled = PM.PrismNametags.toggle()
                 if PM.isTerminalOpen then
                     PM.isTerminalOpen = false
                     PM.hideTerminalPanel()
@@ -1402,268 +1701,125 @@ PM.createMainGUI = function()
         end)
         
         -- Join panel logic
+        local HttpService = game:GetService("HttpService")
+        local TeleportService = game:GetService("TeleportService")
+        local currentJoinFilter = "All Games"
+        local cachedServers = {}
+        local renderServerList
+        
+        local function fetchPrismServers()
+            local servers = PM.PrismAPI.getServers(true)
+            return servers or {}
+        end
+        
+        renderServerList = function()
+            -- Clear existing
+            for _, child in ipairs(PM.UI.JoinScroll:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child:Destroy()
+                end
+            end
+            
+            local servers = cachedServers
+            local searchQuery = PM.UI.JoinSearch.Text:lower()
+            
+            for _, server in ipairs(servers) do
+                -- Filter by search
+                if searchQuery ~= "" then
+                    local usernames = server.usernames or {}
+                    local match = false
+                    for _, username in ipairs(usernames) do
+                        if username:lower():find(searchQuery, 1, true) then
+                            match = true
+                            break
+                        end
+                    end
+                    if not match then continue end
+                end
+                
+                local userCount = server.user_count or 0
+                local usernames = server.usernames or {}
+                local usernameList = table.concat(usernames, ", ")
+                
+                local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
+                    Size = UDim2.new(1, -6, 0, 44),
+                    BackgroundColor3 = C.card,
+                    BackgroundTransparency = 0.5,
+                    BorderSizePixel = 0,
+                    Text = "",
+                    Name = "Server_" .. tostring(server.server_id),
+                    ZIndex = 102,
+                })
+                PM.corner(btn, 6)
+                
+                PM.mk("TextLabel", btn, {
+                    Size = UDim2.new(1, -16, 0, 16),
+                    Position = UDim2.new(0, 8, 0, 4),
+                    BackgroundTransparency = 1,
+                    Text = userCount .. " Prism User(s)",
+                    TextColor3 = Color3.fromRGB(0, 200, 70),
+                    TextSize = 11,
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 103,
+                })
+                
+                PM.mk("TextLabel", btn, {
+                    Size = UDim2.new(1, -16, 0, 24),
+                    Position = UDim2.new(0, 8, 0, 20),
+                    BackgroundTransparency = 1,
+                    Text = usernameList,
+                    TextColor3 = C.textDim,
+                    TextSize = 9,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextWrapped = true,
+                    ZIndex = 103,
+                })
+                
+                btn.MouseEnter:Connect(function()
+                    PM.tween(btn, 0.15, {BackgroundTransparency = 0.2})
+                end)
+                btn.MouseLeave:Connect(function()
+                    PM.tween(btn, 0.15, {BackgroundTransparency = 0.5})
+                end)
+                btn.MouseButton1Click:Connect(function()
+                    PM.playClickSound()
+                    pcall(function()
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.server_id, PM.Svc.Players.LocalPlayer)
+                    end)
+                end)
+            end
+        end
+        
+        -- Initial fetch
+        cachedServers = fetchPrismServers()
+        renderServerList()
+        
+        -- Refresh every 30 seconds
         spawn(function()
-            local HttpService = game:GetService("HttpService")
-            local TeleportService = game:GetService("TeleportService")
-            local SERVERS_URL = "https://prismscript.vercel.app/api/prism/servers"
-            local PLAYER_TTL = 35
-            local currentJoinFilter = "All Games"
-            local cachedUsers = {}
-            
-            local function fetchPrismUsers()
-                local url
-                if currentJoinFilter == "This Game" then
-                    url = SERVERS_URL .. "/" .. tostring(game.PlaceId) .. ".json"
-                else
-                    url = SERVERS_URL .. "/"
-                end
-                
-                local ok, result = pcall(function()
-                    return request({
-                        Url = url,
-                        Method = "GET"
-                    })
-                end)
-                
-                if not ok or not result or not result.Body or result.Body == "null" then
-                    return {}
-                end
-                
-                local ok2, data = pcall(function()
-                    return HttpService:JSONDecode(result.Body)
-                end)
-                
-                if not ok2 or not data then
-                    return {}
-                end
-                
-                -- API returns { servers: { placeId: { jobId: { userId: data } } } }
-                -- Unwrap the servers key if present
-                local serversData = data.servers or data
-                
-                local users = {}
-                local now = os.time()
-                local PlayersService = game:GetService("Players")
-                local LocalPlayer = PlayersService.LocalPlayer
-                
-                if currentJoinFilter == "This Game" then
-                    -- Data structure: { servers: { placeId: { jobId: { userId: data } } } }
-                    local placeData = serversData[tostring(game.PlaceId)] or serversData[game.PlaceId]
-                    if type(placeData) == "table" then
-                        for jobId, jobData in pairs(placeData) do
-                            if type(jobData) == "table" then
-                                for userIdStr, userInfo in pairs(jobData) do
-                                    local userId = tonumber(userIdStr)
-                                    if userId and userId ~= LocalPlayer.UserId and type(userInfo) == "table" then
-                                        local timestamp = tonumber(userInfo.timestamp) or 0
-                                        local age = now - timestamp
-                                        if age <= PLAYER_TTL then
-                                            table.insert(users, {
-                                                userId = userId,
-                                                username = userInfo.username or "Unknown",
-                                                displayName = userInfo.displayName or userInfo.username or "Unknown",
-                                                gameName = userInfo.gameName or "Unknown",
-                                                placeId = game.PlaceId,
-                                                jobId = jobId,
-                                                timestamp = userInfo.timestamp
-                                            })
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                else
-                    for placeIdStr, placeData in pairs(serversData) do
-                        if type(placeData) == "table" then
-                            for jobId, jobData in pairs(placeData) do
-                                if type(jobData) == "table" then
-                                    for userIdStr, userInfo in pairs(jobData) do
-                                        local userId = tonumber(userIdStr)
-                                        local placeId = tonumber(placeIdStr)
-                                        if userId and userId ~= LocalPlayer.UserId and placeId and type(userInfo) == "table" then
-                                            local age = now - (tonumber(userInfo.timestamp) or 0)
-                                            if age <= PLAYER_TTL then
-                                                table.insert(users, {
-                                                    userId = userId,
-                                                    username = userInfo.username or "Unknown",
-                                                    displayName = userInfo.displayName or userInfo.username or "Unknown",
-                                                    gameName = userInfo.gameName or "Unknown",
-                                                    placeId = placeId,
-                                                    jobId = jobId,
-                                                    timestamp = userInfo.timestamp
-                                                })
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                
-                if currentJoinFilter == "Friends" then
-                    local friendsOnly = {}
-                    for _, user in ipairs(users) do
-                        local success, isFriend = pcall(function()
-                            return LocalPlayer:IsFriendsWith(user.userId)
-                        end)
-                        if success and isFriend then
-                            table.insert(friendsOnly, user)
-                        end
-                    end
-                    users = friendsOnly
-                end
-                
-                table.sort(users, function(a, b)
-                    return (a.username or ""):lower() < (b.username or ""):lower()
-                end)
-                
-                return users
+            while PM.UI.JoinPanel do
+                task.wait(30)
+                cachedServers = fetchPrismServers()
+                renderServerList()
             end
-            
-            local function renderUsers(users, searchQuery)
-                local scroll = PM.UI.JoinScroll
-                if not scroll then return end
-                
-                for _, child in ipairs(scroll:GetChildren()) do
-                    if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
-                        child:Destroy()
-                    end
-                end
-                
-                local filtered = {}
-                if searchQuery and searchQuery ~= "" then
-                    local q = searchQuery:lower()
-                    for _, user in ipairs(users) do
-                        local name = (user.username or ""):lower()
-                        local display = (user.displayName or ""):lower()
-                        if name:find(q, 1, true) or display:find(q, 1, true) then
-                            table.insert(filtered, user)
-                        end
-                    end
-                else
-                    filtered = users
-                end
-                
-                for _, user in ipairs(filtered) do
-                    local isCurrentServer = (user.placeId == game.PlaceId and user.jobId == game.JobId)
-                    local isCurrentGame = (user.placeId == game.PlaceId)
-                    
-                    local item = PM.mk("TextButton", scroll, {
-                        Name = "UserItem_" .. user.userId,
-                        Size = UDim2.new(1, -6, 0, 46),
-                        BackgroundColor3 = C.card,
-                        BackgroundTransparency = 0.5,
-                        BorderSizePixel = 0,
-                        Text = "",
-                        AutoButtonColor = false,
-                    })
-                    PM.corner(item, 6)
-                    
-                    -- Avatar
-                    local avatar = PM.mk("ImageLabel", item, {
-                        Name = "Avatar",
-                        Size = UDim2.new(0, 32, 0, 32),
-                        Position = UDim2.new(0, 8, 0.5, -16),
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        Image = "rbxthumb://type=AvatarHeadShot&id=" .. user.userId .. "&w=48&h=48",
-                        ScaleType = Enum.ScaleType.Crop,
-                    })
-                    PM.corner(avatar, 16)
-                    
-                    -- Username
-                    local nameLabel = PM.mk("TextLabel", item, {
-                        Size = UDim2.new(1, -110, 0, 14),
-                        Position = UDim2.new(0, 48, 0, 5),
-                        BackgroundTransparency = 1,
-                        Text = "@" .. user.username,
-                        TextColor3 = C.text,
-                        TextSize = 11,
-                        Font = Enum.Font.GothamBold,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                    })
-                    
-                    -- Game info
-                    local infoLabel = PM.mk("TextLabel", item, {
-                        Size = UDim2.new(1, -110, 0, 12),
-                        Position = UDim2.new(0, 48, 0, 20),
-                        BackgroundTransparency = 1,
-                        Text = user.gameName or "Unknown",
-                        TextColor3 = isCurrentServer and Color3.fromRGB(140, 200, 140) or (isCurrentGame and Color3.fromRGB(180, 180, 200) or Color3.fromRGB(140, 140, 140)),
-                        TextSize = 9,
-                        Font = Enum.Font.Gotham,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                    })
-                    
-                    -- Join button (shown as indicator, not clickable on item)
-                    local joinIndicator = PM.mk("TextLabel", item, {
-                        Name = "JoinIndicator",
-                        Size = UDim2.new(0, 50, 0, 20),
-                        Position = UDim2.new(1, -58, 0.5, 0),
-                        AnchorPoint = Vector2.new(0, 0.5),
-                        BackgroundColor3 = isCurrentServer and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(200, 200, 200),
-                        BackgroundTransparency = 0,
-                        Text = isCurrentServer and "Current" or "Join",
-                        TextColor3 = isCurrentServer and Color3.fromRGB(140, 140, 140) or Color3.fromRGB(0, 0, 0),
-                        TextSize = 9,
-                        Font = Enum.Font.GothamBold,
-                    })
-                    PM.corner(joinIndicator, 4)
-                    
-                    if not isCurrentServer then
-                        item.MouseEnter:Connect(function()
-                            item.BackgroundTransparency = 0.3
-                        end)
-                        item.MouseLeave:Connect(function()
-                            item.BackgroundTransparency = 0.5
-                        end)
-                        item.MouseButton1Click:Connect(function()
-                            PM.playClickSound()
-                            TeleportService:TeleportToPlaceInstance(user.placeId, user.jobId, LocalPlayer)
-                        end)
-                    else
-                        item.Active = false
-                    end
-                end
-            end
-            
-            PM.refreshJoinUsers = function()
-                cachedUsers = fetchPrismUsers()
-                renderUsers(cachedUsers, PM.UI.JoinSearch and PM.UI.JoinSearch.Text or "")
-            end
-            
-            local function setFilterActive(filterName)
-                currentJoinFilter = filterName
-                for _, btn in ipairs(PM.UI.JoinFilterButtons) do
-                    PM.tween(btn, 0.15, {BackgroundTransparency = btn.Name == filterName and 0.3 or 0.7})
-                end
-                PM.refreshJoinUsers()
-            end
-            
-            -- Filter button connections
-            local filterFrame = PM.UI.JoinFilterFrame
-            if filterFrame then
-                for _, child in ipairs(filterFrame:GetChildren()) do
-                    if child:IsA("TextButton") then
-                        child.MouseButton1Click:Connect(function()
-                            PM.playClickSound()
-                            setFilterActive(child.Name)
-                        end)
-                    end
-                end
-            end
-            
-            -- Search connection
-            if PM.UI.JoinSearch then
-                PM.UI.JoinSearch:GetPropertyChangedSignal("Text"):Connect(function()
-                    renderUsers(cachedUsers, PM.UI.JoinSearch.Text)
-                end)
-            end
-            
-            -- Initial filter
-            setFilterActive("All Games")
         end)
+        
+        -- Search filter
+        PM.UI.JoinSearch:GetPropertyChangedSignal("Text"):Connect(function()
+            renderServerList()
+        end)
+        
+        -- Filter buttons
+        for _, btn in ipairs(PM.UI.JoinFilterButtons) do
+            btn.MouseButton1Click:Connect(function()
+                PM.playClickSound()
+                currentJoinFilter = btn.Name
+                for _, b in ipairs(PM.UI.JoinFilterButtons) do
+                    PM.tween(b, 0.15, {BackgroundTransparency = b.Name == currentJoinFilter and 0.3 or 0.7})
+                end
+            end)
+        end
     end
     
     PM.openJoinPanel = function()
@@ -1675,11 +1831,6 @@ PM.createMainGUI = function()
         PM.UI.JoinPanel.Visible = true
         PM.UI.JoinPanel.Size = UDim2.new(0, 280, 0, 0)
         PM.tween(PM.UI.JoinPanel, 0.3, {Size = UDim2.new(0, 280, 0, 320)})
-        
-        -- Refresh users when opening
-        if PM.refreshJoinUsers then
-            PM.refreshJoinUsers()
-        end
     end
     
     PM.closeJoinPanel = function()
