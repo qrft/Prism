@@ -105,11 +105,25 @@ local function setupTalkingDetection(plr)
     PM.VCBypasser.talkingStates[plr.UserId] = false
 
     -- Monitor talking state
-    game:GetService("RunService").Heartbeat:Connect(function()
-        if not analyzer.Parent then return end
-        local isTalking = analyzer.RmsLevel > 0.001
+    local conn
+    conn = game:GetService("RunService").Heartbeat:Connect(function()
+        if not analyzer.Parent then
+            if conn then conn:Disconnect() end
+            return
+        end
+        local isTalking = analyzer.RmsLevel > 0.005
         PM.VCBypasser.talkingStates[plr.UserId] = isTalking
     end)
+end
+
+-- Cleanup talking detection for a player
+local function cleanupTalkingDetection(plr)
+    if PM.VCBypasser.talkingDetectors[plr.UserId] then
+        pcall(function() PM.VCBypasser.talkingDetectors[plr.UserId].analyzer:Destroy() end)
+        pcall(function() PM.VCBypasser.talkingDetectors[plr.UserId].wire:Destroy() end)
+        PM.VCBypasser.talkingDetectors[plr.UserId] = nil
+    end
+    PM.VCBypasser.talkingStates[plr.UserId] = nil
 end
 
 -- Create player overlay with mute button and talking indicator
@@ -181,21 +195,55 @@ local function createPlayerOverlay(plr)
     local lastUpdate = 0
     local levelIndex = 1
 
+    -- Handle character respawn - recreate overlay and talking detection
+    local charAddedConn
+    charAddedConn = plr.CharacterAdded:Connect(function(newChar)
+        -- Cleanup old overlay and talking detection
+        removePlayerOverlay(plr)
+        task.wait(0.5)
+        -- Recreate after character loads
+        setupTalkingDetection(plr)
+        createPlayerOverlay(plr)
+    end)
+
     RunService.Heartbeat:Connect(function()
-        if not bill.Parent then return end
+        if not bill.Parent then
+            if charAddedConn then charAddedConn:Disconnect() end
+            return
+        end
 
         -- Update adornee
         if plr.Character and plr.Character:FindFirstChild("Head") then
             bill.Adornee = plr.Character.Head
         end
 
-        -- Distance check - only show within 100 studs
+        -- Distance check and occlusion culling
         local LP = game:GetService("Players").LocalPlayer
         local visible = false
         if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-            visible = dist <= 100
+            
+            local lpRoot = LP.Character.HumanoidRootPart
+            local plrRoot = plr.Character.HumanoidRootPart
+            local plrHead = plr.Character:FindFirstChild("Head")
+            
+            local dist = (lpRoot.Position - plrRoot.Position).Magnitude
+            
+            -- Check distance first
+            if dist <= 100 and plrHead then
+                -- Raycast for occlusion culling
+                local rayParams = RaycastParams.new()
+                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                rayParams.FilterDescendantsInstances = {LP.Character, plr.Character}
+                
+                local direction = plrHead.Position - lpRoot.Position
+                local rayResult = workspace:Raycast(lpRoot.Position, direction, rayParams)
+                
+                -- If no hit or hit is past the player, they're visible
+                if not rayResult or (rayResult.Position - plrHead.Position).Magnitude > 5 then
+                    visible = true
+                end
+            end
         end
         bill.Enabled = visible
 
@@ -244,12 +292,7 @@ local function removePlayerOverlay(plr)
         pcall(function() PM.VCBypasser.playerOverlays[plr.UserId]:Destroy() end)
         PM.VCBypasser.playerOverlays[plr.UserId] = nil
     end
-    if PM.VCBypasser.talkingDetectors[plr.UserId] then
-        pcall(function() PM.VCBypasser.talkingDetectors[plr.UserId].analyzer:Destroy() end)
-        pcall(function() PM.VCBypasser.talkingDetectors[plr.UserId].wire:Destroy() end)
-        PM.VCBypasser.talkingDetectors[plr.UserId] = nil
-    end
-    PM.VCBypasser.talkingStates[plr.UserId] = nil
+    cleanupTalkingDetection(plr)
 end
 
 -- ========== CHAT COMMAND HANDLING ==========
