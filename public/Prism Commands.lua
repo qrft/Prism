@@ -217,33 +217,13 @@ local function createPlayerOverlay(plr)
             bill.Adornee = plr.Character.Head
         end
 
-        -- Distance check and occlusion culling
+        -- Distance check - only show within 100 studs
         local LP = game:GetService("Players").LocalPlayer
         local visible = false
         if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            
-            local lpRoot = LP.Character.HumanoidRootPart
-            local plrRoot = plr.Character.HumanoidRootPart
-            local plrHead = plr.Character:FindFirstChild("Head")
-            
-            local dist = (lpRoot.Position - plrRoot.Position).Magnitude
-            
-            -- Check distance first
-            if dist <= 100 and plrHead then
-                -- Raycast for occlusion culling
-                local rayParams = RaycastParams.new()
-                rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                rayParams.FilterDescendantsInstances = {LP.Character, plr.Character}
-                
-                local direction = plrHead.Position - lpRoot.Position
-                local rayResult = workspace:Raycast(lpRoot.Position, direction, rayParams)
-                
-                -- If no hit or hit is past the player, they're visible
-                if not rayResult or (rayResult.Position - plrHead.Position).Magnitude > 5 then
-                    visible = true
-                end
-            end
+            local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            visible = dist <= 100
         end
         bill.Enabled = visible
 
