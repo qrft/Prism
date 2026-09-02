@@ -9600,6 +9600,1179 @@ PM.loadAutoExecStates = function()
     end)
 end
 
+-- ========== PRISM SHADERS ==========
+
+PM.Shaders = PM.Shaders or {}
+PM.Shaders.active = false
+PM.Shaders.effects = {}
+PM.Shaders.gui = nil
+PM.Shaders.sunFlareGui = nil
+PM.Shaders.motionBlurConn = nil
+PM.Shaders.renderConn = nil
+PM.Shaders.globalLights = {}
+PM.Shaders.backup = {}
+
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Terrain = workspace.Terrain
+
+-- Store original values
+local function backupLighting()
+    PM.Shaders.backup.lighting = {
+        ClockTime = Lighting.ClockTime,
+        Ambient = Lighting.Ambient,
+        Brightness = Lighting.Brightness,
+        ColorShift_Bottom = Lighting.ColorShift_Bottom,
+        ColorShift_Top = Lighting.ColorShift_Top,
+        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+        GlobalShadows = Lighting.GlobalShadows,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+        ShadowSoftness = Lighting.ShadowSoftness,
+        GeographicLatitude = Lighting.GeographicLatitude,
+        ExposureCompensation = Lighting.ExposureCompensation,
+        FogEnd = Lighting.FogEnd,
+        FogColor = Lighting.FogColor,
+        FogStart = Lighting.FogStart
+    }
+    PM.Shaders.backup.terrain = {
+        WaterColor = Terrain.WaterColor,
+        WaterReflectance = Terrain.WaterReflectance,
+        WaterTransparency = Terrain.WaterTransparency,
+        WaterWaveSize = Terrain.WaterWaveSize,
+        WaterWaveSpeed = Terrain.WaterWaveSpeed
+    }
+end
+backupLighting()
+
+-- Time of day presets
+PM.Shaders.timePresets = {
+    morning = {
+        ClockTime = 8,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(200, 180, 150),
+        OutdoorAmbient = Color3.fromRGB(180, 160, 130),
+        ColorShift_Top = Color3.fromRGB(30, 20, 10),
+        ColorShift_Bottom = Color3.fromRGB(20, 15, 10),
+        FogColor = Color3.fromRGB(200, 190, 180),
+        FogEnd = 10000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.7,
+        BloomSize = 20,
+        BloomThreshold = 0.9,
+        Saturation = 0.1,
+        Contrast = 0.1
+    },
+    midday = {
+        ClockTime = 14,
+        Brightness = 2.5,
+        Ambient = Color3.fromRGB(255, 255, 255),
+        OutdoorAmbient = Color3.fromRGB(200, 200, 200),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(200, 200, 200),
+        FogEnd = 15000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.8,
+        BloomSize = 24,
+        BloomThreshold = 0.9,
+        Saturation = 0.2,
+        Contrast = 0.1
+    },
+    afternoon = {
+        ClockTime = 16,
+        Brightness = 2.3,
+        Ambient = Color3.fromRGB(255, 230, 200),
+        OutdoorAmbient = Color3.fromRGB(200, 180, 150),
+        ColorShift_Top = Color3.fromRGB(20, 10, 5),
+        ColorShift_Bottom = Color3.fromRGB(15, 8, 3),
+        FogColor = Color3.fromRGB(255, 230, 200),
+        FogEnd = 12000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.75,
+        BloomSize = 22,
+        BloomThreshold = 0.9,
+        Saturation = 0.15,
+        Contrast = 0.1
+    },
+    evening = {
+        ClockTime = 18,
+        Brightness = 1.5,
+        Ambient = Color3.fromRGB(255, 180, 120),
+        OutdoorAmbient = Color3.fromRGB(200, 140, 100),
+        ColorShift_Top = Color3.fromRGB(50, 30, 20),
+        ColorShift_Bottom = Color3.fromRGB(40, 20, 10),
+        FogColor = Color3.fromRGB(255, 200, 150),
+        FogEnd = 8000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.6,
+        BloomSize = 18,
+        BloomThreshold = 0.85,
+        Saturation = 0.3,
+        Contrast = 0.15
+    },
+    night = {
+        ClockTime = 0,
+        Brightness = 1,
+        Ambient = Color3.fromRGB(50, 50, 80),
+        OutdoorAmbient = Color3.fromRGB(30, 30, 50),
+        ColorShift_Top = Color3.fromRGB(10, 10, 30),
+        ColorShift_Bottom = Color3.fromRGB(5, 5, 20),
+        FogColor = Color3.fromRGB(20, 20, 40),
+        FogEnd = 5000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.4,
+        BloomSize = 15,
+        BloomThreshold = 0.8,
+        Saturation = -0.2,
+        Contrast = 0.1
+    },
+    midnight = {
+        ClockTime = 24,
+        Brightness = 0.8,
+        Ambient = Color3.fromRGB(20, 20, 40),
+        OutdoorAmbient = Color3.fromRGB(15, 15, 30),
+        ColorShift_Top = Color3.fromRGB(5, 5, 20),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 10),
+        FogColor = Color3.fromRGB(10, 10, 25),
+        FogEnd = 4000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.3,
+        BloomSize = 12,
+        BloomThreshold = 0.75,
+        Saturation = -0.3,
+        Contrast = 0.15
+    },
+    ["morning lite"] = {
+        ClockTime = 8,
+        Brightness = 1.5,
+        Ambient = Color3.fromRGB(180, 160, 130),
+        OutdoorAmbient = Color3.fromRGB(160, 140, 110),
+        ColorShift_Top = Color3.fromRGB(20, 15, 5),
+        ColorShift_Bottom = Color3.fromRGB(15, 10, 5),
+        FogColor = Color3.fromRGB(180, 170, 160),
+        FogEnd = 12000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.5,
+        BloomSize = 16,
+        BloomThreshold = 0.9,
+        Saturation = 0.05,
+        Contrast = 0.05
+    },
+    ["midday lite"] = {
+        ClockTime = 14,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(230, 230, 230),
+        OutdoorAmbient = Color3.fromRGB(180, 180, 180),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(180, 180, 180),
+        FogEnd = 12000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.6,
+        BloomSize = 18,
+        BloomThreshold = 0.9,
+        Saturation = 0.1,
+        Contrast = 0.05
+    },
+    ["afternoon lite"] = {
+        ClockTime = 16,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(230, 200, 170),
+        OutdoorAmbient = Color3.fromRGB(180, 150, 120),
+        ColorShift_Top = Color3.fromRGB(15, 8, 3),
+        ColorShift_Bottom = Color3.fromRGB(12, 6, 2),
+        FogColor = Color3.fromRGB(230, 200, 170),
+        FogEnd = 10000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.55,
+        BloomSize = 17,
+        BloomThreshold = 0.88,
+        Saturation = 0.08,
+        Contrast = 0.05
+    },
+    ["evening lite"] = {
+        ClockTime = 18,
+        Brightness = 1.2,
+        Ambient = Color3.fromRGB(230, 160, 100),
+        OutdoorAmbient = Color3.fromRGB(180, 120, 80),
+        ColorShift_Top = Color3.fromRGB(40, 25, 15),
+        ColorShift_Bottom = Color3.fromRGB(30, 15, 8),
+        FogColor = Color3.fromRGB(230, 180, 130),
+        FogEnd = 7000,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.45,
+        BloomSize = 14,
+        BloomThreshold = 0.85,
+        Saturation = 0.2,
+        Contrast = 0.1
+    },
+    ["night lite"] = {
+        ClockTime = 0,
+        Brightness = 0.8,
+        Ambient = Color3.fromRGB(40, 40, 70),
+        OutdoorAmbient = Color3.fromRGB(25, 25, 45),
+        ColorShift_Top = Color3.fromRGB(8, 8, 25),
+        ColorShift_Bottom = Color3.fromRGB(4, 4, 15),
+        FogColor = Color3.fromRGB(15, 15, 35),
+        FogEnd = 4500,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.3,
+        BloomSize = 12,
+        BloomThreshold = 0.8,
+        Saturation = -0.15,
+        Contrast = 0.08
+    },
+    ["midnight lite"] = {
+        ClockTime = 24,
+        Brightness = 0.6,
+        Ambient = Color3.fromRGB(15, 15, 35),
+        OutdoorAmbient = Color3.fromRGB(10, 10, 25),
+        ColorShift_Top = Color3.fromRGB(4, 4, 15),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 8),
+        FogColor = Color3.fromRGB(8, 8, 20),
+        FogEnd = 3500,
+        GeographicLatitude = 20,
+        BloomIntensity = 0.25,
+        BloomSize = 10,
+        BloomThreshold = 0.75,
+        Saturation = -0.2,
+        Contrast = 0.1
+    }
+}
+
+-- Color presets
+PM.Shaders.colorPresets = {
+    black = {
+        ClockTime = 12,
+        Brightness = 0.5,
+        Ambient = Color3.fromRGB(20, 20, 20),
+        OutdoorAmbient = Color3.fromRGB(10, 10, 10),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(10, 10, 10),
+        FogEnd = 500,
+        Saturation = -0.5,
+        Contrast = 0.2
+    },
+    green = {
+        ClockTime = 12,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(50, 200, 100),
+        OutdoorAmbient = Color3.fromRGB(40, 160, 80),
+        ColorShift_Top = Color3.fromRGB(0, 50, 20),
+        ColorShift_Bottom = Color3.fromRGB(0, 30, 10),
+        FogColor = Color3.fromRGB(50, 200, 100),
+        FogEnd = 10000,
+        Saturation = 0.3,
+        TintColor = Color3.fromRGB(0, 255, 0)
+    },
+    red = {
+        ClockTime = 12,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(200, 50, 50),
+        OutdoorAmbient = Color3.fromRGB(160, 40, 40),
+        ColorShift_Top = Color3.fromRGB(50, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(30, 0, 0),
+        FogColor = Color3.fromRGB(200, 50, 50),
+        FogEnd = 10000,
+        Saturation = 0.3,
+        TintColor = Color3.fromRGB(255, 0, 0)
+    },
+    yellow = {
+        ClockTime = 12,
+        Brightness = 2.5,
+        Ambient = Color3.fromRGB(255, 255, 150),
+        OutdoorAmbient = Color3.fromRGB(200, 200, 120),
+        ColorShift_Top = Color3.fromRGB(50, 50, 0),
+        ColorShift_Bottom = Color3.fromRGB(30, 30, 0),
+        FogColor = Color3.fromRGB(255, 255, 150),
+        FogEnd = 10000,
+        Saturation = 0.2,
+        TintColor = Color3.fromRGB(255, 255, 0)
+    },
+    pink = {
+        ClockTime = 12,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(255, 150, 200),
+        OutdoorAmbient = Color3.fromRGB(200, 120, 160),
+        ColorShift_Top = Color3.fromRGB(50, 20, 30),
+        ColorShift_Bottom = Color3.fromRGB(30, 10, 20),
+        FogColor = Color3.fromRGB(255, 150, 200),
+        FogEnd = 10000,
+        Saturation = 0.25,
+        TintColor = Color3.fromRGB(255, 105, 180)
+    },
+    gray = {
+        ClockTime = 12,
+        Brightness = 1.5,
+        Ambient = Color3.fromRGB(128, 128, 128),
+        OutdoorAmbient = Color3.fromRGB(100, 100, 100),
+        ColorShift_Top = Color3.fromRGB(10, 10, 10),
+        ColorShift_Bottom = Color3.fromRGB(10, 10, 10),
+        FogColor = Color3.fromRGB(128, 128, 128),
+        FogEnd = 8000,
+        Saturation = -1,
+        Contrast = 0
+    },
+    white = {
+        ClockTime = 12,
+        Brightness = 3,
+        Ambient = Color3.fromRGB(255, 255, 255),
+        OutdoorAmbient = Color3.fromRGB(255, 255, 255),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(255, 255, 255),
+        FogEnd = 20000,
+        Saturation = 0,
+        Contrast = 0
+    },
+    purple = {
+        ClockTime = 12,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(150, 50, 200),
+        OutdoorAmbient = Color3.fromRGB(120, 40, 160),
+        ColorShift_Top = Color3.fromRGB(30, 0, 50),
+        ColorShift_Bottom = Color3.fromRGB(20, 0, 30),
+        FogColor = Color3.fromRGB(150, 50, 200),
+        FogEnd = 10000,
+        Saturation = 0.3,
+        TintColor = Color3.fromRGB(128, 0, 128)
+    },
+    ["black lite"] = {
+        ClockTime = 12,
+        Brightness = 0.7,
+        Ambient = Color3.fromRGB(30, 30, 30),
+        OutdoorAmbient = Color3.fromRGB(20, 20, 20),
+        ColorShift_Top = Color3.fromRGB(5, 5, 5),
+        ColorShift_Bottom = Color3.fromRGB(5, 5, 5),
+        FogColor = Color3.fromRGB(30, 30, 30),
+        FogEnd = 800,
+        Saturation = -0.3,
+        Contrast = 0.1
+    },
+    ["green lite"] = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(80, 180, 120),
+        OutdoorAmbient = Color3.fromRGB(60, 140, 100),
+        ColorShift_Top = Color3.fromRGB(0, 40, 15),
+        ColorShift_Bottom = Color3.fromRGB(0, 25, 8),
+        FogColor = Color3.fromRGB(80, 180, 120),
+        FogEnd = 12000,
+        Saturation = 0.2,
+        TintColor = Color3.fromRGB(0, 200, 0)
+    },
+    ["red lite"] = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(180, 80, 80),
+        OutdoorAmbient = Color3.fromRGB(140, 60, 60),
+        ColorShift_Top = Color3.fromRGB(40, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(25, 0, 0),
+        FogColor = Color3.fromRGB(180, 80, 80),
+        FogEnd = 12000,
+        Saturation = 0.2,
+        TintColor = Color3.fromRGB(200, 0, 0)
+    },
+    ["yellow lite"] = {
+        ClockTime = 12,
+        Brightness = 2.2,
+        Ambient = Color3.fromRGB(255, 255, 180),
+        OutdoorAmbient = Color3.fromRGB(200, 200, 140),
+        ColorShift_Top = Color3.fromRGB(40, 40, 0),
+        ColorShift_Bottom = Color3.fromRGB(25, 25, 0),
+        FogColor = Color3.fromRGB(255, 255, 180),
+        FogEnd = 12000,
+        Saturation = 0.15,
+        TintColor = Color3.fromRGB(255, 255, 0)
+    },
+    ["pink lite"] = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(255, 180, 220),
+        OutdoorAmbient = Color3.fromRGB(200, 140, 180),
+        ColorShift_Top = Color3.fromRGB(40, 15, 25),
+        ColorShift_Bottom = Color3.fromRGB(25, 10, 15),
+        FogColor = Color3.fromRGB(255, 180, 220),
+        FogEnd = 12000,
+        Saturation = 0.18,
+        TintColor = Color3.fromRGB(255, 150, 200)
+    },
+    ["gray lite"] = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(160, 160, 160),
+        OutdoorAmbient = Color3.fromRGB(130, 130, 130),
+        ColorShift_Top = Color3.fromRGB(8, 8, 8),
+        ColorShift_Bottom = Color3.fromRGB(8, 8, 8),
+        FogColor = Color3.fromRGB(160, 160, 160),
+        FogEnd = 10000,
+        Saturation = -0.5,
+        Contrast = 0
+    },
+    ["white lite"] = {
+        ClockTime = 12,
+        Brightness = 2.5,
+        Ambient = Color3.fromRGB(255, 255, 255),
+        OutdoorAmbient = Color3.fromRGB(220, 220, 220),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(255, 255, 255),
+        FogEnd = 15000,
+        Saturation = 0,
+        Contrast = 0
+    },
+    ["purple lite"] = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(180, 80, 220),
+        OutdoorAmbient = Color3.fromRGB(140, 60, 180),
+        ColorShift_Top = Color3.fromRGB(25, 0, 40),
+        ColorShift_Bottom = Color3.fromRGB(15, 0, 25),
+        FogColor = Color3.fromRGB(180, 80, 220),
+        FogEnd = 12000,
+        Saturation = 0.2,
+        TintColor = Color3.fromRGB(150, 0, 200)
+    }
+}
+
+-- Weather presets
+PM.Shaders.weatherPresets = {
+    rain = {
+        ClockTime = 14,
+        Brightness = 1.2,
+        Ambient = Color3.fromRGB(100, 100, 120),
+        OutdoorAmbient = Color3.fromRGB(80, 80, 100),
+        ColorShift_Top = Color3.fromRGB(20, 20, 30),
+        ColorShift_Bottom = Color3.fromRGB(15, 15, 25),
+        FogColor = Color3.fromRGB(100, 100, 120),
+        FogEnd = 2000,
+        CloudCover = 0.8,
+        CloudDensity = 0.5,
+        AtmosphereDensity = 0.4,
+        AtmosphereColor = Color3.fromRGB(150, 150, 170),
+        Saturation = -0.2,
+        Contrast = 0.1
+    },
+    snow = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(220, 220, 240),
+        OutdoorAmbient = Color3.fromRGB(200, 200, 220),
+        ColorShift_Top = Color3.fromRGB(10, 10, 20),
+        ColorShift_Bottom = Color3.fromRGB(8, 8, 15),
+        FogColor = Color3.fromRGB(220, 220, 240),
+        FogEnd = 3000,
+        CloudCover = 0.9,
+        CloudDensity = 0.6,
+        AtmosphereDensity = 0.3,
+        AtmosphereColor = Color3.fromRGB(200, 200, 220),
+        Saturation = 0.1,
+        Contrast = 0.05
+    },
+    fog = {
+        ClockTime = 12,
+        Brightness = 1.5,
+        Ambient = Color3.fromRGB(180, 180, 180),
+        OutdoorAmbient = Color3.fromRGB(150, 150, 150),
+        ColorShift_Top = Color3.fromRGB(10, 10, 10),
+        ColorShift_Bottom = Color3.fromRGB(10, 10, 10),
+        FogColor = Color3.fromRGB(200, 200, 200),
+        FogEnd = 500,
+        CloudCover = 0.6,
+        CloudDensity = 0.4,
+        AtmosphereDensity = 0.5,
+        AtmosphereColor = Color3.fromRGB(180, 180, 180),
+        Saturation = -0.1,
+        Contrast = 0
+    },
+    sunny = {
+        ClockTime = 14,
+        Brightness = 2.8,
+        Ambient = Color3.fromRGB(255, 255, 255),
+        OutdoorAmbient = Color3.fromRGB(220, 220, 220),
+        ColorShift_Top = Color3.fromRGB(0, 0, 0),
+        ColorShift_Bottom = Color3.fromRGB(0, 0, 0),
+        FogColor = Color3.fromRGB(220, 220, 220),
+        FogEnd = 20000,
+        CloudCover = 0.1,
+        CloudDensity = 0.1,
+        AtmosphereDensity = 0.1,
+        AtmosphereColor = Color3.fromRGB(255, 255, 255),
+        Saturation = 0.3,
+        Contrast = 0.15,
+        SunRaysIntensity = 0.15
+    },
+    cloudy = {
+        ClockTime = 14,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(180, 180, 190),
+        OutdoorAmbient = Color3.fromRGB(150, 150, 160),
+        ColorShift_Top = Color3.fromRGB(15, 15, 20),
+        ColorShift_Bottom = Color3.fromRGB(12, 12, 15),
+        FogColor = Color3.fromRGB(180, 180, 190),
+        FogEnd = 8000,
+        CloudCover = 0.7,
+        CloudDensity = 0.4,
+        AtmosphereDensity = 0.25,
+        AtmosphereColor = Color3.fromRGB(170, 170, 180),
+        Saturation = -0.05,
+        Contrast = 0.05
+    },
+    storm = {
+        ClockTime = 10,
+        Brightness = 0.8,
+        Ambient = Color3.fromRGB(60, 60, 80),
+        OutdoorAmbient = Color3.fromRGB(40, 40, 60),
+        ColorShift_Top = Color3.fromRGB(30, 30, 40),
+        ColorShift_Bottom = Color3.fromRGB(25, 25, 35),
+        FogColor = Color3.fromRGB(60, 60, 80),
+        FogEnd = 1500,
+        CloudCover = 1,
+        CloudDensity = 0.8,
+        AtmosphereDensity = 0.6,
+        AtmosphereColor = Color3.fromRGB(80, 80, 100),
+        Saturation = -0.3,
+        Contrast = 0.2
+    }
+}
+
+-- Season presets
+PM.Shaders.seasonPresets = {
+    autumn = {
+        ClockTime = 16,
+        Brightness = 2,
+        Ambient = Color3.fromRGB(255, 200, 150),
+        OutdoorAmbient = Color3.fromRGB(200, 160, 120),
+        ColorShift_Top = Color3.fromRGB(40, 20, 10),
+        ColorShift_Bottom = Color3.fromRGB(30, 15, 8),
+        FogColor = Color3.fromRGB(255, 220, 180),
+        FogEnd = 10000,
+        Saturation = 0.25,
+        TintColor = Color3.fromRGB(255, 180, 100)
+    },
+    spring = {
+        ClockTime = 12,
+        Brightness = 2.3,
+        Ambient = Color3.fromRGB(200, 255, 200),
+        OutdoorAmbient = Color3.fromRGB(160, 200, 160),
+        ColorShift_Top = Color3.fromRGB(10, 30, 10),
+        ColorShift_Bottom = Color3.fromRGB(8, 20, 8),
+        FogColor = Color3.fromRGB(200, 255, 200),
+        FogEnd = 12000,
+        Saturation = 0.2,
+        TintColor = Color3.fromRGB(150, 255, 150)
+    },
+    summer = {
+        ClockTime = 14,
+        Brightness = 2.8,
+        Ambient = Color3.fromRGB(255, 255, 230),
+        OutdoorAmbient = Color3.fromRGB(220, 220, 200),
+        ColorShift_Top = Color3.fromRGB(10, 10, 5),
+        ColorShift_Bottom = Color3.fromRGB(8, 8, 3),
+        FogColor = Color3.fromRGB(255, 255, 230),
+        FogEnd = 15000,
+        Saturation = 0.3,
+        TintColor = Color3.fromRGB(255, 255, 200)
+    },
+    winter = {
+        ClockTime = 12,
+        Brightness = 1.8,
+        Ambient = Color3.fromRGB(200, 210, 230),
+        OutdoorAmbient = Color3.fromRGB(170, 180, 200),
+        ColorShift_Top = Color3.fromRGB(10, 15, 25),
+        ColorShift_Bottom = Color3.fromRGB(8, 12, 20),
+        FogColor = Color3.fromRGB(200, 210, 230),
+        FogEnd = 8000,
+        Saturation = -0.1,
+        TintColor = Color3.fromRGB(200, 220, 255)
+    }
+}
+
+-- Skybox presets
+PM.Shaders.skyboxPresets = {
+    default = {
+        SkyboxBk = "rbxassetid://9544505500",
+        SkyboxDn = "rbxassetid://9544547905",
+        SkyboxFt = "rbxassetid://9544504852",
+        SkyboxLf = "rbxassetid://9544547694",
+        SkyboxRt = "rbxassetid://9544547542",
+        SkyboxUp = "rbxassetid://9544547398"
+    }
+}
+
+-- Create or get effect
+function PM.Shaders.getEffect(effectName, effectClass)
+    if PM.Shaders.effects[effectName] then
+        return PM.Shaders.effects[effectName]
+    end
+    
+    local effect = Instance.new(effectClass, Camera)
+    effect.Name = "Prism_" .. effectName
+    effect.Enabled = false
+    PM.Shaders.effects[effectName] = effect
+    return effect
+end
+
+-- Apply preset
+function PM.Shaders.applyPreset(presetName, presetType)
+    local presets
+    if presetType == "time" then
+        presets = PM.Shaders.timePresets
+    elseif presetType == "color" then
+        presets = PM.Shaders.colorPresets
+    elseif presetType == "weather" then
+        presets = PM.Shaders.weatherPresets
+    elseif presetType == "season" then
+        presets = PM.Shaders.seasonPresets
+    else
+        -- Try all
+        presets = PM.Shaders.timePresets[presetName:lower()] and PM.Shaders.timePresets
+            or PM.Shaders.colorPresets[presetName:lower()] and PM.Shaders.colorPresets
+            or PM.Shaders.weatherPresets[presetName:lower()] and PM.Shaders.weatherPresets
+            or PM.Shaders.seasonPresets[presetName:lower()] and PM.Shaders.seasonPresets
+    end
+    
+    local preset = presets and presets[presetName:lower()]
+    if not preset then return false end
+    
+    -- Apply lighting properties
+    if preset.ClockTime then Lighting.ClockTime = preset.ClockTime end
+    if preset.Brightness then Lighting.Brightness = preset.Brightness end
+    if preset.Ambient then Lighting.Ambient = preset.Ambient end
+    if preset.OutdoorAmbient then Lighting.OutdoorAmbient = preset.OutdoorAmbient end
+    if preset.ColorShift_Top then Lighting.ColorShift_Top = preset.ColorShift_Top end
+    if preset.ColorShift_Bottom then Lighting.ColorShift_Bottom = preset.ColorShift_Bottom end
+    if preset.FogColor then Lighting.FogColor = preset.FogColor end
+    if preset.FogEnd then Lighting.FogEnd = preset.FogEnd end
+    if preset.GeographicLatitude then Lighting.GeographicLatitude = preset.GeographicLatitude end
+    
+    -- Apply bloom
+    if preset.BloomIntensity or preset.BloomSize or preset.BloomThreshold then
+        local bloom = PM.Shaders.getEffect("Bloom", "BloomEffect")
+        bloom.Enabled = true
+        bloom.Intensity = preset.BloomIntensity or 0.8
+        bloom.Size = preset.BloomSize or 24
+        bloom.Threshold = preset.BloomThreshold or 0.9
+    end
+    
+    -- Apply color correction
+    if preset.Saturation or preset.Contrast or preset.TintColor then
+        local cc = PM.Shaders.getEffect("ColorCorrection", "ColorCorrectionEffect")
+        cc.Enabled = true
+        cc.Saturation = preset.Saturation or 0
+        cc.Contrast = preset.Contrast or 0
+        if preset.TintColor then cc.TintColor = preset.TintColor end
+    end
+    
+    -- Apply sun rays
+    if preset.SunRaysIntensity then
+        local sunrays = PM.Shaders.getEffect("SunRays", "SunRaysEffect")
+        sunrays.Enabled = true
+        sunrays.Intensity = preset.SunRaysIntensity
+        sunrays.Spread = 0.5
+    end
+    
+    -- Apply clouds
+    if preset.CloudCover or preset.CloudDensity then
+        local clouds = Terrain:FindFirstChildOfClass("Clouds")
+        if not clouds then
+            clouds = Instance.new("Clouds")
+            clouds.Parent = Terrain
+        end
+        if preset.CloudCover then clouds.Cover = preset.CloudCover end
+        if preset.CloudDensity then clouds.Density = preset.CloudDensity end
+    end
+    
+    -- Apply atmosphere
+    if preset.AtmosphereDensity or preset.AtmosphereColor then
+        local atmos = Lighting:FindFirstChildOfClass("Atmosphere")
+        if not atmos then
+            atmos = Instance.new("Atmosphere")
+            atmos.Parent = Lighting
+        end
+        if preset.AtmosphereDensity then atmos.Density = preset.AtmosphereDensity end
+        if preset.AtmosphereColor then atmos.Color = preset.AtmosphereColor end
+    end
+    
+    return true
+end
+
+-- Toggle bloom
+function PM.Shaders.setBloom(enabled, intensity, size, threshold)
+    local bloom = PM.Shaders.getEffect("Bloom", "BloomEffect")
+    bloom.Enabled = enabled
+    if enabled then
+        bloom.Intensity = intensity or 0.8
+        bloom.Size = size or 24
+        bloom.Threshold = threshold or 0.9
+    end
+end
+
+-- Toggle blur
+function PM.Shaders.setBlur(enabled, size)
+    local blur = PM.Shaders.getEffect("Blur", "BlurEffect")
+    blur.Enabled = enabled
+    if enabled then
+        blur.Size = size or 24
+    end
+end
+
+-- Toggle color correction
+function PM.Shaders.setColorCorrection(enabled, tint, saturation, contrast, brightness)
+    local cc = PM.Shaders.getEffect("ColorCorrection", "ColorCorrectionEffect")
+    cc.Enabled = enabled
+    if enabled then
+        cc.TintColor = tint or Color3.fromRGB(255, 255, 255)
+        cc.Saturation = saturation or 0
+        cc.Contrast = contrast or 0
+        cc.Brightness = brightness or 0
+    end
+end
+
+-- Toggle sun rays
+function PM.Shaders.setSunRays(enabled, intensity, spread)
+    local sunrays = PM.Shaders.getEffect("SunRays", "SunRaysEffect")
+    sunrays.Enabled = enabled
+    if enabled then
+        sunrays.Intensity = intensity or 0.1
+        sunrays.Spread = spread or 0.5
+    end
+end
+
+-- Toggle depth of field
+function PM.Shaders.setDepthOfField(enabled, farIntensity, nearIntensity, focusDistance)
+    local dof = PM.Shaders.getEffect("DepthOfField", "DepthOfFieldEffect")
+    dof.Enabled = enabled
+    if enabled then
+        dof.FarIntensity = farIntensity or 0.2
+        dof.NearIntensity = nearIntensity or 0.2
+        dof.FocusDistance = focusDistance or 50
+    end
+end
+
+-- Motion blur (camera movement based)
+function PM.Shaders.setMotionBlur(enabled, maxBlur)
+    if PM.Shaders.motionBlurConn then
+        PM.Shaders.motionBlurConn:Disconnect()
+        PM.Shaders.motionBlurConn = nil
+    end
+    
+    local blur = PM.Shaders.getEffect("MotionBlur", "BlurEffect")
+    
+    if not enabled then
+        blur.Enabled = false
+        return
+    end
+    
+    local lastCFrame = Camera.CFrame
+    maxBlur = maxBlur or 8
+    
+    PM.Shaders.motionBlurConn = RunService.RenderStepped:Connect(function()
+        local currentCFrame = Camera.CFrame
+        local delta = (currentCFrame.Position - lastCFrame.Position).Magnitude
+        local rotation = (currentCFrame:VectorToObjectSpace(lastCFrame.Position)).Magnitude
+        
+        local totalMovement = delta + rotation
+        local blurAmount = math.clamp(totalMovement * 2, 0, maxBlur)
+        
+        blur.Enabled = blurAmount > 0.5
+        blur.Size = blurAmount
+        
+        lastCFrame = currentCFrame
+    end)
+end
+
+-- Sun flare system
+function PM.Shaders.setSunFlare(enabled)
+    if PM.Shaders.sunFlareGui then
+        PM.Shaders.sunFlareGui:Destroy()
+        PM.Shaders.sunFlareGui = nil
+    end
+    
+    if not enabled then return end
+    
+    local flareGui = Instance.new("ScreenGui")
+    flareGui.Name = "PrismSunFlare"
+    flareGui.ResetOnSpawn = false
+    flareGui.Parent = PM.Svc.CoreGui
+    
+    local mainFlare = Instance.new("ImageLabel")
+    mainFlare.Name = "MainFlare"
+    mainFlare.Size = UDim2.new(0.15, 0, 0.15, 0)
+    mainFlare.BackgroundTransparency = 1
+    mainFlare.Image = "rbxassetid://277033149"
+    mainFlare.ImageColor3 = Color3.fromRGB(255, 255, 240)
+    mainFlare.ImageTransparency = 0
+    mainFlare.ZIndex = 0
+    mainFlare.Parent = flareGui
+    
+    local flareDistances = {1.7, 0.3, -0.3, -0.9}
+    local flareSizes = {0.7, 0.2, 1.2, 0.45}
+    local flareTransparencies = {0.8, 0.7, 0.9, 0.6}
+    local flares = {}
+    
+    for i = 1, #flareDistances do
+        local flare = Instance.new("ImageLabel")
+        flare.Name = "Flare" .. i
+        flare.Size = UDim2.new(flareSizes[i] * 0.2, 0, flareSizes[i] * 0.2, 0)
+        flare.BackgroundTransparency = 1
+        flare.ImageTransparency = flareTransparencies[i]
+        flare.Image = "rbxassetid://15164863822"
+        flare.ImageColor3 = Color3.fromRGB(255, 255, 200)
+        flare.Rotation = -25
+        flare.ZIndex = -1
+        flare.Parent = flareGui
+        table.insert(flares, {flare = flare, dist = flareDistances[i], size = flareSizes[i], trans = flareTransparencies[i]})
+    end
+    
+    PM.Shaders.sunFlareGui = flareGui
+    
+    -- Update loop
+    PM.Shaders.renderConn = RunService.RenderStepped:Connect(function()
+        local sunDirection = Lighting:GetSunDirection()
+        local sunScreenPos = Camera:WorldToScreenPoint(Camera.CFrame.Position + sunDirection * 1000)
+        local sunVisible = sunScreenPos.Z > 0
+        
+        local viewportCenter = Camera.ViewportSize / 2
+        local sunVector = Vector2.new(sunScreenPos.X, sunScreenPos.Y) - viewportCenter
+        
+        -- Check if sun is blocked
+        local ray = Ray.new(Camera.CFrame.Position, sunDirection * 1000)
+        local hit, pos = workspace:FindPartOnRay(ray, workspace)
+        local blocked = hit ~= nil
+        
+        local targetAlpha = blocked and 0 or 1
+        local currentAlpha = PM.Shaders.flareAlpha or 0
+        PM.Shaders.flareAlpha = currentAlpha + (targetAlpha - currentAlpha) * 0.1
+        
+        if sunVisible and PM.Shaders.flareAlpha > 0.01 then
+            mainFlare.Visible = true
+            mainFlare.ImageTransparency = 1 - PM.Shaders.flareAlpha
+            mainFlare.Position = UDim2.new(0.004, sunScreenPos.X - mainFlare.AbsoluteSize.X / 2, 0.004, sunScreenPos.Y - mainFlare.AbsoluteSize.Y / 2)
+            
+            for i, flareData in ipairs(flares) do
+                flareData.flare.Visible = true
+                flareData.flare.ImageTransparency = 1 - PM.Shaders.flareAlpha + flareData.trans * PM.Shaders.flareAlpha
+                local flarePos = viewportCenter + sunVector * flareData.dist
+                flareData.flare.Position = UDim2.new(0.004, flarePos.X - flareData.flare.AbsoluteSize.X / 2, 0.004, flarePos.Y - flareData.flare.AbsoluteSize.Y / 2)
+            end
+        else
+            mainFlare.Visible = false
+            for _, flareData in ipairs(flares) do
+                flareData.flare.Visible = false
+            end
+        end
+    end)
+end
+
+-- Restore original lighting
+function PM.Shaders.restoreLighting()
+    local backup = PM.Shaders.backup
+    if backup.lighting then
+        Lighting.ClockTime = backup.lighting.ClockTime
+        Lighting.Ambient = backup.lighting.Ambient
+        Lighting.Brightness = backup.lighting.Brightness
+        Lighting.ColorShift_Bottom = backup.lighting.ColorShift_Bottom
+        Lighting.ColorShift_Top = backup.lighting.ColorShift_Top
+        Lighting.EnvironmentDiffuseScale = backup.lighting.EnvironmentDiffuseScale
+        Lighting.EnvironmentSpecularScale = backup.lighting.EnvironmentSpecularScale
+        Lighting.GlobalShadows = backup.lighting.GlobalShadows
+        Lighting.OutdoorAmbient = backup.lighting.OutdoorAmbient
+        Lighting.ExposureCompensation = backup.lighting.ExposureCompensation
+        Lighting.FogEnd = backup.lighting.FogEnd
+        Lighting.FogColor = backup.lighting.FogColor
+        Lighting.FogStart = backup.lighting.FogStart
+    end
+    if backup.terrain then
+        Terrain.WaterColor = backup.terrain.WaterColor
+        Terrain.WaterReflectance = backup.terrain.WaterReflectance
+        Terrain.WaterTransparency = backup.terrain.WaterTransparency
+        Terrain.WaterWaveSize = backup.terrain.WaterWaveSize
+        Terrain.WaterWaveSpeed = backup.terrain.WaterWaveSpeed
+    end
+end
+
+-- Cleanup all shaders
+function PM.Shaders.cleanup()
+    for name, effect in pairs(PM.Shaders.effects) do
+        pcall(function() effect:Destroy() end)
+    end
+    PM.Shaders.effects = {}
+    
+    if PM.Shaders.motionBlurConn then
+        PM.Shaders.motionBlurConn:Disconnect()
+        PM.Shaders.motionBlurConn = nil
+    end
+    
+    if PM.Shaders.renderConn then
+        PM.Shaders.renderConn:Disconnect()
+        PM.Shaders.renderConn = nil
+    end
+    
+    if PM.Shaders.sunFlareGui then
+        pcall(function() PM.Shaders.sunFlareGui:Destroy() end)
+        PM.Shaders.sunFlareGui = nil
+    end
+    
+    -- Cleanup global lights
+    for _, light in pairs(PM.Shaders.globalLights) do
+        pcall(function() light:Destroy() end)
+    end
+    PM.Shaders.globalLights = {}
+    
+    if PM.Shaders.gui then
+        pcall(function() PM.Shaders.gui:Destroy() end)
+        PM.Shaders.gui = nil
+    end
+    
+    PM.Shaders.restoreLighting()
+    PM.Shaders.active = false
+end
+
+-- ========== SHADER COMMANDS ==========
+
+-- Create shader GUI
+function PM.Shaders.createGUI()
+    if PM.Shaders.gui then return PM.Shaders.gui end
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "PrismShadersGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = PM.Svc.CoreGui
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 420, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
+    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = ScreenGui
+    
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 12)
+    mainCorner.Parent = mainFrame
+    
+    local mainStroke = Instance.new("UIStroke")
+    mainStroke.Thickness = 1.2
+    mainStroke.Color = Color3.fromRGB(0, 200, 70)
+    mainStroke.Transparency = 0.3
+    mainStroke.Parent = mainFrame
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "Prism Shaders"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0, 5)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    closeBtn.BackgroundTransparency = 0.3
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "×"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 20
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = mainFrame
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        PM.Shaders.cleanup()
+    end)
+    
+    -- Scroll frame for effects
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Name = "ScrollFrame"
+    scrollFrame.Size = UDim2.new(1, -20, 1, -50)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 45)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 70)
+    scrollFrame.Parent = mainFrame
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = scrollFrame
+    
+    -- Effect toggle function
+    local function createEffectToggle(name, callback)
+        local container = Instance.new("Frame")
+        container.Name = name .. "Container"
+        container.Size = UDim2.new(1, 0, 0, 35)
+        container.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+        container.BackgroundTransparency = 0.5
+        container.BorderSizePixel = 0
+        container.Parent = scrollFrame
+        
+        local containerCorner = Instance.new("UICorner")
+        containerCorner.CornerRadius = UDim.new(0, 6)
+        containerCorner.Parent = container
+        
+        local label = Instance.new("TextLabel")
+        label.Name = "Label"
+        label.Size = UDim2.new(1, -60, 1, 0)
+        label.Position = UDim2.new(0, 10, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = name
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextSize = 14
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = container
+        
+        local toggle = Instance.new("TextButton")
+        toggle.Name = "Toggle"
+        toggle.Size = UDim2.new(0, 50, 0, 25)
+        toggle.Position = UDim2.new(1, -55, 0.5, -12)
+        toggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        toggle.BackgroundTransparency = 0.3
+        toggle.BorderSizePixel = 0
+        toggle.Text = "OFF"
+        toggle.TextColor3 = Color3.fromRGB(150, 150, 150)
+        toggle.TextSize = 12
+        toggle.Font = Enum.Font.GothamBold
+        toggle.Parent = container
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 4)
+        toggleCorner.Parent = toggle
+        
+        local state = false
+        toggle.MouseButton1Click:Connect(function()
+            state = not state
+            toggle.Text = state and "ON" or "OFF"
+            toggle.BackgroundColor3 = state and Color3.fromRGB(0, 200, 70) or Color3.fromRGB(40, 40, 40)
+            toggle.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+            callback(state)
+        end)
+        
+        return toggle, state
+    end
+    
+    -- Preset dropdown section
+    local presetContainer = Instance.new("Frame")
+    presetContainer.Name = "PresetContainer"
+    presetContainer.Size = UDim2.new(1, 0, 0, 80)
+    presetContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    presetContainer.BackgroundTransparency = 0.5
+    presetContainer.BorderSizePixel = 0
+    presetContainer.Parent = scrollFrame
+    
+    local presetCorner = Instance.new("UICorner")
+    presetCorner.CornerRadius = UDim.new(0, 6)
+    presetCorner.Parent = presetContainer
+    
+    local presetLabel = Instance.new("TextLabel")
+    presetLabel.Name = "Label"
+    presetLabel.Size = UDim2.new(1, 0, 0, 20)
+    presetLabel.Position = UDim2.new(0, 10, 0, 5)
+    presetLabel.BackgroundTransparency = 1
+    presetLabel.Text = "Quick Presets"
+    presetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    presetLabel.TextSize = 12
+    presetLabel.Font = Enum.Font.Gotham
+    presetLabel.TextXAlignment = Enum.TextXAlignment.Left
+    presetLabel.Parent = presetContainer
+    
+    local presetButtons = {
+        {name = "Morning", preset = "morning", type = "time"},
+        {name = "Midday", preset = "midday", type = "time"},
+        {name = "Evening", preset = "evening", type = "time"},
+        {name = "Night", preset = "night", type = "time"},
+        {name = "Sunny", preset = "sunny", type = "weather"},
+        {name = "Rain", preset = "rain", type = "weather"}
+    }
+    
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Name = "ButtonFrame"
+    buttonFrame.Size = UDim2.new(1, -20, 0, 50)
+    buttonFrame.Position = UDim2.new(0, 10, 0, 25)
+    buttonFrame.BackgroundTransparency = 1
+    buttonFrame.Parent = presetContainer
+    
+    local buttonLayout = Instance.new("UIGridLayout")
+    buttonLayout.CellSize = UDim2.new(0, 95, 0, 22)
+    buttonLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+    buttonLayout.Parent = buttonFrame
+    
+    for _, btnData in ipairs(presetButtons) do
+        local btn = Instance.new("TextButton")
+        btn.Name = btnData.name .. "Btn"
+        btn.Text = btnData.name
+        btn.BackgroundColor3 = Color3.fromRGB(0, 200, 70)
+        btn.BackgroundTransparency = 0.3
+        btn.BorderSizePixel = 0
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 11
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = buttonFrame
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = btn
+        
+        btn.MouseButton1Click:Connect(function()
+            PM.Shaders.applyPreset(btnData.preset, btnData.type)
+        end)
+    end
+    
+    -- Effect toggles
+    createEffectToggle("Bloom", function(state)
+        PM.Shaders.setBloom(state, 0.8, 24, 0.9)
+    end)
+    
+    createEffectToggle("Blur", function(state)
+        PM.Shaders.setBlur(state, 24)
+    end)
+    
+    createEffectToggle("Color Correction", function(state)
+        PM.Shaders.setColorCorrection(state, Color3.fromRGB(255, 255, 255), 0.2, 0.1)
+    end)
+    
+    createEffectToggle("Sun Rays", function(state)
+        PM.Shaders.setSunRays(state, 0.1, 0.5)
+    end)
+    
+    createEffectToggle("Depth of Field", function(state)
+        PM.Shaders.setDepthOfField(state, 0.2, 0.2, 50)
+    end)
+    
+    createEffectToggle("Motion Blur", function(state)
+        PM.Shaders.setMotionBlur(state, 8)
+    end)
+    
+    createEffectToggle("Sun Flare", function(state)
+        PM.Shaders.setSunFlare(state)
+    end)
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 350)
+    
+    PM.Shaders.gui = ScreenGui
+    PM.Shaders.active = true
+    
+    return ScreenGui
+end
+
+registerCommand("shaders", "Open shader GUI", {"shader", "shad"}, function(args)
+    PM.Shaders.createGUI()
+end)
+
 -- Execute auto exec commands on startup
 PM.executeAutoExecCommands = function()
     -- Check if auto execute is enabled globally
