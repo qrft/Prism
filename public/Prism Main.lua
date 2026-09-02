@@ -98,151 +98,245 @@ function PM.PrismAPI.startAutoRegister()
     end)
 end
 
--- Prism Nametags
+-- Prism Nametags (env.lua style with simplified Prism branding)
 PM.PrismNametags = PM.PrismNametags or {}
-PM.PrismNametags.active = false
+PM.PrismNametags.active = true
 PM.PrismNametags.overlays = {}
 PM.PrismNametags.prismUserIds = {}
+PM.PrismNametags.mutedPlayers = {}
 
--- Create Prism nametag for a player
+-- Prism user style (env.lua inspired)
+local PRISM_STYLE = {
+    primary = Color3.fromRGB(0, 100, 60),
+    accent = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   Color3.fromRGB(0, 200, 70)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 150, 50)),
+        ColorSequenceKeypoint.new(1,   Color3.fromRGB(0, 100, 30)),
+    })
+}
+
+-- Create Prism nametag for a player (env.lua style)
 function PM.PrismNametags.create(plr)
     if PM.PrismNametags.overlays[plr.UserId] then return end
 
     local Players = PM.Svc.Players
     local LP = Players.LocalPlayer
+    local RunService = PM.Svc.RunService
+    local TweenService = PM.Svc.TweenService
 
-    -- Create BillboardGui
+    local char = plr.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+
+    -- Remove old tag
+    local oldGui = LP.PlayerGui:FindFirstChild(plr.Name .. "_PrismTag")
+    if oldGui then oldGui:Destroy() end
+
+    -- BillboardGui in PlayerGui (survives respawn)
     local bill = Instance.new("BillboardGui")
-    bill.Name = "PrismNametag_" .. plr.Name
-    bill.Size = UDim2.new(0, 200, 0, 50)
-    bill.StudsOffset = Vector3.new(0, 3.5, 0)
-    bill.Adornee = plr.Character and plr.Character:FindFirstChild("Head")
+    bill.Name = plr.Name .. "_PrismTag"
+    bill.Active = true
     bill.AlwaysOnTop = true
-    bill.MaxDistance = 100
+    bill.ClipsDescendants = false
+    bill.LightInfluence = 1
+    bill.Enabled = PM.PrismNametags.active
+    bill.Size = UDim2.fromOffset(250, 75)
+    bill.StudsOffsetWorldSpace = Vector3.new(0, 2.5, 0)
+    bill.ResetOnSpawn = false
+    bill.Adornee = head
+    bill.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    bill.Parent = LP.PlayerGui
+    PM.PrismNametags.overlays[plr.UserId] = bill
 
-    -- Main card frame (env.lua style)
-    local card = Instance.new("Frame")
-    card.Name = "Card"
-    card.Size = UDim2.new(1, 0, 1, 0)
-    card.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-    card.BackgroundTransparency = 0.25
-    card.BorderSizePixel = 0
-    card.Parent = bill
+    -- Main frame
+    local frame = Instance.new("Frame")
+    frame.Name = "NameTagMainFrame"
+    frame.BackgroundColor3 = PRISM_STYLE.primary
+    frame.BackgroundTransparency = 0.25
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.Parent = bill
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0.4, 0)
+    frameCorner.Parent = frame
 
-    local cardCorner = Instance.new("UICorner")
-    cardCorner.CornerRadius = UDim.new(0, 8)
-    cardCorner.Parent = card
+    -- Background gradient
+    local frameBG = Instance.new("UIGradient")
+    frameBG.Color = PRISM_STYLE.accent
+    frameBG.Parent = frame
 
-    -- Green accent stroke (Prism user indicator)
+    -- Animated border stroke
     local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 1.2
-    stroke.Color = Color3.fromRGB(0, 200, 70)
-    stroke.Parent = card
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 4
+    stroke.Parent = frame
+    local strokeGrad = Instance.new("UIGradient")
+    strokeGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 50, 50)),
+        ColorSequenceKeypoint.new(1,   Color3.fromRGB(0, 0, 0)),
+    })
+    strokeGrad.Parent = stroke
 
-    -- Avatar pfp
+    -- Profile picture
     local pfp = Instance.new("ImageLabel")
-    pfp.Name = "Avatar"
-    pfp.Size = UDim2.new(0, 34, 0, 34)
-    pfp.Position = UDim2.new(0, 5, 0.5, -17)
-    pfp.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    pfp.BorderSizePixel = 0
-    pfp.Parent = card
-
+    pfp.Name = "NameTagProfile"
+    pfp.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    pfp.BackgroundTransparency = 0
+    pfp.Position = UDim2.fromScale(0.05, 0.167)
+    pfp.Size = UDim2.fromScale(0.215, 0.7)
+    pfp.ZIndex = 5
+    pfp.ScaleType = Enum.ScaleType.Crop
+    pfp.Parent = frame
     local pfpCorner = Instance.new("UICorner")
     pfpCorner.CornerRadius = UDim.new(1, 0)
     pfpCorner.Parent = pfp
+    local pfpStroke = Instance.new("UIStroke")
+    pfpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    pfpStroke.Color = Color3.fromRGB(255, 255, 255)
+    pfpStroke.Thickness = 2
+    pfpStroke.Parent = pfp
 
-    pcall(function()
-        pfp.Image = Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size48x48)
+    -- Load pfp
+    task.spawn(function()
+        local ok, img = pcall(function()
+            return Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size100x100)
+        end)
+        if ok and img and pfp.Parent then pfp.Image = img end
     end)
 
-    -- Name label with @ prefix
-    local nameLbl = Instance.new("TextLabel")
-    nameLbl.Name = "Name"
-    nameLbl.Size = UDim2.new(1, -48, 0, 20)
-    nameLbl.Position = UDim2.new(0, 44, 0, 4)
-    nameLbl.BackgroundTransparency = 1
-    nameLbl.Text = "@" .. plr.Name
-    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLbl.TextSize = 11
-    nameLbl.Font = Enum.Font.GothamBold
-    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-    nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
-    nameLbl.Parent = card
+    -- Tag name label (Fredoka)
+    local tagLbl = Instance.new("TextLabel")
+    tagLbl.Name = "NameTagCustomName"
+    tagLbl.BackgroundTransparency = 1
+    tagLbl.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+    tagLbl.Position = UDim2.fromScale(0.29955, 0)
+    tagLbl.Size = UDim2.fromScale(0.7, 0.5)
+    tagLbl.Text = "PRISM USER"
+    tagLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tagLbl.TextSize = 22
+    tagLbl.TextStrokeTransparency = 0
+    tagLbl.TextWrapped = true
+    tagLbl.TextXAlignment = Enum.TextXAlignment.Left
+    tagLbl.TextYAlignment = Enum.TextYAlignment.Bottom
+    tagLbl.ZIndex = 6
+    tagLbl.Parent = frame
 
-    -- Display name label
-    local dispLbl = Instance.new("TextLabel")
-    dispLbl.Name = "DisplayName"
-    dispLbl.Size = UDim2.new(1, -48, 0, 16)
-    dispLbl.Position = UDim2.new(0, 44, 0, 24)
-    dispLbl.BackgroundTransparency = 1
-    dispLbl.Text = plr.DisplayName
-    dispLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
-    dispLbl.TextSize = 10
-    dispLbl.Font = Enum.Font.Gotham
-    dispLbl.TextXAlignment = Enum.TextXAlignment.Left
-    dispLbl.TextTruncate = Enum.TextTruncate.AtEnd
-    dispLbl.Parent = card
+    -- Username label (ComicNeue)
+    local userLbl = Instance.new("TextLabel")
+    userLbl.Name = "NameTagUserName"
+    userLbl.BackgroundTransparency = 1
+    userLbl.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json")
+    userLbl.Position = UDim2.fromScale(0.29955, 0.5)
+    userLbl.Size = UDim2.fromScale(0.7, 0.5)
+    userLbl.Text = "@" .. plr.Name
+    userLbl.TextColor3 = Color3.new(1, 1, 1)
+    userLbl.TextSize = 16
+    userLbl.TextStrokeTransparency = 0
+    userLbl.TextWrapped = true
+    userLbl.TextXAlignment = Enum.TextXAlignment.Left
+    userLbl.TextYAlignment = Enum.TextYAlignment.Top
+    userLbl.ZIndex = 6
+    userLbl.Parent = frame
 
-    -- Prism badge
-    local badge = Instance.new("TextLabel")
-    badge.Name = "Badge"
-    badge.Size = UDim2.new(0, 36, 0, 16)
-    badge.Position = UDim2.new(1, -41, 0, 4)
-    badge.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    badge.BorderSizePixel = 0
-    badge.Text = "PRISM"
-    badge.TextColor3 = Color3.fromRGB(0, 200, 70)
-    badge.TextSize = 9
-    badge.Font = Enum.Font.GothamBold
-    badge.TextXAlignment = Enum.TextXAlignment.Center
-    badge.Parent = card
+    -- Mute button (only on other players)
+    if plr ~= LP then
+        local muteBtn = Instance.new("ImageButton")
+        muteBtn.Name = "NameTagMuteButton"
+        muteBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        muteBtn.BackgroundTransparency = 0
+        muteBtn.BorderSizePixel = 0
+        muteBtn.Image = "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+        muteBtn.Size = UDim2.new(0.1, 0, 0.35, 0)
+        muteBtn.Position = UDim2.new(0.85, 0, 0.35, 0)
+        muteBtn.AutoButtonColor = false
+        muteBtn.ZIndex = 30
+        muteBtn.Parent = bill
+        local muteBtnCorner = Instance.new("UICorner")
+        muteBtnCorner.CornerRadius = UDim.new(1, 0)
+        muteBtnCorner.Parent = muteBtn
+        local muteBtnStroke = Instance.new("UIStroke")
+        muteBtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        muteBtnStroke.Color = Color3.fromRGB(255, 255, 255)
+        muteBtnStroke.Thickness = 2
+        muteBtnStroke.Parent = muteBtn
 
-    local badgeCorner = Instance.new("UICorner")
-    badgeCorner.CornerRadius = UDim.new(0, 4)
-    badgeCorner.Parent = badge
+        -- Toggle mute on click
+        muteBtn.MouseButton1Click:Connect(function()
+            if PM.PrismNametags.mutedPlayers[plr.UserId] then
+                PM.PrismNametags.mutedPlayers[plr.UserId] = nil
+                muteBtn.Image = "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+            else
+                PM.PrismNametags.mutedPlayers[plr.UserId] = true
+                muteBtn.Image = "rbxasset://textures/ui/VoiceChat/MicLight/Muted.png"
+            end
+        end)
 
-    -- Parent to CoreGui
-    local CoreGui = PM.Svc.CoreGui
-    bill.Parent = CoreGui
+        -- Heartbeat: gradients, adornee, distance LOD
+        RunService.Heartbeat:Connect(function(dt)
+            if not bill.Parent then return end
+            pcall(function()
+                strokeGrad.Rotation = (strokeGrad.Rotation + 120 * dt) % 360
+                frameBG.Rotation = (frameBG.Rotation + 60 * dt) % 360
+                bill.Enabled = PM.PrismNametags.active
+                if plr.Character and plr.Character:FindFirstChild("Head") then
+                    bill.Adornee = plr.Character.Head
+                end
+                -- Sync mute icon
+                muteBtn.Image = PM.PrismNametags.mutedPlayers[plr.UserId]
+                    and "rbxasset://textures/ui/VoiceChat/MicLight/Muted.png"
+                    or "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+                -- Distance LOD: beyond 50 studs shrink to just the pfp dot
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                    and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                    local isFar = dist > 50
+                    local curFar = not muteBtn.Visible
+                    if isFar ~= curFar then
+                        muteBtn.Visible = not isFar
+                        tagLbl.Visible = not isFar
+                        userLbl.Visible = not isFar
+                        TweenService:Create(bill, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Size = isFar and UDim2.fromOffset(40, 40) or UDim2.fromOffset(250, 75)}):Play()
+                        TweenService:Create(pfp, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Position = isFar and UDim2.fromScale(0.1, 0.1) or UDim2.fromScale(0.05, 0.167),
+                            Size = isFar and UDim2.fromScale(0.8, 0.8) or UDim2.fromScale(0.215, 0.7)}):Play()
+                    end
+                end
+            end)
+        end)
 
-    PM.PrismNametags.overlays[plr.UserId] = bill
-
-    -- Handle character respawn
-    local charAddedConn
-    charAddedConn = plr.CharacterAdded:Connect(function(newChar)
-        if PM.PrismNametags.overlays[plr.UserId] then
-            PM.PrismNametags.overlays[plr.UserId]:Destroy()
-            PM.PrismNametags.overlays[plr.UserId] = nil
-        end
-        task.wait(0.5)
-        if PM.PrismNametags.active and PM.PrismNametags.prismUserIds[plr.UserId] then
-            PM.PrismNametags.create(plr)
-        end
-    end)
-
-    -- Update adornee on heartbeat
-    local RunService = PM.Svc.RunService
-    local heartbeatConn = RunService.Heartbeat:Connect(function()
-        if not bill.Parent then
-            charAddedConn:Disconnect()
-            heartbeatConn:Disconnect()
-            return
-        end
-
-        if plr.Character and plr.Character:FindFirstChild("Head") then
-            bill.Adornee = plr.Character.Head
-        end
-
-        -- Distance check
-        local visible = false
-        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-            visible = dist <= 100
-        end
-        bill.Enabled = visible
-    end)
+        -- Click frame to TP behind target (mute button click handled separately)
+        local muteBtnHovered = false
+        muteBtn.MouseEnter:Connect(function() muteBtnHovered = true end)
+        muteBtn.MouseLeave:Connect(function() muteBtnHovered = false end)
+        frame.InputBegan:Connect(function(input)
+            if muteBtnHovered then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                pcall(function()
+                    local tHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+                    local mHRP = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                    if tHRP and mHRP then
+                        local behind = tHRP.CFrame * CFrame.new(0, 0, 3)
+                        mHRP.CFrame = CFrame.new(behind.Position, behind.Position + tHRP.CFrame.LookVector)
+                    end
+                end)
+            end
+        end)
+    else
+        RunService.Heartbeat:Connect(function(dt)
+            if not bill.Parent then return end
+            pcall(function()
+                strokeGrad.Rotation = (strokeGrad.Rotation + 120 * dt) % 360
+                frameBG.Rotation = (frameBG.Rotation + 60 * dt) % 360
+                bill.Enabled = PM.PrismNametags.active
+                if plr.Character and plr.Character:FindFirstChild("Head") then
+                    bill.Adornee = plr.Character.Head
+                end
+            end)
+        end)
+    end
 end
 
 -- Remove Prism nametag for a player
@@ -262,57 +356,130 @@ function PM.PrismNametags.refresh()
     end
 end
 
--- Toggle Prism nametags
-function PM.PrismNametags.toggle()
-    if PM.PrismNametags.active then
-        -- Disable
-        PM.PrismNametags.active = false
-        for userId, _ in pairs(PM.PrismNametags.overlays) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                PM.PrismNametags.remove(plr)
+-- Poll every 2s for Prism users + refresh tags
+task.spawn(function()
+    while true do
+        task.wait(2)
+        pcall(function()
+            local Players = PM.Svc.Players
+            local LP = Players.LocalPlayer
+            PM.PrismNametags.refresh()
+            for _, plrObj in ipairs(Players:GetPlayers()) do
+                if plrObj ~= LP then
+                    local shouldTag = PM.PrismNametags.prismUserIds[plrObj.UserId]
+                    if shouldTag then
+                        local char = plrObj.Character
+                        if char then
+                            local head = char:FindFirstChild("Head")
+                            local tag = PM.PrismNametags.overlays[plrObj.UserId]
+                            if PM.PrismNametags.active and head and (not tag or not tag.Parent or tag.Adornee ~= head) then
+                                PM.PrismNametags.create(plrObj)
+                            end
+                        end
+                    end
+                end
             end
-        end
-        PM.PrismNametags.prismUserIds = {}
-        if PM.PrismNametags.playerAddedConn then
-            PM.PrismNametags.playerAddedConn:Disconnect()
-            PM.PrismNametags.playerAddedConn = nil
-        end
-        if PM.PrismNametags.playerRemovingConn then
-            PM.PrismNametags.playerRemovingConn:Disconnect()
-            PM.PrismNametags.playerRemovingConn = nil
-        end
-        return false
-    else
-        -- Enable
-        PM.PrismNametags.active = true
-        PM.PrismNametags.refresh()
-        local Players = PM.Svc.Players
-        local LP = Players.LocalPlayer
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LP and PM.PrismNametags.prismUserIds[plr.UserId] then
-                task.spawn(function()
-                    if not plr.Character then plr.CharacterAdded:Wait() end
-                    PM.PrismNametags.create(plr)
-                end)
+            -- Clean up gone players
+            local currentPlayers = {}
+            for _, plrObj in ipairs(Players:GetPlayers()) do
+                currentPlayers[plrObj.UserId] = true
             end
-        end
-        -- Handle new players
-        PM.PrismNametags.playerAddedConn = Players.PlayerAdded:Connect(function(p)
-            if p ~= LP and PM.PrismNametags.prismUserIds[p.UserId] then
-                task.spawn(function()
-                    if not p.Character then p.CharacterAdded:Wait() end
-                    PM.PrismNametags.create(p)
-                end)
+            for uid, tag in pairs(PM.PrismNametags.overlays) do
+                if not tag or not tag.Parent then
+                    PM.PrismNametags.overlays[uid] = nil
+                elseif not currentPlayers[uid] then
+                    pcall(function() tag:Destroy() end)
+                    PM.PrismNametags.overlays[uid] = nil
+                end
             end
         end)
-        -- Handle leaving players
-        PM.PrismNametags.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
-            PM.PrismNametags.remove(p)
-        end)
-        return true
     end
-end
+end)
+
+-- Character respawn handling for existing players
+task.spawn(function()
+    local Players = PM.Svc.Players
+    local LP = Players.LocalPlayer
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP then
+            plr.CharacterAdded:Connect(function(char)
+                task.wait(0.5)
+                if PM.PrismNametags.prismUserIds[plr.UserId] and PM.PrismNametags.active then
+                    PM.PrismNametags.create(plr)
+                end
+            end)
+        end
+    end
+end)
+
+-- Refresh server tags every 15s
+task.spawn(function()
+    while true do
+        task.wait(15)
+        pcall(function()
+            PM.PrismNametags.refresh()
+            local Players = PM.Svc.Players
+            local LP = Players.LocalPlayer
+            for _, plrObj in ipairs(Players:GetPlayers()) do
+                task.spawn(function()
+                    if PM.PrismNametags.prismUserIds[plrObj.UserId] then
+                        local char = plrObj.Character
+                        if char then
+                            local tag = PM.PrismNametags.overlays[plrObj.UserId]
+                            local head = char:FindFirstChild("Head")
+                            if PM.PrismNametags.active and head and (not tag or not tag.Parent) then
+                                PM.PrismNametags.create(plrObj)
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+    end
+end)
+
+-- PlayerAdded: tag newcomers if they're Prism users
+PM.Svc.Players.PlayerAdded:Connect(function(target)
+    task.wait(1)
+    if PM.PrismNametags.prismUserIds[target.UserId] then
+        if not target.Character then target.CharacterAdded:Wait() end
+        local char = target.Character
+        if char then PM.PrismNametags.create(target) end
+    end
+    target.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if PM.PrismNametags.overlays[target.UserId] then PM.PrismNametags.create(target) end
+    end)
+end)
+
+-- PlayerRemoving: clean up
+PM.Svc.Players.PlayerRemoving:Connect(function(target)
+    PM.PrismNametags.overlays[target.UserId] = nil
+    PM.PrismNametags.prismUserIds[target.UserId] = nil
+    pcall(function()
+        local g = PM.Svc.Players.LocalPlayer.PlayerGui:FindFirstChild(target.Name .. "_PrismTag")
+        if g then g:Destroy() end
+    end)
+end)
+
+-- Auto-start system
+task.spawn(function()
+    -- Register self
+    PM.PrismAPI.startAutoRegister()
+    -- Wait a bit then enable nametags
+    task.wait(1)
+    PM.PrismNametags.refresh()
+    local Players = PM.Svc.Players
+    local LP = Players.LocalPlayer
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and PM.PrismNametags.prismUserIds[plr.UserId] then
+            task.spawn(function()
+                if not plr.Character then plr.CharacterAdded:Wait() end
+                PM.PrismNametags.create(plr)
+            end)
+        end
+    end
+end)
 
 -- Early settings loading (before UI creation)
 local SETTINGS_FILE = "prism/prism_settings.json"
