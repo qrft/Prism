@@ -13,8 +13,6 @@
     view player inventory
     animation packs
     animation replacer
-    animation logger
-    animation speeds
     animation cloning
     shaders (with presets / time of day control / all axons shader controls)
     reanim (maybe)
@@ -3559,7 +3557,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
     local success, err = pcall(function()
         -- Load emote data
         local emotesData = {}
-        local jsonUrl = "https://github.com/Kavrenoo/Sniper/raw/refs/heads/main/EmoteSniper.json"
+        local jsonUrl = "https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/EmoteSniper.json"
         local httpSuccess, jsonContent = pcall(function()
             return game:HttpGet(jsonUrl)
         end)
@@ -3880,7 +3878,20 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         BottomBar.Visible = false
         BottomBar.Parent = ContentFrame
 
-        -- Animation Speed Control
+        -- Animation Speed Control (Hub-style)
+        local speedEmoteEnabled = PM.Emotes.speedEnabled or false
+        local emotesWalkEnabled = false
+        local currentEmoteTrack = nil
+        local animSpeedConn = nil
+        local steppedConn = nil
+
+        local function StopCurrentEmote()
+            if currentEmoteTrack then
+                pcall(function() currentEmoteTrack:Stop() end)
+                currentEmoteTrack = nil
+            end
+        end
+
         local function ApplyAnimSpeed(speed)
             local char = LocalPlayer.Character
             if not char then return end
@@ -3905,7 +3916,8 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             if not animator then return nil end
 
             return animator.AnimationPlayed:Connect(function(track)
-                if PM.Emotes.speed and PM.Emotes.speed ~= 1 then
+                if speedEmoteEnabled and PM.Emotes.speed and PM.Emotes.speed ~= 1 then
+                    currentEmoteTrack = track
                     pcall(function()
                         track:AdjustSpeed(PM.Emotes.speed)
                     end)
@@ -3913,17 +3925,37 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             end)
         end
 
-        local animSpeedConn = nil
         local function SetupAnimSpeed()
             if animSpeedConn then animSpeedConn:Disconnect() end
             animSpeedConn = HookAnimationSpeed()
             ApplyAnimSpeed(PM.Emotes.speed)
         end
 
+        -- RunService.Stepped hook for movement detection (Hub-style)
+        local function SetupMovementHook()
+            if steppedConn then steppedConn:Disconnect() end
+            steppedConn = RunService.Stepped:Connect(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if not humanoid then return end
+                
+                if currentEmoteTrack and currentEmoteTrack:IsPlaying then
+                    if humanoid.MoveDirection.Magnitude > 0 then
+                        if speedEmoteEnabled and not emotesWalkEnabled then
+                            StopCurrentEmote()
+                        end
+                    end
+                end
+            end)
+        end
+
         SetupAnimSpeed()
+        SetupMovementHook()
         LocalPlayer.CharacterAdded:Connect(function()
             task.wait(0.3)
             SetupAnimSpeed()
+            SetupMovementHook()
         end)
 
         -- Speed Label
@@ -4080,119 +4112,41 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         MWEHit.Text = ""
         MWEHit.Parent = MWESection
 
-        -- Move While Emoting State
+        -- Move While Emoting State (Hub-style)
         local moveWhileEmotingEnabled = savedMWE or false
-        PM.Emotes.mwePriConn = nil
-        PM.Emotes.mweWalkConn = nil
-        PM.Emotes.currentEmoteTrack = nil
-
-        local function urlToId(id)
-            id = id:gsub("http://www%.roblox%.com/asset/%?id=", "")
-            id = id:gsub("rbxassetid://", "")
-            return id
-        end
-
-        local function isDancing(char, animTrack)
-            local animate = char:FindFirstChild("Animate")
-            if not animate then return false end
-            local animId = urlToId(animTrack.Animation.AnimationId)
-            for _, holder in ipairs(animate:GetChildren()) do
-                if holder:IsA("StringValue") then
-                    for _, animObj in ipairs(holder:GetChildren()) do
-                        if animObj:IsA("Animation") and urlToId(animObj.AnimationId) == animId then
-                            return false
-                        end
-                    end
-                end
-            end
-            return true
-        end
-
-        local function StopCurrentEmote()
-            if PM.Emotes.currentEmoteTrack then
-                pcall(function() PM.Emotes.currentEmoteTrack:Stop() end)
-                PM.Emotes.currentEmoteTrack = nil
-            end
-        end
-
-        local function PlayEmoteWalk(hum, emoteId)
-            StopCurrentEmote()
-            local anim = Instance.new("Animation")
-            anim.AnimationId = "rbxassetid://" .. emoteId
-            PM.Emotes.currentEmoteTrack = hum:LoadAnimation(anim)
-            if PM.Emotes.currentEmoteTrack then
-                PM.Emotes.currentEmoteTrack.Priority = Enum.AnimationPriority.Action
-                PM.Emotes.currentEmoteTrack.Looped = true
-                task.wait(0.1)
-                PM.Emotes.currentEmoteTrack:Play()
-            end
-        end
-
-        local function HookEmoteWalk(char)
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
-            local animator = hum:FindFirstChildOfClass("Animator")
-            if not animator then return end
-
-            if PM.Emotes.mwePriConn then PM.Emotes.mwePriConn:Disconnect(); PM.Emotes.mwePriConn = nil end
-
-            PM.Emotes.mwePriConn = animator.AnimationPlayed:Connect(function(animTrack)
-                if not moveWhileEmotingEnabled then return end
-                if not isDancing(char, animTrack) then return end
-
-                local playedId = urlToId(animTrack.Animation.AnimationId)
-                if PM.Emotes.currentEmoteTrack then
-                    local curId = urlToId(PM.Emotes.currentEmoteTrack.Animation.AnimationId)
-                    if curId == playedId then return end
-                    StopCurrentEmote()
-                end
-                PlayEmoteWalk(hum, playedId)
-            end)
-
-            hum.Died:Connect(function()
-                moveWhileEmotingEnabled = false
-                StopCurrentEmote()
-            end)
-        end
-
+        
         local function SetMoveWhileEmoting(enabled)
+            emotesWalkEnabled = enabled
             moveWhileEmotingEnabled = enabled
-
-            if not enabled then
-                StopCurrentEmote()
-                if PM.Emotes.mwePriConn then PM.Emotes.mwePriConn:Disconnect(); PM.Emotes.mwePriConn = nil end
-                if PM.Emotes.mweWalkConn then PM.Emotes.mweWalkConn:Disconnect(); PM.Emotes.mweWalkConn = nil end
-                return
+            
+            if enabled then
+                -- When walk is enabled, reset speed to 1
+                if currentEmoteTrack and currentEmoteTrack:IsPlaying then
+                    pcall(function() currentEmoteTrack:AdjustSpeed(1) end)
+                end
+            else
+                -- When walk is disabled, apply speed if speed is enabled
+                if speedEmoteEnabled and currentEmoteTrack and currentEmoteTrack:IsPlaying then
+                    pcall(function() currentEmoteTrack:AdjustSpeed(PM.Emotes.speed or 1) end)
+                elseif currentEmoteTrack and currentEmoteTrack:IsPlaying then
+                    pcall(function() currentEmoteTrack:AdjustSpeed(1) end)
+                end
             end
-
-            local char = LocalPlayer.Character
-            if char then
-                task.spawn(function()
-                    task.wait(0.1)
-                    if moveWhileEmotingEnabled then HookEmoteWalk(char) end
-                end)
-            end
-
-            if PM.Emotes.mweWalkConn then PM.Emotes.mweWalkConn:Disconnect(); PM.Emotes.mweWalkConn = nil end
-            PM.Emotes.mweWalkConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
-                task.wait(0.5)
-                if moveWhileEmotingEnabled then HookEmoteWalk(newChar) end
-            end)
-        end
-
-        local function SetMWE(val)
-            moveWhileEmotingEnabled = val
-            SetMoveWhileEmoting(moveWhileEmotingEnabled)
+            
             currentEmotesSettings.moveWhileEmoting = moveWhileEmotingEnabled
             SaveEmotesGUISettings()
 
-            if val then
+            if enabled then
                 TweenService:Create(MWEPill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
                 TweenService:Create(MWEKnob, TweenInfo.new(0.15), {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
             else
                 TweenService:Create(MWEPill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
                 TweenService:Create(MWEKnob, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
             end
+        end
+
+        local function SetMWE(val)
+            SetMoveWhileEmoting(val)
         end
 
         MWEHit.MouseButton1Click:Connect(function() SetMWE(not moveWhileEmotingEnabled) end)
