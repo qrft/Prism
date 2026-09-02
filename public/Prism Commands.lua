@@ -4203,6 +4203,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         -- Animation Logger Toggle
         local ALSection = Instance.new("Frame")
         ALSection.Size = UDim2.new(1, 0, 0, 32)
+        ALSection.Position = UDim2.new(0, 0, 0, 36)
         ALSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         ALSection.BackgroundTransparency = 0.4
         ALSection.BorderSizePixel = 0
@@ -4254,16 +4255,16 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         ALHit.Text = ""
         ALHit.Parent = ALSection
 
-        -- Animation Logger Frame (scrolling log)
+        -- Animation Logger Frame (scrolling log) - positioned below toggle
         local ALLogFrame = Instance.new("Frame")
         ALLogFrame.Name = "AnimLogFrame"
         ALLogFrame.Size = UDim2.new(1, 0, 0, 0)
-        ALLogFrame.Position = UDim2.new(0, 0, 0, 36)
+        ALLogFrame.Position = UDim2.new(0, 0, 0, 72)
         ALLogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         ALLogFrame.BackgroundTransparency = 0.3
         ALLogFrame.BorderSizePixel = 0
         ALLogFrame.Visible = false
-        ALLogFrame.Parent = ALSection
+        ALLogFrame.Parent = SettingsPanel
 
         local ALLogCorner = Instance.new("UICorner")
         ALLogCorner.CornerRadius = UDim.new(0, 8)
