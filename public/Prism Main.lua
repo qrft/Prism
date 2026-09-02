@@ -34,19 +34,28 @@ function PM.PrismAPI.register()
             serverId = game.JobId,
             placeId = game.PlaceId
         })
+        warn("[Prism API] Registering user:", LP.Name, LP.UserId)
         local response = game:HttpPost(PM.PrismAPI.BaseURL .. "/register", body, Enum.HttpContentType.ApplicationJson, false)
-        return HttpService:JSONDecode(response)
+        local decoded = HttpService:JSONDecode(response)
+        warn("[Prism API] Register response:", decoded)
+        return decoded
     end)
+    warn("[Prism API] Register success:", success)
     return success and result and result.success
 end
 
 -- Get all Prism users
 function PM.PrismAPI.getUsers()
     local success, result = pcall(function()
+        warn("[Prism API] Fetching users from:", PM.PrismAPI.BaseURL .. "/users")
         local response = game:HttpGet(PM.PrismAPI.BaseURL .. "/users")
-        return HttpService:JSONDecode(response)
+        local decoded = HttpService:JSONDecode(response)
+        warn("[Prism API] Users response:", decoded)
+        return decoded
     end)
+    warn("[Prism API] Fetch users success:", success)
     if success and result then
+        warn("[Prism API] Users count:", #result.users)
         return result.users or {}
     end
     return {}
@@ -118,6 +127,8 @@ local PRISM_STYLE = {
 -- Create Prism nametag for a player (env.lua style)
 function PM.PrismNametags.create(plr)
     if PM.PrismNametags.overlays[plr.UserId] then return end
+
+    warn("[Prism Nametags] Creating nametag for:", plr.Name, plr.UserId)
 
     local Players = PM.Svc.Players
     local LP = Players.LocalPlayer
@@ -351,9 +362,38 @@ end
 function PM.PrismNametags.refresh()
     local users = PM.PrismAPI.getUsers()
     PM.PrismNametags.prismUserIds = {}
+    warn("[Prism Nametags] Refreshing, found", #users, "Prism users")
     for _, user in ipairs(users) do
         PM.PrismNametags.prismUserIds[user.user_id] = true
+        warn("[Prism Nametags] Prism user:", user.user_id, user.username)
     end
+end
+
+-- Toggle Prism nametags on/off
+function PM.PrismNametags.toggle()
+    PM.PrismNametags.active = not PM.PrismNametags.active
+    local Players = PM.Svc.Players
+    local LP = Players.LocalPlayer
+    
+    if PM.PrismNametags.active then
+        -- Enable: create nametags for all Prism users
+        PM.PrismNametags.refresh()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LP and PM.PrismNametags.prismUserIds[plr.UserId] then
+                task.spawn(function()
+                    if not plr.Character then plr.CharacterAdded:Wait() end
+                    PM.PrismNametags.create(plr)
+                end)
+            end
+        end
+    else
+        -- Disable: remove all nametags
+        for userId, bill in pairs(PM.PrismNametags.overlays) do
+            pcall(function() bill:Destroy() end)
+        end
+        PM.PrismNametags.overlays = {}
+    end
+    return PM.PrismNametags.active
 end
 
 -- Poll every 2s for Prism users + refresh tags
