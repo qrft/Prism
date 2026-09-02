@@ -3503,6 +3503,7 @@ end)
 -- Emotes state management
 PM.Emotes = {
     speed = 1.0,
+    speedEnabled = false,
     favorites = {},
     mwePriConn = nil,
     mweWalkConn = nil,
