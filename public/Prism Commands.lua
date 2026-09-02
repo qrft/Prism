@@ -3875,7 +3875,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         BottomBar.Position = UDim2.new(0, 0, 1, -52)
         BottomBar.BackgroundTransparency = 1
         BottomBar.ZIndex = 25
-        BottomBar.Visible = false
+        BottomBar.Visible = true
         BottomBar.Parent = ContentFrame
 
         -- Animation Speed Control
@@ -4625,10 +4625,12 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
                     ScrollFrame.Visible = false
                     SettingsPanel.Visible = true
                     SearchBox.Visible = false
+                    BottomBar.Visible = false
                 else
                     ScrollFrame.Visible = true
                     SettingsPanel.Visible = false
                     SearchBox.Visible = true
+                    BottomBar.Visible = true
                     updateVisibleEmotes(SearchBox.Text)
                     loadBatch(1, BATCH_SIZE)
                     ScrollFrame.CanvasPosition = Vector2.new(0, 0)
