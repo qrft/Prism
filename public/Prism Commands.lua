@@ -4200,6 +4200,291 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             SetMWE(true)
         end
 
+        -- Animation Logger Toggle
+        local ALSection = Instance.new("Frame")
+        ALSection.Size = UDim2.new(1, 0, 0, 32)
+        ALSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        ALSection.BackgroundTransparency = 0.4
+        ALSection.BorderSizePixel = 0
+        ALSection.Parent = SettingsPanel
+
+        local ALCorner = Instance.new("UICorner")
+        ALCorner.CornerRadius = UDim.new(0, 10)
+        ALCorner.Parent = ALSection
+
+        local ALLabel = Instance.new("TextLabel")
+        ALLabel.Size = UDim2.new(1, -100, 1, 0)
+        ALLabel.Position = UDim2.new(0, 12, 0, 0)
+        ALLabel.BackgroundTransparency = 1
+        ALLabel.Text = "Animation Logger"
+        ALLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        ALLabel.TextSize = 12
+        ALLabel.Font = Enum.Font.Gotham
+        ALLabel.TextXAlignment = Enum.TextXAlignment.Left
+        ALLabel.Parent = ALSection
+
+        local ALPill = Instance.new("Frame")
+        ALPill.Name = "Pill"
+        ALPill.Size = UDim2.new(0, 40, 0, 22)
+        ALPill.Position = UDim2.new(1, -52, 0.5, -11)
+        ALPill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        ALPill.BorderSizePixel = 0
+        ALPill.Parent = ALSection
+
+        local ALPillCorner = Instance.new("UICorner")
+        ALPillCorner.CornerRadius = UDim.new(0, 11)
+        ALPillCorner.Parent = ALPill
+
+        local ALKnob = Instance.new("Frame")
+        ALKnob.Name = "Knob"
+        ALKnob.Size = UDim2.new(0, 16, 0, 16)
+        ALKnob.Position = UDim2.new(0, 3, 0.5, -8)
+        ALKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        ALKnob.BorderSizePixel = 0
+        ALKnob.Parent = ALPill
+
+        local ALKnobCorner = Instance.new("UICorner")
+        ALKnobCorner.CornerRadius = UDim.new(0, 8)
+        ALKnobCorner.Parent = ALKnob
+
+        local ALHit = Instance.new("TextButton")
+        ALHit.Size = UDim2.new(0, 52, 1, 0)
+        ALHit.Position = UDim2.new(1, -56, 0, 0)
+        ALHit.BackgroundTransparency = 1
+        ALHit.Text = ""
+        ALHit.Parent = ALSection
+
+        -- Animation Logger Frame (scrolling log)
+        local ALLogFrame = Instance.new("Frame")
+        ALLogFrame.Name = "AnimLogFrame"
+        ALLogFrame.Size = UDim2.new(1, 0, 0, 0)
+        ALLogFrame.Position = UDim2.new(0, 0, 0, 36)
+        ALLogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        ALLogFrame.BackgroundTransparency = 0.3
+        ALLogFrame.BorderSizePixel = 0
+        ALLogFrame.Visible = false
+        ALLogFrame.Parent = ALSection
+
+        local ALLogCorner = Instance.new("UICorner")
+        ALLogCorner.CornerRadius = UDim.new(0, 8)
+        ALLogCorner.Parent = ALLogFrame
+
+        local ALLogScroll = Instance.new("ScrollingFrame")
+        ALLogScroll.Size = UDim2.new(1, -8, 1, -8)
+        ALLogScroll.Position = UDim2.new(0, 4, 0, 4)
+        ALLogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        ALLogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        ALLogScroll.BackgroundTransparency = 1
+        ALLogScroll.BorderSizePixel = 0
+        ALLogScroll.ScrollBarThickness = 3
+        ALLogScroll.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 255)
+        ALLogScroll.Parent = ALLogFrame
+
+        local ALLogHolder = Instance.new("Frame")
+        ALLogHolder.Size = UDim2.new(1, 0, 0, 0)
+        ALLogHolder.AutomaticSize = Enum.AutomaticSize.Y
+        ALLogHolder.BackgroundTransparency = 1
+        ALLogHolder.Parent = ALLogScroll
+
+        local ALLogLayout = Instance.new("UIListLayout")
+        ALLogLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        ALLogLayout.Padding = UDim.new(0, 4)
+        ALLogLayout.Parent = ALLogHolder
+
+        local ALLogPadding = Instance.new("UIPadding")
+        ALLogPadding.PaddingTop = UDim.new(0, 4)
+        ALLogPadding.PaddingBottom = UDim.new(0, 4)
+        ALLogPadding.PaddingLeft = UDim.new(0, 4)
+        ALLogPadding.PaddingRight = UDim.new(0, 4)
+        ALLogPadding.Parent = ALLogHolder
+
+        -- Animation Logger State
+        local animLoggerEnabled = false
+        local animLogEntries = {}
+        local animLogSeenIds = {}
+        local animLogCount = 0
+        local MAX_ANIM_LOG = 50
+        local ANIM_ENTRY_H = 36
+        local animLogConn = nil
+
+        local function UpdateALLogFrameHeight()
+            local h = math.min(#animLogEntries, 4) * (ANIM_ENTRY_H + 4) + 8
+            ALLogFrame.Size = UDim2.new(1, 0, 0, math.max(h, 20))
+        end
+
+        local function AddAnimLogEntry(idNum)
+            if not idNum or idNum == "" then return end
+            if animLogSeenIds[idNum] then return end
+            animLogSeenIds[idNum] = true
+
+            animLogCount = animLogCount + 1
+
+            local entry = Instance.new("Frame")
+            entry.Size = UDim2.new(1, 0, 0, ANIM_ENTRY_H)
+            entry.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            entry.BorderSizePixel = 0
+            entry.LayoutOrder = animLogCount
+            entry.Parent = ALLogHolder
+
+            local entryCorner = Instance.new("UICorner")
+            entryCorner.CornerRadius = UDim.new(0, 6)
+            entryCorner.Parent = entry
+
+            local entryStroke = Instance.new("UIStroke")
+            entryStroke.Color = Color3.fromRGB(50, 50, 50)
+            entryStroke.Thickness = 1
+            entryStroke.Parent = entry
+
+            table.insert(animLogEntries, entry)
+
+            if #animLogEntries > MAX_ANIM_LOG then
+                local oldest = table.remove(animLogEntries, 1)
+                if oldest and oldest.Parent then oldest:Destroy() end
+            end
+
+            local timestamp = Instance.new("TextLabel")
+            timestamp.Size = UDim2.new(0, 52, 0, 12)
+            timestamp.Position = UDim2.new(1, -50, 0, 6)
+            timestamp.BackgroundTransparency = 1
+            timestamp.Text = os.date("%H:%M:%S")
+            timestamp.TextColor3 = Color3.fromRGB(150, 150, 150)
+            timestamp.Font = Enum.Font.Gotham
+            timestamp.TextSize = 9
+            timestamp.TextXAlignment = Enum.TextXAlignment.Center
+            timestamp.ZIndex = 3
+            timestamp.Parent = entry
+
+            local idLabel = Instance.new("TextLabel")
+            idLabel.Size = UDim2.new(1, -180, 1, 0)
+            idLabel.Position = UDim2.new(0, 8, 0, 0)
+            idLabel.BackgroundTransparency = 1
+            idLabel.Text = "ID: " .. idNum
+            idLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+            idLabel.Font = Enum.Font.Gotham
+            idLabel.TextSize = 11
+            idLabel.TextXAlignment = Enum.TextXAlignment.Left
+            idLabel.Parent = entry
+
+            local copyIdBtn = Instance.new("TextButton")
+            copyIdBtn.Size = UDim2.new(0, 70, 0, 24)
+            copyIdBtn.Position = UDim2.new(1, -162, 0.5, -12)
+            copyIdBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+            copyIdBtn.Text = "Copy ID"
+            copyIdBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            copyIdBtn.Font = Enum.Font.GothamSemibold
+            copyIdBtn.TextSize = 10
+            copyIdBtn.BorderSizePixel = 0
+            copyIdBtn.AutoButtonColor = false
+            copyIdBtn.ZIndex = 4
+            copyIdBtn.Parent = entry
+
+            local copyIdCorner = Instance.new("UICorner")
+            copyIdCorner.CornerRadius = UDim.new(0, 5)
+            copyIdCorner.Parent = copyIdBtn
+
+            copyIdBtn.MouseEnter:Connect(function()
+                TweenService:Create(copyIdBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 200)}):Play()
+            end)
+            copyIdBtn.MouseLeave:Connect(function()
+                TweenService:Create(copyIdBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 100, 180)}):Play()
+            end)
+            copyIdBtn.MouseButton1Click:Connect(function()
+                pcall(function() setclipboard(idNum) end)
+                copyIdBtn.Text = "✓ Copied"
+                task.delay(1.5, function()
+                    if copyIdBtn and copyIdBtn.Parent then copyIdBtn.Text = "Copy ID" end
+                end)
+            end)
+
+            local copyLinkBtn = Instance.new("TextButton")
+            copyLinkBtn.Size = UDim2.new(0, 82, 0, 24)
+            copyLinkBtn.Position = UDim2.new(1, -86, 0.5, -12)
+            copyLinkBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+            copyLinkBtn.Text = "Copy Link"
+            copyLinkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            copyLinkBtn.Font = Enum.Font.GothamSemibold
+            copyLinkBtn.TextSize = 10
+            copyLinkBtn.BorderSizePixel = 0
+            copyLinkBtn.AutoButtonColor = false
+            copyLinkBtn.ZIndex = 4
+            copyLinkBtn.Parent = entry
+
+            local copyLinkCorner = Instance.new("UICorner")
+            copyLinkCorner.CornerRadius = UDim.new(0, 5)
+            copyLinkCorner.Parent = copyLinkBtn
+
+            copyLinkBtn.MouseEnter:Connect(function()
+                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 200)}):Play()
+            end)
+            copyLinkBtn.MouseLeave:Connect(function()
+                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 100, 180)}):Play()
+            end)
+            copyLinkBtn.MouseButton1Click:Connect(function()
+                pcall(function() setclipboard("rbxassetid://" .. idNum) end)
+                copyLinkBtn.Text = "✓ Copied"
+                task.delay(1.5, function()
+                    if copyLinkBtn and copyLinkBtn.Parent then copyLinkBtn.Text = "Copy Link" end
+                end)
+            end)
+
+            UpdateALLogFrameHeight()
+        end
+
+        local function HookAnimLogger(char)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            local animator = hum:FindFirstChildOfClass("Animator")
+            if not animator then return end
+
+            if animLogConn then animLogConn:Disconnect(); animLogConn = nil end
+
+            animLogConn = animator.AnimationPlayed:Connect(function(animTrack)
+                if not animLoggerEnabled then return end
+                local animId = animTrack.Animation.AnimationId
+                local cleanId = animId:gsub("rbxassetid://", "")
+                AddAnimLogEntry(cleanId)
+            end)
+        end
+
+        local function SetAnimLogger(enabled)
+            animLoggerEnabled = enabled
+            ALLogFrame.Visible = enabled
+
+            if not enabled then
+                if animLogConn then animLogConn:Disconnect(); animLogConn = nil end
+                return
+            end
+
+            local char = LocalPlayer.Character
+            if char then
+                task.spawn(function()
+                    task.wait(0.1)
+                    if animLoggerEnabled then HookAnimLogger(char) end
+                end)
+            end
+
+            if animLogConn then animLogConn:Disconnect(); animLogConn = nil end
+            animLogConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                task.wait(0.5)
+                if animLoggerEnabled then HookAnimLogger(newChar) end
+            end)
+        end
+
+        local function SetAL(val)
+            animLoggerEnabled = val
+            SetAnimLogger(animLoggerEnabled)
+
+            if val then
+                TweenService:Create(ALPill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+                TweenService:Create(ALKnob, TweenInfo.new(0.15), {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
+            else
+                TweenService:Create(ALPill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+                TweenService:Create(ALKnob, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
+            end
+        end
+
+        ALHit.MouseButton1Click:Connect(function() SetAL(not animLoggerEnabled) end)
+
         -- Favorites functions
         local function isFavorite(emoteId)
             return PM.Emotes.favorites[tostring(emoteId)] == true
