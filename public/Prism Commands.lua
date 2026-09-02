@@ -388,20 +388,6 @@ local function cleanupPrism()
     if PM.TpWatchConn1 then pcall(function() PM.TpWatchConn1:Disconnect() end); PM.TpWatchConn1 = nil end
     if PM.TpWatchConn2 then pcall(function() PM.TpWatchConn2:Disconnect() end); PM.TpWatchConn2 = nil end
     PM.TpToolActive = false
-
-    -- Cleanup VCBypasser
-    if PM.VCBypasser.buttonConn then pcall(function() PM.VCBypasser.buttonConn:Disconnect() end); PM.VCBypasser.buttonConn = nil end
-    if PM.VCBypasser.mouseEnterConn then pcall(function() PM.VCBypasser.mouseEnterConn:Disconnect() end); PM.VCBypasser.mouseEnterConn = nil end
-    if PM.VCBypasser.mouseLeaveConn then pcall(function() PM.VCBypasser.mouseLeaveConn:Disconnect() end); PM.VCBypasser.mouseLeaveConn = nil end
-    if PM.VCBypasser.sizeMonitorConn then pcall(function() PM.VCBypasser.sizeMonitorConn:Disconnect() end); PM.VCBypasser.sizeMonitorConn = nil end
-    if PM.VCBypasser.propertySignalConn then pcall(function() PM.VCBypasser.propertySignalConn:Disconnect() end); PM.VCBypasser.propertySignalConn = nil end
-    if PM.VCBypasser.playerAddedConn then pcall(function() PM.VCBypasser.playerAddedConn:Disconnect() end); PM.VCBypasser.playerAddedConn = nil end
-    if PM.VCBypasser.playerRemovingConn then pcall(function() PM.VCBypasser.playerRemovingConn:Disconnect() end); PM.VCBypasser.playerRemovingConn = nil end
-    -- Cleanup player overlays and talking detectors
-    for _, p in ipairs(Players:GetPlayers()) do
-        removePlayerOverlay(p)
-    end
-    PM.VCBypasser.active = false
     
     -- Cleanup Jerk Tool
     local jerk = LP.Backpack:FindFirstChild("Jerk")
@@ -993,7 +979,32 @@ registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(arg
     setupButtonClick()
     setupSizeMonitor()
 
-    -- Player overlays and talking detection disabled
+    -- Setup player overlays and talking detection for all current players
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            task.spawn(function()
+                waitForCharacterReady(p)
+                setupTalkingDetection(p)
+                createPlayerOverlay(p)
+            end)
+        end
+    end
+
+    -- Setup for new players
+    PM.VCBypasser.playerAddedConn = Players.PlayerAdded:Connect(function(p)
+        if p ~= LP then
+            task.spawn(function()
+                waitForCharacterReady(p)
+                setupTalkingDetection(p)
+                createPlayerOverlay(p)
+            end)
+        end
+    end)
+
+    -- Cleanup on leave
+    PM.VCBypasser.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
+        removePlayerOverlay(p)
+    end)
 end, true)
 
 
@@ -1375,8 +1386,12 @@ registerCommand("hide", "Hide a player", {}, function(args)
             -- Don't touch adi.Active - that's the player's self-mute state
         end) end
         savedState = applyHide(char, savedState)
+        -- Remove VCBypasser icon on respawn
+        removePlayerOverlay(target)
     end)
     PM.HiddenPlayers[target.UserId] = { connection = conn, audioDevice = adi, savedState = savedState }
+    -- Hide the VCBypasser icon too
+    removePlayerOverlay(target)
 end, true)
 
 registerCommand("unhide", "Unhide a player", {}, function(args)
@@ -1421,6 +1436,15 @@ registerCommand("unhide", "Unhide a player", {}, function(args)
     if PM.HiddenPlayers[target.UserId] then
         PM.HiddenPlayers[target.UserId].manuallyUnhidden = true
     end
+    -- Restore the VCBypasser icon
+    if PM.VCBypasser.active then
+        task.spawn(function()
+            if not target.Character then target.CharacterAdded:Wait() end
+            task.wait(0.5)
+            setupTalkingDetection(target)
+            createPlayerOverlay(target)
+        end)
+    end
 end, true)
 
 registerCommand("hideall", "Hide all other players", {}, function(args)
@@ -1444,6 +1468,8 @@ registerCommand("hideall", "Hide all other players", {}, function(args)
                     -- Don't touch adi.Active - that's the player's self-mute state
                 end) end
                 savedState = applyHide(char, savedState)
+                -- Remove VCBypasser icon on respawn
+                removePlayerOverlay(p)
             end)
             PM.HiddenPlayers[p.UserId] = { connection = conn, audioDevice = adi, savedState = savedState }
         end
@@ -1469,6 +1495,8 @@ registerCommand("hideall", "Hide all other players", {}, function(args)
                         -- Don't touch adi.Active - that's the player's self-mute state
                     end) end
                     savedState = applyHide(char, savedState)
+                    -- Remove VCBypasser icon on respawn
+                    removePlayerOverlay(p)
                 end)
                 PM.HiddenPlayers[p.UserId] = { connection = conn, audioDevice = adi, savedState = savedState }
             end
@@ -1510,6 +1538,19 @@ registerCommand("unhideall", "Unhide all players", {}, function(args)
         end
     end
     PM.HiddenPlayers = {}
+    -- Restore VCBypasser icons for all players if vcbypasser is active
+    if PM.VCBypasser.active then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                task.spawn(function()
+                    if not p.Character then p.CharacterAdded:Wait() end
+                    task.wait(0.5)
+                    setupTalkingDetection(p)
+                    createPlayerOverlay(p)
+                end)
+            end
+        end
+    end
 end, true)
 
 -- Muted players tracking table
