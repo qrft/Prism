@@ -3877,6 +3877,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         BottomBar.Position = UDim2.new(0, 0, 1, -52)
         BottomBar.BackgroundTransparency = 1
         BottomBar.ZIndex = 25
+        BottomBar.Visible = false
         BottomBar.Parent = ContentFrame
 
         -- Animation Speed Control
@@ -4027,6 +4028,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         -- Move While Emoting Toggle
         local MWESection = Instance.new("Frame")
         MWESection.Size = UDim2.new(1, 0, 0, 32)
+        MWESection.Position = UDim2.new(0, 0, 0, -20)
         MWESection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         MWESection.BackgroundTransparency = 0.4
         MWESection.BorderSizePixel = 0
@@ -4203,7 +4205,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         -- Animation Logger Toggle
         local ALSection = Instance.new("Frame")
         ALSection.Size = UDim2.new(1, 0, 0, 32)
-        ALSection.Position = UDim2.new(0, 0, 0, 36)
+        ALSection.Position = UDim2.new(0, 0, 0, 16)
         ALSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         ALSection.BackgroundTransparency = 0.4
         ALSection.BorderSizePixel = 0
@@ -4259,7 +4261,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         local ALLogFrame = Instance.new("Frame")
         ALLogFrame.Name = "AnimLogFrame"
         ALLogFrame.Size = UDim2.new(1, 0, 0, 0)
-        ALLogFrame.Position = UDim2.new(0, 0, 0, 72)
+        ALLogFrame.Position = UDim2.new(0, 0, 0, 52)
         ALLogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         ALLogFrame.BackgroundTransparency = 0.3
         ALLogFrame.BorderSizePixel = 0
@@ -4356,7 +4358,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             timestamp.Parent = entry
 
             local idLabel = Instance.new("TextLabel")
-            idLabel.Size = UDim2.new(1, -180, 1, 0)
+            idLabel.Size = UDim2.new(1, -100, 1, 0)
             idLabel.Position = UDim2.new(0, 8, 0, 0)
             idLabel.BackgroundTransparency = 1
             idLabel.Text = "ID: " .. idNum
@@ -4366,41 +4368,10 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             idLabel.TextXAlignment = Enum.TextXAlignment.Left
             idLabel.Parent = entry
 
-            local copyIdBtn = Instance.new("TextButton")
-            copyIdBtn.Size = UDim2.new(0, 70, 0, 24)
-            copyIdBtn.Position = UDim2.new(1, -162, 0.5, -12)
-            copyIdBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
-            copyIdBtn.Text = "Copy ID"
-            copyIdBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            copyIdBtn.Font = Enum.Font.GothamSemibold
-            copyIdBtn.TextSize = 10
-            copyIdBtn.BorderSizePixel = 0
-            copyIdBtn.AutoButtonColor = false
-            copyIdBtn.ZIndex = 4
-            copyIdBtn.Parent = entry
-
-            local copyIdCorner = Instance.new("UICorner")
-            copyIdCorner.CornerRadius = UDim.new(0, 5)
-            copyIdCorner.Parent = copyIdBtn
-
-            copyIdBtn.MouseEnter:Connect(function()
-                TweenService:Create(copyIdBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 200)}):Play()
-            end)
-            copyIdBtn.MouseLeave:Connect(function()
-                TweenService:Create(copyIdBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 100, 180)}):Play()
-            end)
-            copyIdBtn.MouseButton1Click:Connect(function()
-                pcall(function() setclipboard(idNum) end)
-                copyIdBtn.Text = "✓ Copied"
-                task.delay(1.5, function()
-                    if copyIdBtn and copyIdBtn.Parent then copyIdBtn.Text = "Copy ID" end
-                end)
-            end)
-
             local copyLinkBtn = Instance.new("TextButton")
             copyLinkBtn.Size = UDim2.new(0, 82, 0, 24)
             copyLinkBtn.Position = UDim2.new(1, -86, 0.5, -12)
-            copyLinkBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+            copyLinkBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             copyLinkBtn.Text = "Copy Link"
             copyLinkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             copyLinkBtn.Font = Enum.Font.GothamSemibold
@@ -4415,10 +4386,10 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             copyLinkCorner.Parent = copyLinkBtn
 
             copyLinkBtn.MouseEnter:Connect(function()
-                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 200)}):Play()
+                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
             end)
             copyLinkBtn.MouseLeave:Connect(function()
-                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 100, 180)}):Play()
+                TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
             end)
             copyLinkBtn.MouseButton1Click:Connect(function()
                 pcall(function() setclipboard("rbxassetid://" .. idNum) end)
