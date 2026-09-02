@@ -3878,50 +3878,42 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         BottomBar.Visible = false
         BottomBar.Parent = ContentFrame
 
-        -- Animation Speed Control
+        -- Animation Speed Control (Hub approach)
         local function ApplyAnimSpeed(speed)
-            local char = LocalPlayer.Character
-            if not char then return end
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return end
-            local animator = humanoid:FindFirstChildOfClass("Animator")
-            if not animator then return end
-
-            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            if PM.Emotes.currentEmoteTrack and PM.Emotes.currentEmoteTrack.IsPlaying then
                 pcall(function()
-                    track:AdjustSpeed(speed)
+                    PM.Emotes.currentEmoteTrack:AdjustSpeed(speed)
                 end)
             end
         end
 
-        local function HookAnimationSpeed()
-            local char = LocalPlayer.Character
-            if not char then return nil end
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return nil end
-            local animator = humanoid:FindFirstChildOfClass("Animator")
-            if not animator then return nil end
+        local animSpeedEnabled = PM.Emotes.speed ~= 1
+        local steppedConn = nil
 
-            return animator.AnimationPlayed:Connect(function(track)
-                if PM.Emotes.speed and PM.Emotes.speed ~= 1 then
-                    pcall(function()
-                        track:AdjustSpeed(PM.Emotes.speed)
-                    end)
+        local function SetupSteppedConnection()
+            if steppedConn then steppedConn:Disconnect(); steppedConn = nil end
+            
+            steppedConn = RunService.Stepped:Connect(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if not hum then return end
+                
+                if PM.Emotes.currentEmoteTrack and typeof(PM.Emotes.currentEmoteTrack) == "Instance" and PM.Emotes.currentEmoteTrack:IsA("AnimationTrack") and PM.Emotes.currentEmoteTrack.IsPlaying then
+                    if hum.MoveDirection.Magnitude > 0 then
+                        if animSpeedEnabled and not moveWhileEmotingEnabled then
+                            PM.Emotes.currentEmoteTrack:Stop()
+                            PM.Emotes.currentEmoteTrack = nil
+                        end
+                    end
                 end
             end)
         end
 
-        local animSpeedConn = nil
-        local function SetupAnimSpeed()
-            if animSpeedConn then animSpeedConn:Disconnect() end
-            animSpeedConn = HookAnimationSpeed()
-            ApplyAnimSpeed(PM.Emotes.speed)
-        end
-
-        SetupAnimSpeed()
+        SetupSteppedConnection()
         LocalPlayer.CharacterAdded:Connect(function()
             task.wait(0.3)
-            SetupAnimSpeed()
+            SetupSteppedConnection()
         end)
 
         -- Speed Label
@@ -3979,6 +3971,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         local function updateSlider(value)
             local speed = math.clamp(math.floor(value * 10) / 10, 0.1, 5.0)
             PM.Emotes.speed = speed
+            animSpeedEnabled = speed ~= 1
             local scale = (speed - 0.1) / 4.9
             SliderFill.Size = UDim2.new(scale, 0, 1, 0)
             SliderKnob.Position = UDim2.new(scale, -6, 0.5, -6)
@@ -4078,9 +4071,8 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         MWEHit.Text = ""
         MWEHit.Parent = MWESection
 
-        -- Move While Emoting State (Hub implementation)
+        -- Move While Emoting State (Hub emote freeze approach)
         local moveWhileEmotingEnabled = savedMWE or false
-        PM.Emotes.mweSteppedConn = nil
         PM.Emotes.currentEmoteTrack = nil
 
         local function StopCurrentEmote()
@@ -4093,31 +4085,21 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         local function SetMoveWhileEmoting(enabled)
             moveWhileEmotingEnabled = enabled
 
-            if PM.Emotes.mweSteppedConn then
-                PM.Emotes.mweSteppedConn:Disconnect()
-                PM.Emotes.mweSteppedConn = nil
-            end
-
-            if not enabled then
+            if enabled then
+                task.wait(0.1)
                 StopCurrentEmote()
-                return
-            end
-
-            PM.Emotes.mweSteppedConn = game:GetService("RunService").Stepped:Connect(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if not hum then return end
-
-                if PM.Emotes.currentEmoteTrack and typeof(PM.Emotes.currentEmoteTrack) == "Instance" and PM.Emotes.currentEmoteTrack:IsA("AnimationTrack") and PM.Emotes.currentEmoteTrack.IsPlaying then
-                    if hum.MoveDirection.Magnitude > 0 then
-                        if not moveWhileEmotingEnabled then
-                            PM.Emotes.currentEmoteTrack:Stop()
-                            PM.Emotes.currentEmoteTrack = nil
-                        end
-                    end
+                if PM.Emotes.currentEmoteTrack and PM.Emotes.currentEmoteTrack.IsPlaying then
+                    PM.Emotes.currentEmoteTrack:AdjustSpeed(1)
                 end
-            end)
+            else
+                task.wait(0.1)
+                StopCurrentEmote()
+                if PM.Emotes.currentEmoteTrack and PM.Emotes.currentEmoteTrack.IsPlaying and animSpeedEnabled then
+                    PM.Emotes.currentEmoteTrack:AdjustSpeed(PM.Emotes.speed)
+                elseif PM.Emotes.currentEmoteTrack and PM.Emotes.currentEmoteTrack.IsPlaying then
+                    PM.Emotes.currentEmoteTrack:AdjustSpeed(1)
+                end
+            end
         end
 
         local function SetMWE(val)
