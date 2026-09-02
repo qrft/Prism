@@ -4280,7 +4280,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         ALLogScroll.BackgroundTransparency = 1
         ALLogScroll.BorderSizePixel = 0
         ALLogScroll.ScrollBarThickness = 3
-        ALLogScroll.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 255)
+        ALLogScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
         ALLogScroll.Parent = ALLogFrame
 
         local ALLogHolder = Instance.new("Frame")
@@ -4372,7 +4372,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             copyLinkBtn.Size = UDim2.new(0, 82, 0, 24)
             copyLinkBtn.Position = UDim2.new(1, -86, 0.5, -12)
             copyLinkBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            copyLinkBtn.Text = "Copy Link"
+            copyLinkBtn.Text = "Copy ID"
             copyLinkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             copyLinkBtn.Font = Enum.Font.GothamSemibold
             copyLinkBtn.TextSize = 10
@@ -4392,10 +4392,10 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
                 TweenService:Create(copyLinkBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
             end)
             copyLinkBtn.MouseButton1Click:Connect(function()
-                pcall(function() setclipboard("rbxassetid://" .. idNum) end)
-                copyLinkBtn.Text = "✓ Copied"
+                pcall(function() setclipboard(idNum) end)
+                copyLinkBtn.Text = "Copied"
                 task.delay(1.5, function()
-                    if copyLinkBtn and copyLinkBtn.Parent then copyLinkBtn.Text = "Copy Link" end
+                    if copyLinkBtn and copyLinkBtn.Parent then copyLinkBtn.Text = "Copy ID" end
                 end)
             end)
 
