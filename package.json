@@ -1,9 +1,0 @@
-{
-  "name": "prism-nametags",
-  "version": "1.0.0",
-  "description": "Nametag storage for Prism",
-  "scripts": {
-    "dev": "vercel dev"
-  },
-  "dependencies": {}
-}
