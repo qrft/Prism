@@ -1,7 +1,8 @@
 // Nametag API endpoint for Vercel
-// Stores nametags in memory (for production, use a database like Vercel KV or PostgreSQL)
+// Stores nametags and user sessions in memory (for production, use a database like Vercel KV or PostgreSQL)
 
 let nametags = [];
+let userSessions = [];
 
 export default function handler(req, res) {
   const { method } = req;
@@ -20,6 +21,19 @@ export default function handler(req, res) {
 
   switch (method) {
     case 'GET':
+      // Handle user sessions endpoint
+      if (req.query.type === 'sessions') {
+        if (id) {
+          const session = userSessions.find(s => s.id === id);
+          if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+          }
+          return res.status(200).json(session);
+        }
+        return res.status(200).json(userSessions);
+      }
+      
+      // Handle nametags
       if (id) {
         const nametag = nametags.find(n => n.id === id);
         if (!nametag) {
@@ -30,6 +44,31 @@ export default function handler(req, res) {
       return res.status(200).json(nametags);
 
     case 'POST':
+      // Handle user session registration
+      if (req.body.type === 'session') {
+        const { userId, userName, gameId, gameName, jobId, scriptRank, scriptName } = req.body;
+        
+        if (!userId || !gameId) {
+          return res.status(400).json({ error: 'userId and gameId are required' });
+        }
+
+        const newSession = {
+          id: Date.now().toString(),
+          userId,
+          userName,
+          gameId,
+          gameName,
+          jobId,
+          scriptRank,
+          scriptName: scriptName || 'Prism',
+          startedAt: new Date().toISOString()
+        };
+
+        userSessions.push(newSession);
+        return res.status(201).json(newSession);
+      }
+      
+      // Handle nametag creation
       const { playerName, tagText, color, enabled } = req.body;
       
       if (!playerName || !tagText) {
