@@ -9879,15 +9879,22 @@ end
 
 -- Populate panels after this file loads
 -- Wait for Main.lua to create the UI functions if needed
+warn("[Prism Debug] Prism Commands.lua starting to load...")
 local retries = 0
 while (not PM.createCommandsPanel or not PM.createSettingsPanel) and retries < 20 do
     task.wait(0.1)
     retries = retries + 1
 end
+warn("[Prism Debug] UI functions wait completed, retries:", retries, "createCommandsPanel:", PM.createCommandsPanel ~= nil, "createSettingsPanel:", PM.createSettingsPanel ~= nil)
 
 -- Load saved auto exec states first
-if PM.loadAutoExecStates then PM.loadAutoExecStates() end
+if PM.loadAutoExecStates then 
+    warn("[Prism Debug] Loading auto exec states...")
+    PM.loadAutoExecStates()
+    warn("[Prism Debug] Auto exec states loaded")
+end
 
+warn("[Prism Debug] Registering discord command...")
 registerCommand("discord", "Discord invite", {"support", "help"}, function(args, speaker)
 	local everyClipboard = setclipboard or toclipboard or set_clipboard or (Clipboard and Clipboard.set)
 	local httprequest = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
@@ -9912,27 +9919,44 @@ registerCommand("discord", "Discord invite", {"support", "help"}, function(args,
 		})
 	end
 end, true)
+warn("[Prism Debug] Discord command registered")
 
 -- Create panels if they don't exist
+warn("[Prism Debug] Checking if panels exist...")
 if not PM.UI.CommandsPanel and PM.createCommandsPanel then
+    warn("[Prism Debug] Creating CommandsPanel...")
     PM.createCommandsPanel()
+    warn("[Prism Debug] CommandsPanel created")
 end
 if not PM.UI.SettingsPanel and PM.createSettingsPanel then
+    warn("[Prism Debug] Creating SettingsPanel...")
     PM.createSettingsPanel()
+    warn("[Prism Debug] SettingsPanel created")
 end
 
 -- Populate the panels
+warn("[Prism Debug] Populating panels...")
 PM.populateCommandsPanel()
+warn("[Prism Debug] CommandsPanel populated")
 PM.populateAutoExecPanel()
-if PM.createTerminalOutput then PM.createTerminalOutput() end
+warn("[Prism Debug] AutoExecPanel populated")
+if PM.createTerminalOutput then 
+    warn("[Prism Debug] Creating terminal output...")
+    PM.createTerminalOutput()
+    warn("[Prism Debug] Terminal output created")
+end
 
 if PM.UI.AutoExecSearch then
+    warn("[Prism Debug] Setting up AutoExecSearch connection...")
     PM.UI.AutoExecSearch:GetPropertyChangedSignal("Text"):Connect(function()
         PM.filterAutoExecPanel(PM.UI.AutoExecSearch.Text)
     end)
+    warn("[Prism Debug] AutoExecSearch connection set up")
 end
 
 -- Execute auto exec commands after everything is loaded
+warn("[Prism Debug] Executing auto exec commands...")
 PM.executeAutoExecCommands()
+warn("[Prism Debug] Auto exec commands executed")
 
 return PM.Commands
