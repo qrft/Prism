@@ -9888,6 +9888,37 @@ end
 -- Load saved auto exec states first
 if PM.loadAutoExecStates then PM.loadAutoExecStates() end
 
+registerCommand("discord", "Discord invite", {"support", "help"}, function(args)
+    local discordCode = "S3UFq2VXtv"
+    local discordUrl = "https://discord.gg/" .. discordCode
+    
+    if setclipboard then
+        pcall(function() setclipboard(discordUrl) end)
+        PM.notify("Discord Invite", "Copied to clipboard!\n" .. discordUrl)
+    else
+        PM.notify("Discord Invite", discordUrl)
+    end
+    
+    local httprequest = http_request or (syn and syn.request) or request
+    if httprequest then
+        pcall(function()
+            httprequest({
+                Url = 'http://127.0.0.1:6463/rpc?v=1',
+                Method = 'POST',
+                Headers = {
+                    ['Content-Type'] = 'application/json',
+                    Origin = 'https://discord.com'
+                },
+                Body = HttpService:JSONEncode({
+                    cmd = 'INVITE_BROWSER',
+                    nonce = HttpService:GenerateGUID(false),
+                    args = {code = discordCode}
+                })
+            })
+        end)
+    end
+end, true)
+
 -- Create panels if they don't exist
 if not PM.UI.CommandsPanel and PM.createCommandsPanel then
     PM.createCommandsPanel()
