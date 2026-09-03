@@ -1789,16 +1789,24 @@ PM.createMainGUI = function()
         PM.autoExecutePrism = autoExecPrismDefault
         PM.autoExecuteCommands = autoExecCommandsDefault
 
+        -- Setup teleport check for auto execute prism (matching Infinite Yield pattern)
+        local TeleportCheck = false
+        local queueteleport = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport) or (krnl and krnl.queue_on_teleport) or (is_sirius and is_sirius.queue_on_teleport)
+        
+        if queueteleport and Players.LocalPlayer then
+            Players.LocalPlayer.OnTeleport:Connect(function(State)
+                if PM.autoExecutePrism and (not TeleportCheck) and queueteleport then
+                    TeleportCheck = true
+                    pcall(function()
+                        queueteleport([[loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()]])
+                    end)
+                end
+            end)
+        end
+
         createToggleRow(PM.UI.AutoExecContent, "AutoExecPrism", "Auto execute prism", 0, autoExecPrismDefault, function(state)
             PM.autoExecutePrism = state
             saveSettings()
-            -- Setup/clear auto execute on teleport when toggle changes
-            local queueTeleport = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport) or (krnl and krnl.queue_on_teleport) or (is_sirius and is_sirius.queue_on_teleport)
-            if queueTeleport and state then
-                pcall(function()
-                    queueTeleport([[loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()]])
-                end)
-            end
         end)
 
         createToggleRow(PM.UI.AutoExecContent, "AutoExecuteCommands", "Auto execute commands", 28, autoExecCommandsDefault, function(state)
