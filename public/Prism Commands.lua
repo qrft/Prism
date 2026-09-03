@@ -9888,30 +9888,30 @@ end
 -- Load saved auto exec states first
 if PM.loadAutoExecStates then PM.loadAutoExecStates() end
 
-registerCommand("discord", "Discord invite", {"support", "help"}, function(args)
-    local discordCode = "S3UFq2VXtv"
-    local discordUrl = "https://discord.gg/" .. discordCode
-    
-    PM.notify("Discord Invite", discordUrl)
-    
-    local httprequest = http_request or (syn and syn.request) or request
-    if httprequest then
-        pcall(function()
-            httprequest({
-                Url = 'http://127.0.0.1:6463/rpc?v=1',
-                Method = 'POST',
-                Headers = {
-                    ['Content-Type'] = 'application/json',
-                    Origin = 'https://discord.com'
-                },
-                Body = HttpService:JSONEncode({
-                    cmd = 'INVITE_BROWSER',
-                    nonce = HttpService:GenerateGUID(false),
-                    args = {code = discordCode}
-                })
-            })
-        end)
-    end
+registerCommand("discord", "Discord invite", {"support", "help"}, function(args, speaker)
+	local everyClipboard = setclipboard or toclipboard or syn_clipboard_set
+	if everyClipboard then
+		everyClipboard('https://discord.gg/S3UFq2VXtv')
+		PM.notify('Discord Invite', 'Copied to clipboard!\ndiscord.gg/S3UFq2VXtv')
+	else
+		PM.notify('Discord Invite', 'discord.gg/S3UFq2VXtv')
+	end
+	local httprequest = http_request or (syn and syn.request) or request
+	if httprequest then
+		httprequest({
+			Url = 'http://127.0.0.1:6463/rpc?v=1',
+			Method = 'POST',
+			Headers = {
+				['Content-Type'] = 'application/json',
+				Origin = 'https://discord.com'
+			},
+			Body = HttpService:JSONEncode({
+				cmd = 'INVITE_BROWSER',
+				nonce = HttpService:GenerateGUID(false),
+				args = {code = 'S3UFq2VXtv'}
+			})
+		})
+	end
 end, true)
 
 -- Create panels if they don't exist
