@@ -8,6 +8,10 @@
   ],
   "routes": [
     {
+      "src": "/nametags",
+      "dest": "/api/nametags"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     },
