@@ -20,8 +20,7 @@
     anti headsit / facebang / etc
     nametags
     join other prism users
-    better loading for emotes
-    better vcbypasser icons
+    better vcbypasser
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -4309,8 +4308,8 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         local animLogConn = nil
 
         local function UpdateALLogFrameHeight()
-            local h = math.min(#animLogEntries, 4) * (ANIM_ENTRY_H + 4) + 8
-            ALLogFrame.Size = UDim2.new(1, 0, 0, math.max(h, 20))
+            local h = math.min(#animLogEntries, 4) * (ANIM_ENTRY_H + 4) + 12
+            ALLogFrame.Size = UDim2.new(1, 0, 0, math.max(h, 24))
         end
 
         local function AddAnimLogEntry(idNum)
@@ -4412,6 +4411,9 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
                 if not animLoggerEnabled then return end
                 local animId = animTrack.Animation.AnimationId
                 local cleanId = animId:gsub("rbxassetid://", "")
+                cleanId = cleanId:gsub("http://www%.roblox%.com/asset/%?id=", "")
+                cleanId = cleanId:gsub("https://www%.roblox%.com/asset/%?id=", "")
+                cleanId = cleanId:gsub("www%.roblox%.com/.*", "")
                 AddAnimLogEntry(cleanId)
             end)
         end
