@@ -9892,8 +9892,9 @@ registerCommand("discord", "Discord invite", {"support", "help"}, function(args)
     local discordCode = "S3UFq2VXtv"
     local discordUrl = "https://discord.gg/" .. discordCode
     
-    if setclipboard then
-        pcall(function() setclipboard(discordUrl) end)
+    local clipboardFunc = setclipboard or toclipboard or syn_clipboard_set
+    if clipboardFunc then
+        pcall(function() clipboardFunc(discordUrl) end)
         PM.notify("Discord Invite", "Copied to clipboard!\n" .. discordUrl)
     else
         PM.notify("Discord Invite", discordUrl)
