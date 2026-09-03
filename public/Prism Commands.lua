@@ -21,7 +21,6 @@
     nametags
     join other prism users
     better vcbypasser
-    better auto exec on server hop
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
