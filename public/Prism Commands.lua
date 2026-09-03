@@ -9889,14 +9889,16 @@ end
 if PM.loadAutoExecStates then PM.loadAutoExecStates() end
 
 registerCommand("discord", "Discord invite", {"support", "help"}, function(args, speaker)
-	local everyClipboard = setclipboard or toclipboard or syn_clipboard_set
+	local everyClipboard = setclipboard or toclipboard or set_clipboard or (Clipboard and Clipboard.set)
+	local httprequest = http_request or (syn and syn.request) or request
+	
 	if everyClipboard then
-		everyClipboard('https://discord.gg/S3UFq2VXtv')
+		everyClipboard('https://discord.com/invite/S3UFq2VXtv')
 		PM.notify('Discord Invite', 'Copied to clipboard!\ndiscord.gg/S3UFq2VXtv')
 	else
 		PM.notify('Discord Invite', 'discord.gg/S3UFq2VXtv')
 	end
-	local httprequest = http_request or (syn and syn.request) or request
+	
 	if httprequest then
 		httprequest({
 			Url = 'http://127.0.0.1:6463/rpc?v=1',
