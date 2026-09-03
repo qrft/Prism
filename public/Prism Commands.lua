@@ -9888,16 +9888,16 @@ end
 -- Load saved auto exec states first
 if PM.loadAutoExecStates then PM.loadAutoExecStates() end
 
-registerCommand("discord", {"support", "help"}, function(args, speaker)
-    pcall(function()
+pcall(function()
+    registerCommand("discord", {"support", "help"}, function(args, speaker)
         local discordCode = "S3UFq2VXtv"
         local discordUrl = "https://discord.gg/" .. discordCode
         
         if setclipboard then
             pcall(function() setclipboard(discordUrl) end)
-            if PM.notify then
-                PM.notify("Discord Invite", "Copied to clipboard!\n" .. discordUrl)
-            end
+            PM.notify("Discord Invite", "Copied to clipboard!\n" .. discordUrl)
+        else
+            PM.notify("Discord Invite", discordUrl)
         end
         
         local httprequest = http_request or (syn and syn.request) or request
