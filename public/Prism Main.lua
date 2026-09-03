@@ -18,48 +18,6 @@ local LP = PM.Svc.Players.LocalPlayer
 
 local HttpService = game:GetService("HttpService")
 
--- Auto-register session to website
-local API_URL = "https://prismscript.vercel.app/nametags"
-task.spawn(function()
-    pcall(function()
-        local userId = LP.UserId
-        local userName = LP.Name
-        local gameId = game.GameId
-        local jobID = game.JobId
-        
-        local gameName = "Unknown Game"
-        local success, productInfo = pcall(function()
-            return game:GetService("MarketplaceService"):GetProductInfo(gameId)
-        end)
-        if success and productInfo then
-            gameName = productInfo.Name
-        end
-        
-        local sessionData = {
-            type = "session",
-            userId = tostring(userId),
-            userName = userName,
-            gameId = tostring(gameId),
-            gameName = gameName,
-            jobId = jobID,
-            scriptRank = "User",
-            scriptName = "Prism"
-        }
-        
-        local requestFunction = request or http_request or (http and http.request) or syn.request
-        if requestFunction then
-            requestFunction({
-                Url = API_URL,
-                Method = "POST",
-                Headers = {
-                    ["Content-Type"] = "application/json"
-                },
-                Body = HttpService:JSONEncode(sessionData)
-            })
-        end
-    end)
-end)
-
 -- Early settings loading (before UI creation)
 local SETTINGS_FILE = "prism/prism_settings.json"
 if readfile then
