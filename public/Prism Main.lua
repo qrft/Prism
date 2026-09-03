@@ -1793,15 +1793,30 @@ PM.createMainGUI = function()
         local TeleportCheck = false
         local queueteleport = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport) or (krnl and krnl.queue_on_teleport) or (is_sirius and is_sirius.queue_on_teleport)
         
+        warn("[Prism Debug] queueteleport:", queueteleport ~= nil)
+        warn("[Prism Debug] Players.LocalPlayer:", Players.LocalPlayer ~= nil)
+        
         if queueteleport and Players.LocalPlayer then
-            Players.LocalPlayer.OnTeleport:Connect(function(State)
-                if PM.autoExecutePrism and (not TeleportCheck) and queueteleport then
-                    TeleportCheck = true
-                    pcall(function()
-                        queueteleport([[loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()]])
-                    end)
-                end
+            warn("[Prism Debug] Setting up OnTeleport connection...")
+            local success, err = pcall(function()
+                Players.LocalPlayer.OnTeleport:Connect(function(State)
+                    warn("[Prism Debug] OnTeleport fired, State:", State, "PM.autoExecutePrism:", PM.autoExecutePrism, "TeleportCheck:", TeleportCheck)
+                    if PM.autoExecutePrism and (not TeleportCheck) and queueteleport then
+                        TeleportCheck = true
+                        warn("[Prism Debug] Queueing Prism load...")
+                        pcall(function()
+                            queueteleport([[loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()]])
+                        end)
+                    end
+                end)
             end)
+            if not success then
+                warn("[Prism Debug] OnTeleport connection failed:", err)
+            else
+                warn("[Prism Debug] OnTeleport connection successful")
+            end
+        else
+            warn("[Prism Debug] Skipped OnTeleport setup - queueteleport:", queueteleport ~= nil, "Players.LocalPlayer:", Players.LocalPlayer ~= nil)
         end
 
         createToggleRow(PM.UI.AutoExecContent, "AutoExecPrism", "Auto execute prism", 0, autoExecPrismDefault, function(state)
