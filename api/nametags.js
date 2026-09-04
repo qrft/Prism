@@ -1,22 +1,9 @@
 // Vercel Serverless Function for Prism Nametag System
-// Handles GET (read) and POST (write) requests for nametag data
+// Using Vercel KV for persistent storage
 
-const fs = require('fs').promises;
-const path = require('path');
+const { kv } = require('@vercel/kv');
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'nametags.json');
-
-// Initialize data file if it doesn't exist
-async function initDataFile() {
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-    await fs.writeFile(DATA_FILE, JSON.stringify({ users: [], lastUpdated: null }, null, 2));
-  }
-}
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -26,13 +13,11 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  await initDataFile();
-
   try {
     if (req.method === 'GET') {
-      // Read nametag data
-      const data = await fs.readFile(DATA_FILE, 'utf8');
-      const parsed = JSON.parse(data);
+      // Read nametag data from KV
+      const data = await kv.get('nametags');
+      const parsed = data || { users: [], lastUpdated: null };
       
       console.log('[DEBUG] Reading nametag data:', {
         userCount: parsed.users?.length || 0,
@@ -63,9 +48,9 @@ export default async function handler(req, res) {
         });
       }
       
-      // Read existing data
-      const data = await fs.readFile(DATA_FILE, 'utf8');
-      const parsed = JSON.parse(data);
+      // Read existing data from KV
+      const existingData = await kv.get('nametags');
+      const parsed = existingData || { users: [], lastUpdated: null };
       
       // Check if user already exists and update, or add new
       const existingIndex = parsed.users.findIndex(u => u.userId === userId);
@@ -88,10 +73,10 @@ export default async function handler(req, res) {
       
       parsed.lastUpdated = new Date().toISOString();
       
-      // Write updated data
-      await fs.writeFile(DATA_FILE, JSON.stringify(parsed, null, 2));
+      // Write updated data to KV
+      await kv.set('nametags', parsed);
       
-      console.log('[DEBUG] Successfully wrote nametag data');
+      console.log('[DEBUG] Successfully wrote nametag data to KV');
       
       return res.status(200).json({
         success: true,

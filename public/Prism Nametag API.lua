@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- Configuration - UPDATE THIS TO YOUR VERCEL DEPLOYMENT URL
-local API_BASE_URL = "https://your-vercel-app.vercel.app" -- Replace with actual Vercel URL
+local API_BASE_URL = "https://prismscript.vercel.app" -- Replace with actual Vercel URL
 local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
 
 -- Debugging flag
