@@ -182,6 +182,7 @@
     
     <script>
         const API_URL = '/api/nametags';
+        const HEALTH_URL = '/api/health';
         let autoRefreshInterval = null;
         let allUsers = [];
         
@@ -220,7 +221,16 @@
             
             try {
                 const response = await fetch(API_URL);
-                const data = await response.json();
+                const responseText = await response.text();
+                
+                debugLog(`Response status: ${response.status}`, 'info');
+                debugLog(`Response text: ${responseText.substring(0, 200)}...`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${responseText}`);
+                }
+                
+                const data = JSON.parse(responseText);
                 
                 if (data.success) {
                     debugLog(`Successfully fetched ${data.data.users?.length || 0} users`, 'success');
@@ -368,8 +378,30 @@
             return div.innerHTML;
         }
         
+        // Check API health first
+        async function checkHealth() {
+            debugLog('Checking API health...', 'info');
+            try {
+                const response = await fetch(HEALTH_URL);
+                const data = await response.json();
+                debugLog(`Health check: ${data.message}`, data.success ? 'success' : 'error');
+                return data.success;
+            } catch (error) {
+                debugLog(`Health check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
         // Initial load
-        fetchNametagData();
+        checkHealth().then(isHealthy => {
+            if (isHealthy) {
+                fetchNametagData();
+            } else {
+                debugLog('API health check failed, please check deployment', 'error');
+                document.getElementById('systemStatus').textContent = 'API Error';
+                document.getElementById('systemStatus').className = 'text-lg font-semibold text-red-400';
+            }
+        });
     </script>
 </body>
 </html>

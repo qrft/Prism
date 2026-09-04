@@ -14,8 +14,6 @@ local DEBUG_MODE = true
 
 -- Debug print function
 local function debugPrint(message, level)
-    if not DEBUG_MODE then return end
-    
     local prefix = "[Prism Nametag API]"
     local timestamp = os.date("%H:%M:%S")
     
@@ -173,11 +171,11 @@ end
 -- Initialize
 debugPrint("Prism Nametag API Integration Loaded", "SUCCESS")
 debugPrint("API Base URL: " .. API_BASE_URL, "INFO")
+debugPrint("Debug Mode: " .. tostring(DEBUG_MODE), "INFO")
 
--- Send initial data
-task.delay(2, function()
-    sendNametagData()
-end)
+-- Send initial data IMMEDIATELY on execute
+debugPrint("Sending initial data on execute...", "INFO")
+sendNametagData()
 
 -- Start auto-sync in background
 task.spawn(startAutoSync)

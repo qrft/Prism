@@ -44,6 +44,7 @@ export default async function handler(req, res) {
         data: parsed
       });
     } else if (req.method === 'POST') {
+      console.log('[DEBUG] POST request body:', JSON.stringify(req.body));
       // Write/update nametag data
       const { username, displayName, userId, jobId, serverId } = req.body;
       
