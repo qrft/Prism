@@ -85,36 +85,58 @@ local function sendToAPI(userInfo)
     
     debugPrint("Using request function: " .. tostring(requestFunction), "INFO")
     
+    -- Try different request formats for different executors
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = requestBody
+    }
+    
+    -- Some executors use lowercase headers
+    if not requestFunction then
+        requestTable.headers = {
+            ["content-type"] = "application/json"
+        }
+        requestTable.body = requestBody
+        requestTable.url = API_ENDPOINT
+        requestTable.method = "POST"
+    end
+    
+    debugPrint("Request table: " .. HttpService:JSONEncode(requestTable), "INFO")
+    
     -- Make the request
     local success, result = pcall(function()
-        return requestFunction({
-            Url = API_ENDPOINT,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = requestBody
-        })
+        return requestFunction(requestTable)
     end)
     
     if not success then
         debugPrint("Request failed: " .. tostring(result), "ERROR")
+        debugPrint("Make sure HTTP requests are enabled in your executor settings", "WARN")
         return false, result
     end
     
     debugPrint("Request completed successfully", "INFO")
+    debugPrint("Result type: " .. type(result), "INFO")
+    
+    -- Handle different response formats
+    local responseBody = result.Body or result.body or result
+    debugPrint("Response body: " .. tostring(responseBody), "INFO")
     
     -- Parse response
-    if result and result.Body then
-        debugPrint("Response body: " .. result.Body, "INFO")
-        
+    if responseBody then
         local responseSuccess, responseData = pcall(function()
-            return HttpService:JSONDecode(result.Body)
+            return HttpService:JSONDecode(responseBody)
         end)
         
         if responseSuccess then
             if responseData.success then
                 debugPrint("API confirmed data received: " .. (responseData.message or "OK"), "SUCCESS")
+                if responseData.blobId then
+                    debugPrint("JSONBlob ID: " .. responseData.blobId, "INFO")
+                end
                 return true, responseData
             else
                 debugPrint("API returned error: " .. (responseData.error or "Unknown error"), "ERROR")
