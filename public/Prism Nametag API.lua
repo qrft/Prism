@@ -1,13 +1,19 @@
 -- Prism Nametag API Integration
 -- Sends user data to the nametag website API with debugging
 
+print("=== PRISM NAMETAG API LOADING ===")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+print("Services loaded successfully")
+
 -- Configuration - UPDATE THIS TO YOUR VERCEL DEPLOYMENT URL
 local API_BASE_URL = "https://prismscript.vercel.app" -- Replace with actual Vercel URL
 local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
+
+print("API URL configured: " .. API_ENDPOINT)
 
 -- Debugging flag
 local DEBUG_MODE = true
@@ -30,11 +36,13 @@ end
 
 -- Get user information
 local function getUserInfo()
+    print("=== GETTING USER INFO ===")
     local player = Players.LocalPlayer
     if not player then
         debugPrint("LocalPlayer not found", "ERROR")
         return nil
     end
+    print("LocalPlayer found: " .. player.Name)
     
     -- Try to get Job ID from game
     local jobId = game.JobId
@@ -154,6 +162,7 @@ end
 
 -- Main function to send nametag data
 local function sendNametagData()
+    print("=== SEND NAME TAG DATA CALLED ===")
     debugPrint("=" .. string.rep("=", 50), "INFO")
     debugPrint("Starting nametag data sync", "INFO")
     
@@ -191,18 +200,22 @@ local function startAutoSync()
 end
 
 -- Initialize
+print("=== INITIALIZING PRISM NAMETAG API ===")
 debugPrint("Prism Nametag API Integration Loaded", "SUCCESS")
 debugPrint("API Base URL: " .. API_BASE_URL, "INFO")
 debugPrint("Debug Mode: " .. tostring(DEBUG_MODE), "INFO")
 
 -- Send initial data IMMEDIATELY on execute
+print("=== SENDING INITIAL DATA ===")
 debugPrint("Sending initial data on execute...", "INFO")
 sendNametagData()
 
 -- Start auto-sync in background
+print("=== STARTING AUTO-SYNC ===")
 task.spawn(startAutoSync)
 
 -- Export functions for external use
+print("=== EXPORTING FUNCTIONS ===")
 getgenv().PrismNametagAPI = {
     sendNametagData = sendNametagData,
     getUserInfo = getUserInfo,
@@ -226,3 +239,4 @@ getgenv().PrismNametagAPI = {
 
 debugPrint("Functions exported to getgenv().PrismNametagAPI", "INFO")
 debugPrint("Available functions: sendNametagData(), getUserInfo(), setAPIUrl(), setDebugMode(), setAutoSync()", "INFO")
+print("=== PRISM NAMETAG API INITIALIZATION COMPLETE ===")
