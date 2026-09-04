@@ -1,7 +1,7 @@
 // Vercel Serverless Function for Prism Nametag System
-// Using Vercel KV for persistent storage
+// Using JSONBlob for free persistent storage (no API key needed)
 
-const { kv } = require('@vercel/kv');
+const JSONBLOB_ID = process.env.JSONBLOB_ID || null;
 
 module.exports = async function handler(req, res) {
   // Enable CORS
@@ -15,9 +15,29 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Read nametag data from KV
-      const data = await kv.get('nametags');
-      const parsed = data || { users: [], lastUpdated: null };
+      // Read nametag data from JSONBlob
+      if (!JSONBLOB_ID) {
+        return res.status(200).json({
+          success: true,
+          data: { users: [], lastUpdated: null },
+          note: 'Set JSONBLOB_ID environment variable for persistent storage'
+        });
+      }
+      
+      const response = await fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`);
+      
+      if (!response.ok) {
+        // If blob doesn't exist, return empty data
+        if (response.status === 404) {
+          return res.status(200).json({
+            success: true,
+            data: { users: [], lastUpdated: null }
+          });
+        }
+        throw new Error(`JSONBlob error: ${response.status}`);
+      }
+      
+      const parsed = await response.json();
       
       console.log('[DEBUG] Reading nametag data:', {
         userCount: parsed.users?.length || 0,
@@ -48,9 +68,20 @@ module.exports = async function handler(req, res) {
         });
       }
       
-      // Read existing data from KV
-      const existingData = await kv.get('nametags');
-      const parsed = existingData || { users: [], lastUpdated: null };
+      // Read existing data from JSONBlob
+      let parsed = { users: [], lastUpdated: null };
+      
+      if (JSONBLOB_ID) {
+        try {
+          const readResponse = await fetch(`https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`);
+          
+          if (readResponse.ok) {
+            parsed = await readResponse.json();
+          }
+        } catch (e) {
+          console.log('[DEBUG] No existing data found, starting fresh');
+        }
+      }
       
       // Check if user already exists and update, or add new
       const existingIndex = parsed.users.findIndex(u => u.userId === userId);
@@ -73,15 +104,47 @@ module.exports = async function handler(req, res) {
       
       parsed.lastUpdated = new Date().toISOString();
       
-      // Write updated data to KV
-      await kv.set('nametags', parsed);
+      // Write updated data to JSONBlob
+      let blobId = JSONBLOB_ID;
       
-      console.log('[DEBUG] Successfully wrote nametag data to KV');
+      if (blobId) {
+        // Update existing blob
+        const writeResponse = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(parsed)
+        });
+        
+        if (!writeResponse.ok) {
+          throw new Error(`Failed to update JSONBlob: ${writeResponse.status}`);
+        }
+      } else {
+        // Create new blob
+        const createResponse = await fetch('https://jsonblob.com/api/jsonBlob', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(parsed)
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error(`Failed to create JSONBlob: ${createResponse.status}`);
+        }
+        
+        blobId = createResponse.headers.get('Location')?.split('/').pop();
+        console.log('[ DEBUG] Created new JSONBlob with ID:', blobId);
+      }
+      
+      console.log('[DEBUG] Successfully wrote nametag data to JSONBlob');
       
       return res.status(200).json({
         success: true,
         message: existingIndex >= 0 ? 'User updated' : 'User added',
-        data: userData
+        data: userData,
+        blobId: blobId
       });
     } else {
       return res.status(405).json({
