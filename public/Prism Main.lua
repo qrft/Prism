@@ -148,7 +148,7 @@ local function createNametag()
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 9999
+    billboard.MaxDistance = 1000
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
     local bgFrame = Instance.new("Frame")
@@ -312,7 +312,7 @@ local function createOtherNametag(plrObj)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 9999
+    billboard.MaxDistance = 50
     
     local bgFrame = Instance.new("Frame")
     bgFrame.Name = "BgFrame"
