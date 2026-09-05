@@ -5,22 +5,14 @@
     headsit player
     backpack player
     face bang player
-    doggy player
-    drag player
-    bang player
-    stand player
-    view player friends
-    view player inventory
-    animation packs
-    animation replacer
+    animation replacer / packs
     animation cloning
-    shaders (with presets / time of day control / all axons shader controls)
-    reanim (maybe)
-    anti admin
-    anti headsit / facebang / etc
-    nametags
+    shaders
     join other prism users
+    make infinite baseplate spawn at feet
     better vcbypasser
+    unload
+    fakeout
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua

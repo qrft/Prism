@@ -544,7 +544,6 @@ local function getUserInfo()
     end
     
     local jobId = game.JobId
-    local serverId = jobId
     local userId = player.UserId
     local username = player.Name
     local displayName = player.DisplayName or username
@@ -553,8 +552,7 @@ local function getUserInfo()
         username = username,
         displayName = displayName,
         userId = tostring(userId),
-        jobId = jobId ~= "" and jobId or "unknown",
-        serverId = serverId ~= "" and serverId or "unknown"
+        jobId = jobId ~= "" and jobId or "unknown"
     }
 end
 
