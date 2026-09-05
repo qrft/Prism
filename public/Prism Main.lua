@@ -170,9 +170,6 @@ local function createNametag()
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    billboard.ClipsDescendants = false
-    billboard.LightInfluence = 1
-    billboard.ResetOnSpawn = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
@@ -235,14 +232,24 @@ local function createNametag()
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
     nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
         if bgGradient and bgGradient.Parent then
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
-        
-        -- Update Enabled state
-        billboard.Enabled = nametagEnabled
         
         -- Track head
         local currentHead = player.Character and player.Character:FindFirstChild("Head")
@@ -320,9 +327,6 @@ local function createOtherNametag(plrObj)
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Active = true
-    billboard.ClipsDescendants = false
-    billboard.LightInfluence = 1
-    billboard.ResetOnSpawn = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     local bgFrame = Instance.new("Frame")
@@ -418,16 +422,12 @@ local function createOtherNametag(plrObj)
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
-        -- Update Enabled state
-        billboard.Enabled = nametagEnabled
-        
         -- Track head
         local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
         if targetHead then
             billboard.Adornee = targetHead
         end
         
-        -- Distance-based visibility (no size tweening)
         local myChar = PM.Svc.Players.LocalPlayer.Character
         local targetChar = plrObj.Character
         if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
@@ -439,6 +439,12 @@ local function createOtherNametag(plrObj)
             displayNameLabel.Visible = not isFar
             usernameLabel.Visible = not isFar
             smallLabel.Visible = isFar
+            
+            if isFar then
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
+            else
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
+            end
         end
     end)
     
@@ -498,12 +504,11 @@ local function updateOtherNametags()
     local data = readFromAPI()
     if not data or not data.users then return end
     
-    local myJobId = game.JobId
     local myUserId = PM.Svc.Players.LocalPlayer.UserId
     
     local prismUsers = {}
     for _, user in ipairs(data.users) do
-        if user.jobId == myJobId and tostring(user.userId) ~= tostring(myUserId) then
+        if tostring(user.userId) ~= tostring(myUserId) then
             prismUsers[user.userId] = user
         end
     end
@@ -537,7 +542,6 @@ local function getUserInfo()
         return nil
     end
     
-    local jobId = game.JobId
     local userId = player.UserId
     local username = player.Name
     local displayName = player.DisplayName or username
@@ -545,8 +549,7 @@ local function getUserInfo()
     return {
         username = username,
         displayName = displayName,
-        userId = tostring(userId),
-        jobId = jobId ~= "" and jobId or "unknown"
+        userId = tostring(userId)
     }
 end
 
