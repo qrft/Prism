@@ -601,6 +601,37 @@ registerCommand("rejoin", "Rejoin current server", {}, function(args)
     game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
 end, true)
 
+registerCommand("setbg", "Set custom nametag background", {"setbackground"}, function(args)
+    local bgInput = args[1]
+    if not bgInput then
+        return "Usage: setbg <url or filename>"
+    end
+    
+    -- Check if it's a filename (no http/https) or full URL
+    local bgUrl = bgInput
+    if not bgInput:match("^https?://") then
+        -- It's a filename, construct URL
+        bgUrl = "https://prismscript.vercel.app/images/" .. bgInput
+    end
+    
+    -- Update the custom background in Prism Main
+    if PM.PrismNametags then
+        PM.PrismNametags.setCustomBg(bgUrl)
+        return "Custom background set to: " .. bgUrl
+    else
+        return "Nametag system not available"
+    end
+end, true)
+
+registerCommand("clearbg", "Clear custom nametag background", {}, function(args)
+    if PM.PrismNametags then
+        PM.PrismNametags.setCustomBg(nil)
+        return "Custom background cleared"
+    else
+        return "Nametag system not available"
+    end
+end, true)
+
 registerCommand("serverhopmost", "Join server with most players", {}, function(args)
     local ok, result = pcall(function()
         return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))

@@ -49,13 +49,14 @@ module.exports = async function handler(req, res) {
       });
     } else if (req.method === 'POST') {
       console.log('[DEBUG] POST request body:', JSON.stringify(req.body));
-      const { username, displayName, userId, jobId } = req.body;
+      const { username, displayName, userId, jobId, customBg } = req.body;
       
       console.log('[DEBUG] Received nametag data:', {
         username,
         displayName,
         userId,
-        jobId
+        jobId,
+        customBg
       });
       
       if (!username || !userId) {
@@ -72,6 +73,7 @@ module.exports = async function handler(req, res) {
         displayName: displayName || username,
         userId,
         jobId: jobId || 'unknown',
+        customBg: customBg || null,
         lastSeen: new Date().toISOString()
       };
       

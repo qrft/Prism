@@ -18,6 +18,2331 @@ local LP = PM.Svc.Players.LocalPlayer
 
 local HttpService = game:GetService("HttpService")
 
+-- PNG Decoder Library
+local function DecodePng(PngData: buffer)
+	--!optimize 2
+	--!native
+	--!strict
+
+	type InflateHuffman = {
+		Lookup: buffer,
+	}
+
+	type DecodedPng = {
+		Animated: boolean,
+		Size: Vector2,
+		RGBA8: buffer,
+		Frame: buffer,
+		AdvanceFrame: () -> (),
+		Reset: () -> (),
+		Finished: boolean,
+		Delay: number,
+	}
+
+	type PngFrame = {
+		Width: number,
+		Height: number,
+		XOffset: number,
+		YOffset: number,
+		DelayNumerator: number,
+		DelayDenominator: number,
+		DisposeOp: number,
+		BlendOp: number,
+		DataOffsets: { [number]: number },
+		DataLengths: { [number]: number },
+		DataLength: number,
+		DataFromIdat: boolean,
+		Pixels: buffer,
+	}
+
+	type PngState = {
+		Width: number,
+		Height: number,
+		Frames: { PngFrame },
+		PlayCount: number,
+		CompletedPlays: number,
+		Canvas: buffer,
+		CurrentFrameIndex: number,
+		RestoreBuffer: buffer?,
+		RestoreX: number,
+		RestoreY: number,
+		RestoreWidth: number,
+		RestoreHeight: number,
+		Result: DecodedPng?,
+	}
+
+	local EmptyInflateData = buffer.create(0)
+	local MaxLookupBits = 15
+	local HuffmanLookupSize = 32768
+	local AdlerBase = 65521
+	local MaxMetadataInflateBytes = 16777216
+
+	local PngSignature0 = 0x89
+	local PngSignature1 = 0x50
+	local PngSignature2 = 0x4e
+	local PngSignature3 = 0x47
+	local PngSignature4 = 0x0d
+	local PngSignature5 = 0x0a
+	local PngSignature6 = 0x1a
+	local PngSignature7 = 0x0a
+
+	local ChunkIHDR = 0x49484452
+	local ChunkPLTE = 0x504c5445
+	local ChunkIDAT = 0x49444154
+	local ChunkIEND = 0x49454e44
+	local ChunkTRNS = 0x74524e53
+	local ChunkACTL = 0x6163544c
+	local ChunkFCTL = 0x6663544c
+	local ChunkFDAT = 0x66644154
+	local ChunkSRGB = 0x73524742
+	local ChunkGAMA = 0x67414d41
+	local ChunkCHRM = 0x6348524d
+	local ChunkICCP = 0x69434350
+	local ChunkSBIT = 0x73424954
+	local ChunkBKGD = 0x624b4744
+	local ChunkPHYS = 0x70485973
+	local ChunkHIST = 0x68495354
+	local ChunkTIME = 0x74494d45
+	local ChunkTEXT = 0x74455874
+	local ChunkZTXT = 0x7a545874
+	local ChunkITXT = 0x69545874
+	local ChunkCICP = 0x63494350
+	local ChunkEXIF = 0x65584966
+	local ChunkSPLT = 0x73504c54
+	local ChunkOFFS = 0x6f464673
+	local ChunkGIFG = 0x67494667
+	local ChunkGIFX = 0x67494678
+	local ChunkSTER = 0x73544552
+
+	local MaxOutputBytes = 2147483647
+
+	local Adam7StartX = {0, 4, 0, 2, 0, 1, 0}
+	local Adam7StartY = {0, 0, 4, 0, 2, 0, 1}
+	local Adam7StepX = {8, 8, 4, 4, 2, 2, 1}
+	local Adam7StepY = {8, 8, 8, 4, 4, 2, 2}
+	local CodeLengthOrder = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15}
+	local LengthBase = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258}
+	local LengthExtra = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0}
+	local DistanceBase = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577}
+	local DistanceExtra = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13}
+
+	local BitPowers = {}
+	for i = 0, 32 do
+		BitPowers[i] = 2 ^ i
+	end
+
+	local CrcTable = buffer.create(1024)
+	local CrcTable1 = buffer.create(1024)
+	local CrcTable2 = buffer.create(1024)
+	local CrcTable3 = buffer.create(1024)
+	local CrcTable4 = buffer.create(1024)
+	local CrcTable5 = buffer.create(1024)
+	local CrcTable6 = buffer.create(1024)
+	local CrcTable7 = buffer.create(1024)
+
+	for Index = 0, 255 do
+		local Crc = Index
+		for _ = 1, 8 do
+			if bit32.btest(Crc, 1) then
+				Crc = bit32.bxor(bit32.rshift(Crc, 1), 0xedb88320)
+			else
+				Crc = bit32.rshift(Crc, 1)
+			end
+		end
+		buffer.writeu32(CrcTable, Index * 4, Crc)
+	end
+
+	for Index = 0, 255 do
+		local Crc = buffer.readu32(CrcTable, Index * 4)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable1, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable2, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable3, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable4, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable5, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable6, Index * 4, Crc)
+		Crc = bit32.bxor(bit32.rshift(Crc, 8), buffer.readu32(CrcTable, bit32.band(Crc, 0xff) * 4))
+		buffer.writeu32(CrcTable7, Index * 4, Crc)
+	end
+
+	local InflateData = EmptyInflateData
+	local InflateLength = 0
+	local InflatePos = 0
+	local InflateBits = 0
+	local InflateBitCount = 0
+	local InflateOutput = EmptyInflateData
+	local InflateOutputPos = 0
+	local InflateOutputLength = 0
+
+	local FixedLiteralLengths = buffer.create(288)
+	local FixedDistanceLengths = buffer.create(32)
+
+	for Symbol = 0, 143 do
+		buffer.writeu8(FixedLiteralLengths, Symbol, 8)
+	end
+	for Symbol = 144, 255 do
+		buffer.writeu8(FixedLiteralLengths, Symbol, 9)
+	end
+	for Symbol = 256, 279 do
+		buffer.writeu8(FixedLiteralLengths, Symbol, 7)
+	end
+	for Symbol = 280, 287 do
+		buffer.writeu8(FixedLiteralLengths, Symbol, 8)
+	end
+	for Symbol = 0, 31 do
+		buffer.writeu8(FixedDistanceLengths, Symbol, 5)
+	end
+
+	local function ReadU32BE(Data: buffer, Offset: number): number
+		return bit32.byteswap(buffer.readu32(Data, Offset))
+	end
+
+	local function ReadU16BE(Data: buffer, Offset: number): number
+		return bit32.rshift(bit32.byteswap(buffer.readu16(Data, Offset)), 16)
+	end
+
+	local function SliceBuffer(Data: buffer, Offset: number, Count: number): buffer
+		local Result = buffer.create(Count)
+		buffer.copy(Result, 0, Data, Offset, Count)
+		return Result
+	end
+
+	local function IsChunkNameByte(Value: number): boolean
+		return (Value >= 0x41 and Value <= 0x5a) or (Value >= 0x61 and Value <= 0x7a)
+	end
+
+	local function ValidateChunkName(Data: buffer, Offset: number)
+		local Byte0 = buffer.readu8(Data, Offset)
+		local Byte1 = buffer.readu8(Data, Offset + 1)
+		local Byte2 = buffer.readu8(Data, Offset + 2)
+		local Byte3 = buffer.readu8(Data, Offset + 3)
+		if not IsChunkNameByte(Byte0) or not IsChunkNameByte(Byte1) or not IsChunkNameByte(Byte2) or not IsChunkNameByte(Byte3) then
+			error("invalid PNG chunk name")
+		end
+		if bit32.btest(Byte2, 32) then
+			error("invalid PNG chunk reserved bit")
+		end
+	end
+
+	local function IsCriticalChunk(Data: buffer, Offset: number): boolean
+		return bit32.band(buffer.readu8(Data, Offset), 32) == 0
+	end
+
+	local function Crc32(Data: buffer, TypeOffset: number, DataOffset: number, DataLength: number): number
+		local Lookup = CrcTable
+		local Lookup1 = CrcTable1
+		local Lookup2 = CrcTable2
+		local Lookup3 = CrcTable3
+		local Lookup4 = CrcTable4
+		local Lookup5 = CrcTable5
+		local Lookup6 = CrcTable6
+		local Lookup7 = CrcTable7
+		local Crc = 0xffffffff
+		local DataEnd = DataOffset + DataLength
+		local TotalLength = DataLength + 4
+		local DataBlockEnd8 = DataEnd - bit32.band(TotalLength, 7)
+		local Offset = TypeOffset
+		while Offset < DataBlockEnd8 do
+			local Word0 = bit32.bxor(Crc, buffer.readu32(Data, Offset))
+			local Word1 = buffer.readu32(Data, Offset + 4)
+			Crc = bit32.bxor(
+				buffer.readu32(Lookup7, bit32.band(Word0, 0xff) * 4),
+				buffer.readu32(Lookup6, bit32.band(bit32.rshift(Word0, 8), 0xff) * 4),
+				buffer.readu32(Lookup5, bit32.band(bit32.rshift(Word0, 16), 0xff) * 4),
+				buffer.readu32(Lookup4, bit32.rshift(Word0, 24) * 4),
+				buffer.readu32(Lookup3, bit32.band(Word1, 0xff) * 4),
+				buffer.readu32(Lookup2, bit32.band(bit32.rshift(Word1, 8), 0xff) * 4),
+				buffer.readu32(Lookup1, bit32.band(bit32.rshift(Word1, 16), 0xff) * 4),
+				buffer.readu32(Lookup, bit32.rshift(Word1, 24) * 4)
+			)
+			Offset = Offset + 8
+		end
+		if Offset + 4 <= DataEnd then
+			Crc = bit32.bxor(Crc, buffer.readu32(Data, Offset))
+			Crc = bit32.bxor(
+				buffer.readu32(Lookup3, bit32.band(Crc, 0xff) * 4),
+				buffer.readu32(Lookup2, bit32.band(bit32.rshift(Crc, 8), 0xff) * 4),
+				buffer.readu32(Lookup1, bit32.band(bit32.rshift(Crc, 16), 0xff) * 4),
+				buffer.readu32(Lookup, bit32.rshift(Crc, 24) * 4)
+			)
+			Offset = Offset + 4
+		end
+		for TailOffset = Offset, DataEnd - 1 do
+			local TableIndex = bit32.band(bit32.bxor(Crc, buffer.readu8(Data, TailOffset)), 0xff) * 4
+			Crc = bit32.bxor(buffer.readu32(Lookup, TableIndex), bit32.rshift(Crc, 8))
+		end
+		return bit32.bxor(Crc, 0xffffffff)
+	end
+
+	local function ReverseBits(Value: number, Count: number): number
+		local Result = 0
+		for _ = 1, Count do
+			Result = Result * 2 + bit32.band(Value, 1)
+			Value = bit32.rshift(Value, 1)
+		end
+		return Result
+	end
+
+	local function BuildInflateHuffman(Lengths: buffer, SymbolCount: number, StartIndex: number): InflateHuffman
+		local CountByLength = buffer.create((MaxLookupBits + 1) * 2)
+		local NextCode = buffer.create((MaxLookupBits + 1) * 4)
+		local Lookup = buffer.create(HuffmanLookupSize * 4)
+		local Code = 0
+		for Symbol = 0, SymbolCount - 1 do
+			local Length = buffer.readu8(Lengths, StartIndex + Symbol)
+			if Length > MaxLookupBits then
+				error("invalid deflate Huffman length")
+			end
+			if Length > 0 then
+				local CountOffset = Length * 2
+				buffer.writeu16(CountByLength, CountOffset, buffer.readu16(CountByLength, CountOffset) + 1)
+			end
+		end
+		local RemainingCodes = 1
+		for Length = 1, MaxLookupBits do
+			RemainingCodes = RemainingCodes * 2 - buffer.readu16(CountByLength, Length * 2)
+			if RemainingCodes < 0 then
+				error("oversubscribed deflate Huffman table")
+			end
+			Code = (Code + buffer.readu16(CountByLength, (Length - 1) * 2)) * 2
+			buffer.writeu32(NextCode, Length * 4, Code)
+		end
+		for Symbol = 0, SymbolCount - 1 do
+			local Length = buffer.readu8(Lengths, StartIndex + Symbol)
+			if Length > 0 then
+				local NextCodeOffset = Length * 4
+				local CurrentCode = buffer.readu32(NextCode, NextCodeOffset)
+				local ReversedCode = ReverseBits(CurrentCode, Length)
+				local Stride = BitPowers[Length]
+				local Replications = HuffmanLookupSize // Stride
+				local Entry = Symbol + Length * 65536
+				buffer.writeu32(NextCode, NextCodeOffset, CurrentCode + 1)
+				for Repeat = 0, Replications - 1 do
+					local LookupIndex = ReversedCode + Repeat * Stride
+					buffer.writeu32(Lookup, LookupIndex * 4, Entry)
+				end
+			end
+		end
+		return {Lookup = Lookup}
+	end
+
+	local FixedLiteralHuffman = BuildInflateHuffman(FixedLiteralLengths, 288, 0)
+	local FixedDistanceHuffman = BuildInflateHuffman(FixedDistanceLengths, 32, 0)
+
+	local function EnsureInflateBits(Count: number)
+		while InflateBitCount < Count and InflatePos < InflateLength do
+			InflateBits = InflateBits + bit32.lshift(buffer.readu8(InflateData, InflatePos), InflateBitCount)
+			InflateBitCount = InflateBitCount + 8
+			InflatePos = InflatePos + 1
+		end
+	end
+
+	local function ReadInflateBits(Count: number): number
+		EnsureInflateBits(Count)
+		if InflateBitCount < Count then
+			error("unexpected end of deflate data")
+		end
+		local Value = bit32.band(InflateBits, BitPowers[Count] - 1)
+		InflateBits = bit32.rshift(InflateBits, Count)
+		InflateBitCount = InflateBitCount - Count
+		return Value
+	end
+
+	local function DecodeInflateSymbol(Huffman: InflateHuffman): number
+		EnsureInflateBits(MaxLookupBits)
+		local LookupIndex = bit32.band(InflateBits, HuffmanLookupSize - 1)
+		local Entry = buffer.readu32(Huffman.Lookup, LookupIndex * 4)
+		local Length = bit32.rshift(Entry, 16)
+		if Length == 0 or Length > InflateBitCount then
+			error("invalid deflate Huffman code")
+		end
+		local Symbol = bit32.band(Entry, 0xffff)
+		InflateBits = bit32.rshift(InflateBits, Length)
+		InflateBitCount = InflateBitCount - Length
+		return Symbol
+	end
+
+	local function WriteInflateByte(Value: number)
+		if InflateOutputPos >= InflateOutputLength then
+			error("deflate output exceeds expected size")
+		end
+		buffer.writeu8(InflateOutput, InflateOutputPos, Value)
+		InflateOutputPos = InflateOutputPos + 1
+	end
+
+	local function DecodeUncompressedBlock()
+		local DropBits = InflateBitCount % 8
+		if DropBits > 0 then
+			ReadInflateBits(DropBits)
+		end
+		local Length = ReadInflateBits(16)
+		local Check = ReadInflateBits(16)
+		if bit32.bxor(Length, 0xffff) ~= Check then
+			error("invalid deflate uncompressed length")
+		end
+		if InflateOutputPos + Length > InflateOutputLength then
+			error("invalid deflate uncompressed block size")
+		end
+		if InflateBitCount == 0 and InflatePos + Length <= InflateLength then
+			buffer.copy(InflateOutput, InflateOutputPos, InflateData, InflatePos, Length)
+			InflatePos = InflatePos + Length
+			InflateOutputPos = InflateOutputPos + Length
+		else
+			for _ = 1, Length do
+				WriteInflateByte(ReadInflateBits(8))
+			end
+		end
+	end
+
+	local function DecodeCompressedBlock(LiteralHuffman: InflateHuffman, DistanceHuffman: InflateHuffman)
+		while true do
+			local Symbol = DecodeInflateSymbol(LiteralHuffman)
+			if Symbol < 256 then
+				if InflateOutputPos >= InflateOutputLength then
+					error("deflate output exceeds expected size")
+				end
+				buffer.writeu8(InflateOutput, InflateOutputPos, Symbol)
+				InflateOutputPos = InflateOutputPos + 1
+			elseif Symbol == 256 then
+				break
+			elseif Symbol <= 285 then
+				local LengthIndex = Symbol - 257 + 1
+				local CopyLength = LengthBase[LengthIndex]
+				local LengthExtraBits = LengthExtra[LengthIndex]
+				if LengthExtraBits > 0 then
+					CopyLength = CopyLength + ReadInflateBits(LengthExtraBits)
+				end
+				local DistanceSymbol = DecodeInflateSymbol(DistanceHuffman)
+				if DistanceSymbol > 29 then
+					error("invalid deflate distance symbol")
+				end
+				local CopyDistance = DistanceBase[DistanceSymbol + 1]
+				local DistanceExtraBits = DistanceExtra[DistanceSymbol + 1]
+				if DistanceExtraBits > 0 then
+					CopyDistance = CopyDistance + ReadInflateBits(DistanceExtraBits)
+				end
+				if CopyDistance > InflateOutputPos then
+					error("invalid deflate distance")
+				end
+				if InflateOutputPos + CopyLength > InflateOutputLength then
+					error("deflate output exceeds expected size")
+				end
+				if CopyDistance == 1 then
+					buffer.fill(InflateOutput, InflateOutputPos, buffer.readu8(InflateOutput, InflateOutputPos - 1), CopyLength)
+					InflateOutputPos = InflateOutputPos + CopyLength
+				elseif CopyDistance >= CopyLength then
+					buffer.copy(InflateOutput, InflateOutputPos, InflateOutput, InflateOutputPos - CopyDistance, CopyLength)
+					InflateOutputPos = InflateOutputPos + CopyLength
+				else
+					for _ = 1, CopyLength do
+						buffer.writeu8(InflateOutput, InflateOutputPos, buffer.readu8(InflateOutput, InflateOutputPos - CopyDistance))
+						InflateOutputPos = InflateOutputPos + 1
+					end
+				end
+			else
+				error("invalid deflate literal symbol")
+			end
+		end
+	end
+
+	local function DecodeDynamicBlock()
+		local LiteralCount = ReadInflateBits(5) + 257
+		local DistanceCount = ReadInflateBits(5) + 1
+		local CodeLengthCount = ReadInflateBits(4) + 4
+		if LiteralCount > 286 then
+			error("invalid deflate literal count")
+		end
+		local CodeLengthLengths = buffer.create(19)
+		local Lengths = buffer.create(LiteralCount + DistanceCount)
+		for Index = 1, CodeLengthCount do
+			buffer.writeu8(CodeLengthLengths, CodeLengthOrder[Index], ReadInflateBits(3))
+		end
+		local CodeLengthHuffman = BuildInflateHuffman(CodeLengthLengths, 19, 0)
+		local Index = 0
+		local PreviousLength = 0
+		while Index < LiteralCount + DistanceCount do
+			local Symbol = DecodeInflateSymbol(CodeLengthHuffman)
+			if Symbol <= 15 then
+				buffer.writeu8(Lengths, Index, Symbol)
+				PreviousLength = Symbol
+				Index = Index + 1
+			elseif Symbol == 16 then
+				if Index == 0 then
+					error("invalid deflate repeat length")
+				end
+				local RepeatCount = ReadInflateBits(2) + 3
+				for _ = 1, RepeatCount do
+					if Index >= LiteralCount + DistanceCount then
+						error("deflate repeat exceeds table")
+					end
+					buffer.writeu8(Lengths, Index, PreviousLength)
+					Index = Index + 1
+				end
+			elseif Symbol == 17 then
+				local RepeatCount = ReadInflateBits(3) + 3
+				PreviousLength = 0
+				for _ = 1, RepeatCount do
+					if Index >= LiteralCount + DistanceCount then
+						error("deflate repeat exceeds table")
+					end
+					buffer.writeu8(Lengths, Index, 0)
+					Index = Index + 1
+				end
+			elseif Symbol == 18 then
+				local RepeatCount = ReadInflateBits(7) + 11
+				PreviousLength = 0
+				for _ = 1, RepeatCount do
+					if Index >= LiteralCount + DistanceCount then
+						error("deflate repeat exceeds table")
+					end
+					buffer.writeu8(Lengths, Index, 0)
+					Index = Index + 1
+				end
+			else
+				error("invalid deflate code length symbol")
+			end
+		end
+		if buffer.readu8(Lengths, 256) == 0 then
+			error("missing deflate end code")
+		end
+		DecodeCompressedBlock(BuildInflateHuffman(Lengths, LiteralCount, 0), BuildInflateHuffman(Lengths, DistanceCount, LiteralCount))
+	end
+
+	local function InflateZlibInternal(Compressed: buffer, Start: number, Length: number, OutputLimit: number, ExactLength: number): buffer
+		if Length < 6 then
+			error("truncated zlib data")
+		end
+		if OutputLimit > MaxOutputBytes then
+			error("zlib output too large")
+		end
+		local CompressionMethod = buffer.readu8(Compressed, Start)
+		local Flags = buffer.readu8(Compressed, Start + 1)
+		if bit32.band(CompressionMethod, 15) ~= 8 or bit32.rshift(CompressionMethod, 4) > 7 then
+			error("unsupported zlib compression method")
+		end
+		if (CompressionMethod * 256 + Flags) % 31 ~= 0 then
+			error("invalid zlib header check")
+		end
+		if bit32.btest(Flags, 32) then
+			error("zlib preset dictionaries are not supported")
+		end
+		InflateData = Compressed
+		InflateLength = Start + Length - 4
+		InflatePos = Start + 2
+		InflateBits = 0
+		InflateBitCount = 0
+		InflateOutput = buffer.create(OutputLimit)
+		InflateOutputLength = OutputLimit
+		InflateOutputPos = 0
+		local FinalBlock = false
+		while not FinalBlock do
+			FinalBlock = ReadInflateBits(1) == 1
+			local BlockType = ReadInflateBits(2)
+			if BlockType == 0 then
+				DecodeUncompressedBlock()
+			elseif BlockType == 1 then
+				DecodeCompressedBlock(FixedLiteralHuffman, FixedDistanceHuffman)
+			elseif BlockType == 2 then
+				DecodeDynamicBlock()
+			else
+				error("invalid deflate block type")
+			end
+		end
+		if InflatePos < InflateLength or InflateBitCount >= 8 then
+			error("trailing zlib deflate data")
+		end
+		if ExactLength >= 0 and InflateOutputPos ~= ExactLength then
+			error("deflate output length mismatch")
+		end
+		local S1 = 1
+		local S2 = 0
+		local AdlerOffset = 0
+		local RemainingAdlerBytes = InflateOutputPos
+		while RemainingAdlerBytes >= 5552 do
+			RemainingAdlerBytes = RemainingAdlerBytes - 5552
+			for _ = 1, 347 do
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+			end
+			S1 = S1 % AdlerBase
+			S2 = S2 % AdlerBase
+		end
+		while RemainingAdlerBytes >= 16 do
+			RemainingAdlerBytes = RemainingAdlerBytes - 16
+			for _ = 1, 16 do
+				S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+				S2 = S2 + S1
+				AdlerOffset = AdlerOffset + 1
+			end
+		end
+		while RemainingAdlerBytes > 0 do
+			S1 = S1 + buffer.readu8(InflateOutput, AdlerOffset)
+			S2 = S2 + S1
+			AdlerOffset = AdlerOffset + 1
+			RemainingAdlerBytes = RemainingAdlerBytes - 1
+		end
+		S1 = S1 % AdlerBase
+		S2 = S2 % AdlerBase
+		local ActualAdler = S2 * 65536 + S1
+		local ExpectedAdler = ReadU32BE(Compressed, Start + Length - 4)
+		if ActualAdler ~= ExpectedAdler then
+			error("invalid zlib Adler32")
+		end
+		local Output = InflateOutput
+		if InflateOutputPos ~= OutputLimit then
+			Output = buffer.create(InflateOutputPos)
+			buffer.copy(Output, 0, InflateOutput, 0, InflateOutputPos)
+		end
+		InflateData = EmptyInflateData
+		InflateLength = 0
+		InflatePos = 0
+		InflateBits = 0
+		InflateBitCount = 0
+		InflateOutput = EmptyInflateData
+		InflateOutputPos = 0
+		InflateOutputLength = 0
+		return Output
+	end
+
+	local function InflateZlib(Compressed: buffer, ExpectedLength: number): buffer
+		return InflateZlibInternal(Compressed, 0, buffer.len(Compressed), ExpectedLength, ExpectedLength)
+	end
+
+	local function ValidateColorType(ColorType: number, BitDepth: number): number
+		if ColorType == 0 then
+			if BitDepth == 1 or BitDepth == 2 or BitDepth == 4 or BitDepth == 8 or BitDepth == 16 then
+				return 1
+			end
+		elseif ColorType == 2 then
+			if BitDepth == 8 or BitDepth == 16 then
+				return 3
+			end
+		elseif ColorType == 3 then
+			if BitDepth == 1 or BitDepth == 2 or BitDepth == 4 or BitDepth == 8 then
+				return 1
+			end
+		elseif ColorType == 4 then
+			if BitDepth == 8 or BitDepth == 16 then
+				return 2
+			end
+		elseif ColorType == 6 then
+			if BitDepth == 8 or BitDepth == 16 then
+				return 4
+			end
+		end
+		error("unsupported PNG color type or bit depth")
+		return 0
+	end
+
+	local function PassSize(Size: number, Start: number, Step: number): number
+		if Size <= Start then
+			return 0
+		end
+		return math.floor((Size - Start + Step - 1) / Step)
+	end
+
+	local function Paeth(Left: number, Up: number, UpLeft: number): number
+		local Estimate = Left + Up - UpLeft
+		local LeftDistance = Estimate - Left
+		local UpDistance = Estimate - Up
+		local UpLeftDistance = Estimate - UpLeft
+		if LeftDistance < 0 then
+			LeftDistance = -LeftDistance
+		end
+		if UpDistance < 0 then
+			UpDistance = -UpDistance
+		end
+		if UpLeftDistance < 0 then
+			UpLeftDistance = -UpLeftDistance
+		end
+		if LeftDistance <= UpDistance and LeftDistance <= UpLeftDistance then
+			return Left
+		elseif UpDistance <= UpLeftDistance then
+			return Up
+		end
+		return UpLeft
+	end
+
+	local function ReconstructRow(Inflated: buffer, InflatedOffset: number, CurrentRow: buffer, PreviousRow: buffer, RowBytes: number, FilterBpp: number): number
+		local Filter = buffer.readu8(Inflated, InflatedOffset)
+		InflatedOffset = InflatedOffset + 1
+		if Filter == 0 then
+			buffer.copy(CurrentRow, 0, Inflated, InflatedOffset, RowBytes)
+		elseif Filter == 1 then
+			local InitialBytes = FilterBpp
+			if InitialBytes > RowBytes then
+				InitialBytes = RowBytes
+			end
+			buffer.copy(CurrentRow, 0, Inflated, InflatedOffset, InitialBytes)
+			for Index = FilterBpp, RowBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + buffer.readu8(CurrentRow, Index - FilterBpp))
+			end
+		elseif Filter == 2 then
+			for Index = 0, RowBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + buffer.readu8(PreviousRow, Index))
+			end
+		elseif Filter == 3 then
+			local InitialBytes = FilterBpp
+			if InitialBytes > RowBytes then
+				InitialBytes = RowBytes
+			end
+			for Index = 0, InitialBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + math.floor(buffer.readu8(PreviousRow, Index) / 2))
+			end
+			for Index = FilterBpp, RowBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + math.floor((buffer.readu8(CurrentRow, Index - FilterBpp) + buffer.readu8(PreviousRow, Index)) / 2))
+			end
+		elseif Filter == 4 then
+			local InitialBytes = FilterBpp
+			if InitialBytes > RowBytes then
+				InitialBytes = RowBytes
+			end
+			for Index = 0, InitialBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + buffer.readu8(PreviousRow, Index))
+			end
+			for Index = FilterBpp, RowBytes - 1 do
+				buffer.writeu8(CurrentRow, Index, buffer.readu8(Inflated, InflatedOffset + Index) + Paeth(buffer.readu8(CurrentRow, Index - FilterBpp), buffer.readu8(PreviousRow, Index), buffer.readu8(PreviousRow, Index - FilterBpp)))
+			end
+		else
+			error("invalid PNG filter")
+		end
+		return InflatedOffset + RowBytes
+	end
+
+	local function DecodeRgba8NonInterlaced(Inflated: buffer, Width: number, Height: number): buffer
+		local RowBytes = Width * 4
+		local Output = buffer.create(RowBytes * Height)
+		local InflatedOffset = 0
+		for Y = 0, Height - 1 do
+			local Filter = buffer.readu8(Inflated, InflatedOffset)
+			InflatedOffset = InflatedOffset + 1
+			local OutputOffset = Y * RowBytes
+			local PreviousOffset = OutputOffset - RowBytes
+			if Filter == 0 then
+				buffer.copy(Output, OutputOffset, Inflated, InflatedOffset, RowBytes)
+			elseif Filter == 1 or (Filter == 4 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				local LeftAlpha = 0
+				for _ = 1, Width do
+					LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + LeftRed, 0xff)
+					LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + LeftGreen, 0xff)
+					LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + LeftBlue, 0xff)
+					LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 3) + LeftAlpha, 0xff)
+					buffer.writeu32(Output, TargetOffset, LeftRed + LeftGreen * 256 + LeftBlue * 65536 + LeftAlpha * 16777216)
+					SourceOffset = SourceOffset + 4
+					TargetOffset = TargetOffset + 4
+				end
+			elseif Filter == 2 then
+				if Y == 0 then
+					buffer.copy(Output, OutputOffset, Inflated, InflatedOffset, RowBytes)
+				else
+					local SourceOffset = InflatedOffset
+					local TargetOffset = OutputOffset
+					local UpOffset = PreviousOffset
+					for _ = 1, Width do
+						local Red = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+						local Green = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + buffer.readu8(Output, UpOffset + 1), 0xff)
+						local Blue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + buffer.readu8(Output, UpOffset + 2), 0xff)
+						local Alpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 3) + buffer.readu8(Output, UpOffset + 3), 0xff)
+						buffer.writeu32(Output, TargetOffset, Red + Green * 256 + Blue * 65536 + Alpha * 16777216)
+						SourceOffset = SourceOffset + 4
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 3 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				local LeftAlpha = 0
+				if Y == 0 then
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(LeftRed / 2), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor(LeftGreen / 2), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor(LeftBlue / 2), 0xff)
+						LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 3) + math.floor(LeftAlpha / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, LeftRed + LeftGreen * 256 + LeftBlue * 65536 + LeftAlpha * 16777216)
+						SourceOffset = SourceOffset + 4
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((LeftRed + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor((LeftGreen + buffer.readu8(Output, UpOffset + 1)) / 2), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor((LeftBlue + buffer.readu8(Output, UpOffset + 2)) / 2), 0xff)
+						LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 3) + math.floor((LeftAlpha + buffer.readu8(Output, UpOffset + 3)) / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, LeftRed + LeftGreen * 256 + LeftBlue * 65536 + LeftAlpha * 16777216)
+						SourceOffset = SourceOffset + 4
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 4 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local UpLeftRed = 0
+				local UpLeftGreen = 0
+				local UpLeftBlue = 0
+				local UpLeftAlpha = 0
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				local LeftAlpha = 0
+				for _ = 1, Width do
+					local UpRed = buffer.readu8(Output, UpOffset)
+					local UpGreen = buffer.readu8(Output, UpOffset + 1)
+					local UpBlue = buffer.readu8(Output, UpOffset + 2)
+					local UpAlpha = buffer.readu8(Output, UpOffset + 3)
+					LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(LeftRed, UpRed, UpLeftRed), 0xff)
+					LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + Paeth(LeftGreen, UpGreen, UpLeftGreen), 0xff)
+					LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + Paeth(LeftBlue, UpBlue, UpLeftBlue), 0xff)
+					LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 3) + Paeth(LeftAlpha, UpAlpha, UpLeftAlpha), 0xff)
+					buffer.writeu32(Output, TargetOffset, LeftRed + LeftGreen * 256 + LeftBlue * 65536 + LeftAlpha * 16777216)
+					UpLeftRed = UpRed
+					UpLeftGreen = UpGreen
+					UpLeftBlue = UpBlue
+					UpLeftAlpha = UpAlpha
+					SourceOffset = SourceOffset + 4
+					TargetOffset = TargetOffset + 4
+					UpOffset = UpOffset + 4
+				end
+			else
+				error("invalid PNG filter")
+			end
+			InflatedOffset = InflatedOffset + RowBytes
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function DecodeRgb8NonInterlaced(Inflated: buffer, Width: number, Height: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number): buffer
+		local OutputRowBytes = Width * 4
+		local InputRowBytes = Width * 3
+		local Output = buffer.create(OutputRowBytes * Height)
+		local TransparentRgb = TransparentRed + TransparentGreen * 256 + TransparentBlue * 65536
+		local InflatedOffset = 0
+		for Y = 0, Height - 1 do
+			local Filter = buffer.readu8(Inflated, InflatedOffset)
+			InflatedOffset = InflatedOffset + 1
+			local OutputOffset = Y * OutputRowBytes
+			local PreviousOffset = OutputOffset - OutputRowBytes
+			if Filter == 0 or (Filter == 2 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				if TransparentRed < 0 then
+					for _ = 1, Width do
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + buffer.readu16(Inflated, SourceOffset) + buffer.readu8(Inflated, SourceOffset + 2) * 65536)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local Rgb = buffer.readu16(Inflated, SourceOffset) + buffer.readu8(Inflated, SourceOffset + 2) * 65536
+						local Alpha = 255
+						if Rgb == TransparentRgb then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+					end
+				end
+			elseif Filter == 1 or (Filter == 4 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				if TransparentRed < 0 then
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + LeftRed, 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + LeftGreen, 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + LeftBlue, 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + LeftRed + LeftGreen * 256 + LeftBlue * 65536)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + LeftRed, 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + LeftGreen, 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + LeftBlue, 0xff)
+						local Rgb = LeftRed + LeftGreen * 256 + LeftBlue * 65536
+						local Alpha = 255
+						if Rgb == TransparentRgb then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+					end
+				end
+			elseif Filter == 2 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				if TransparentRed < 0 then
+					for _ = 1, Width do
+						local Red = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+						local Green = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + buffer.readu8(Output, UpOffset + 1), 0xff)
+						local Blue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + buffer.readu8(Output, UpOffset + 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Red + Green * 256 + Blue * 65536)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local Red = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+						local Green = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + buffer.readu8(Output, UpOffset + 1), 0xff)
+						local Blue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + buffer.readu8(Output, UpOffset + 2), 0xff)
+						local Rgb = Red + Green * 256 + Blue * 65536
+						local Alpha = 255
+						if Rgb == TransparentRgb then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 3 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				if Y == 0 then
+					if TransparentRed < 0 then
+						for _ = 1, Width do
+							LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(LeftRed / 2), 0xff)
+							LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor(LeftGreen / 2), 0xff)
+							LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor(LeftBlue / 2), 0xff)
+							buffer.writeu32(Output, TargetOffset, 0xff000000 + LeftRed + LeftGreen * 256 + LeftBlue * 65536)
+							SourceOffset = SourceOffset + 3
+							TargetOffset = TargetOffset + 4
+						end
+					else
+						for _ = 1, Width do
+							LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(LeftRed / 2), 0xff)
+							LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor(LeftGreen / 2), 0xff)
+							LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor(LeftBlue / 2), 0xff)
+							local Rgb = LeftRed + LeftGreen * 256 + LeftBlue * 65536
+							local Alpha = 255
+							if Rgb == TransparentRgb then
+								Alpha = 0
+							end
+							buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+							SourceOffset = SourceOffset + 3
+							TargetOffset = TargetOffset + 4
+						end
+					end
+				elseif TransparentRed < 0 then
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((LeftRed + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor((LeftGreen + buffer.readu8(Output, UpOffset + 1)) / 2), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor((LeftBlue + buffer.readu8(Output, UpOffset + 2)) / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + LeftRed + LeftGreen * 256 + LeftBlue * 65536)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((LeftRed + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor((LeftGreen + buffer.readu8(Output, UpOffset + 1)) / 2), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + math.floor((LeftBlue + buffer.readu8(Output, UpOffset + 2)) / 2), 0xff)
+						local Rgb = LeftRed + LeftGreen * 256 + LeftBlue * 65536
+						local Alpha = 255
+						if Rgb == TransparentRgb then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 4 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local UpLeftRed = 0
+				local UpLeftGreen = 0
+				local UpLeftBlue = 0
+				local LeftRed = 0
+				local LeftGreen = 0
+				local LeftBlue = 0
+				if TransparentRed < 0 then
+					for _ = 1, Width do
+						local UpRed = buffer.readu8(Output, UpOffset)
+						local UpGreen = buffer.readu8(Output, UpOffset + 1)
+						local UpBlue = buffer.readu8(Output, UpOffset + 2)
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(LeftRed, UpRed, UpLeftRed), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + Paeth(LeftGreen, UpGreen, UpLeftGreen), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + Paeth(LeftBlue, UpBlue, UpLeftBlue), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + LeftRed + LeftGreen * 256 + LeftBlue * 65536)
+						UpLeftRed = UpRed
+						UpLeftGreen = UpGreen
+						UpLeftBlue = UpBlue
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local UpRed = buffer.readu8(Output, UpOffset)
+						local UpGreen = buffer.readu8(Output, UpOffset + 1)
+						local UpBlue = buffer.readu8(Output, UpOffset + 2)
+						LeftRed = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(LeftRed, UpRed, UpLeftRed), 0xff)
+						LeftGreen = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + Paeth(LeftGreen, UpGreen, UpLeftGreen), 0xff)
+						LeftBlue = bit32.band(buffer.readu8(Inflated, SourceOffset + 2) + Paeth(LeftBlue, UpBlue, UpLeftBlue), 0xff)
+						local Rgb = LeftRed + LeftGreen * 256 + LeftBlue * 65536
+						local Alpha = 255
+						if Rgb == TransparentRgb then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Rgb + Alpha * 16777216)
+						UpLeftRed = UpRed
+						UpLeftGreen = UpGreen
+						UpLeftBlue = UpBlue
+						SourceOffset = SourceOffset + 3
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			else
+				error("invalid PNG filter")
+			end
+			InflatedOffset = InflatedOffset + InputRowBytes
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function DecodeGray8NonInterlaced(Inflated: buffer, Width: number, Height: number, TransparentGray: number): buffer
+		local OutputRowBytes = Width * 4
+		local Output = buffer.create(OutputRowBytes * Height)
+		local InflatedOffset = 0
+		for Y = 0, Height - 1 do
+			local Filter = buffer.readu8(Inflated, InflatedOffset)
+			InflatedOffset = InflatedOffset + 1
+			local OutputOffset = Y * OutputRowBytes
+			local PreviousOffset = OutputOffset - OutputRowBytes
+			if Filter == 0 or (Filter == 2 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				if TransparentGray < 0 then
+					for _ = 1, Width do
+						local Gray = buffer.readu8(Inflated, SourceOffset)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Gray * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local Gray = buffer.readu8(Inflated, SourceOffset)
+						local Alpha = 255
+						if Gray == TransparentGray then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Gray * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+					end
+				end
+			elseif Filter == 1 or (Filter == 4 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local Left = 0
+				if TransparentGray < 0 then
+					for _ = 1, Width do
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + Left, 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Left * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + Left, 0xff)
+						local Alpha = 255
+						if Left == TransparentGray then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Left * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+					end
+				end
+			elseif Filter == 2 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				if TransparentGray < 0 then
+					for _ = 1, Width do
+						local Gray = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Gray * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local Gray = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+						local Alpha = 255
+						if Gray == TransparentGray then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Gray * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 3 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local Left = 0
+				if Y == 0 then
+					if TransparentGray < 0 then
+						for _ = 1, Width do
+							Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(Left / 2), 0xff)
+							buffer.writeu32(Output, TargetOffset, 0xff000000 + Left * 65793)
+							SourceOffset = SourceOffset + 1
+							TargetOffset = TargetOffset + 4
+						end
+					else
+						for _ = 1, Width do
+							Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(Left / 2), 0xff)
+							local Alpha = 255
+							if Left == TransparentGray then
+								Alpha = 0
+							end
+							buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Left * 65793)
+							SourceOffset = SourceOffset + 1
+							TargetOffset = TargetOffset + 4
+						end
+					end
+				elseif TransparentGray < 0 then
+					for _ = 1, Width do
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((Left + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Left * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((Left + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						local Alpha = 255
+						if Left == TransparentGray then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Left * 65793)
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 4 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local UpLeft = 0
+				local Left = 0
+				if TransparentGray < 0 then
+					for _ = 1, Width do
+						local Up = bit32.band(buffer.readu8(Output, UpOffset), 0xff)
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(Left, Up, UpLeft), 0xff)
+						buffer.writeu32(Output, TargetOffset, 0xff000000 + Left * 65793)
+						UpLeft = Up
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						local Up = buffer.readu8(Output, UpOffset)
+						Left = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(Left, Up, UpLeft), 0xff)
+						local Alpha = 255
+						if Left == TransparentGray then
+							Alpha = 0
+						end
+						buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Left * 65793)
+						UpLeft = Up
+						SourceOffset = SourceOffset + 1
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			else
+				error("invalid PNG filter")
+			end
+			InflatedOffset = InflatedOffset + Width
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function DecodeGrayAlpha8NonInterlaced(Inflated: buffer, Width: number, Height: number): buffer
+		local OutputRowBytes = Width * 4
+		local InputRowBytes = Width * 2
+		local Output = buffer.create(OutputRowBytes * Height)
+		local InflatedOffset = 0
+		for Y = 0, Height - 1 do
+			local Filter = buffer.readu8(Inflated, InflatedOffset)
+			InflatedOffset = InflatedOffset + 1
+			local OutputOffset = Y * OutputRowBytes
+			local PreviousOffset = OutputOffset - OutputRowBytes
+			if Filter == 0 or (Filter == 2 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				for _ = 1, Width do
+					local GrayAlpha = buffer.readu16(Inflated, SourceOffset)
+					local Gray = bit32.band(GrayAlpha, 0xff)
+					local Alpha = bit32.rshift(GrayAlpha, 8)
+					buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Gray * 65793)
+					SourceOffset = SourceOffset + 2
+					TargetOffset = TargetOffset + 4
+				end
+			elseif Filter == 1 or (Filter == 4 and Y == 0) then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local LeftGray = 0
+				local LeftAlpha = 0
+				for _ = 1, Width do
+					LeftGray = bit32.band(buffer.readu8(Inflated, SourceOffset) + LeftGray, 0xff)
+					LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + LeftAlpha, 0xff)
+					buffer.writeu32(Output, TargetOffset, LeftAlpha * 16777216 + LeftGray * 65793)
+					SourceOffset = SourceOffset + 2
+					TargetOffset = TargetOffset + 4
+				end
+			elseif Filter == 2 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				for _ = 1, Width do
+					local Gray = bit32.band(buffer.readu8(Inflated, SourceOffset) + buffer.readu8(Output, UpOffset), 0xff)
+					local Alpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + buffer.readu8(Output, UpOffset + 3), 0xff)
+					buffer.writeu32(Output, TargetOffset, Alpha * 16777216 + Gray * 65793)
+					SourceOffset = SourceOffset + 2
+					TargetOffset = TargetOffset + 4
+					UpOffset = UpOffset + 4
+				end
+			elseif Filter == 3 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local LeftGray = 0
+				local LeftAlpha = 0
+				if Y == 0 then
+					for _ = 1, Width do
+						LeftGray = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor(LeftGray / 2), 0xff)
+						LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor(LeftAlpha / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, LeftAlpha * 16777216 + LeftGray * 65793)
+						SourceOffset = SourceOffset + 2
+						TargetOffset = TargetOffset + 4
+					end
+				else
+					for _ = 1, Width do
+						LeftGray = bit32.band(buffer.readu8(Inflated, SourceOffset) + math.floor((LeftGray + buffer.readu8(Output, UpOffset)) / 2), 0xff)
+						LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + math.floor((LeftAlpha + buffer.readu8(Output, UpOffset + 3)) / 2), 0xff)
+						buffer.writeu32(Output, TargetOffset, LeftAlpha * 16777216 + LeftGray * 65793)
+						SourceOffset = SourceOffset + 2
+						TargetOffset = TargetOffset + 4
+						UpOffset = UpOffset + 4
+					end
+				end
+			elseif Filter == 4 then
+				local SourceOffset = InflatedOffset
+				local TargetOffset = OutputOffset
+				local UpOffset = PreviousOffset
+				local UpLeftGray = 0
+				local UpLeftAlpha = 0
+				local LeftGray = 0
+				local LeftAlpha = 0
+				for _ = 1, Width do
+					local UpGray = buffer.readu8(Output, UpOffset)
+					local UpAlpha = buffer.readu8(Output, UpOffset + 3)
+					LeftGray = bit32.band(buffer.readu8(Inflated, SourceOffset) + Paeth(LeftGray, UpGray, UpLeftGray), 0xff)
+					LeftAlpha = bit32.band(buffer.readu8(Inflated, SourceOffset + 1) + Paeth(LeftAlpha, UpAlpha, UpLeftAlpha), 0xff)
+					buffer.writeu32(Output, TargetOffset, LeftAlpha * 16777216 + LeftGray * 65793)
+					UpLeftGray = UpGray
+					UpLeftAlpha = UpAlpha
+					SourceOffset = SourceOffset + 2
+					TargetOffset = TargetOffset + 4
+					UpOffset = UpOffset + 4
+				end
+			else
+				error("invalid PNG filter")
+			end
+			InflatedOffset = InflatedOffset + InputRowBytes
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function DecodePalette8NonInterlaced(Inflated: buffer, Width: number, Height: number, Palette: buffer, PaletteEntries: number): buffer
+		local OutputRowBytes = Width * 4
+		local Output = buffer.create(OutputRowBytes * Height)
+		local CurrentRow = buffer.create(Width)
+		local PreviousRow = buffer.create(Width)
+		local InflatedOffset = 0
+		for Y = 0, Height - 1 do
+			InflatedOffset = ReconstructRow(Inflated, InflatedOffset, CurrentRow, PreviousRow, Width, 1)
+			local OutputOffset = Y * OutputRowBytes
+			local TargetOffset = OutputOffset
+			if PaletteEntries == 256 then
+				for X = 0, Width - 1 do
+					local PaletteIndex = buffer.readu8(CurrentRow, X)
+					buffer.writeu32(Output, TargetOffset, buffer.readu32(Palette, PaletteIndex * 4))
+					TargetOffset = TargetOffset + 4
+				end
+			else
+				for X = 0, Width - 1 do
+					local PaletteIndex = buffer.readu8(CurrentRow, X)
+					if PaletteIndex >= PaletteEntries then
+						error("PNG palette index out of range")
+					end
+					buffer.writeu32(Output, TargetOffset, buffer.readu32(Palette, PaletteIndex * 4))
+					TargetOffset = TargetOffset + 4
+				end
+			end
+			local SwapRow = PreviousRow
+			PreviousRow = CurrentRow
+			CurrentRow = SwapRow
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function ReadPackedSample(Row: buffer, BitDepth: number, PixelIndex: number): number
+		if BitDepth == 8 then
+			return buffer.readu8(Row, PixelIndex)
+		elseif BitDepth == 4 then
+			return bit32.extract(buffer.readu8(Row, math.floor(PixelIndex / 2)), 4 - (PixelIndex % 2) * 4, 4)
+		elseif BitDepth == 2 then
+			return bit32.extract(buffer.readu8(Row, math.floor(PixelIndex / 4)), 6 - (PixelIndex % 4) * 2, 2)
+		end
+		return bit32.extract(buffer.readu8(Row, math.floor(PixelIndex / 8)), 7 - PixelIndex % 8, 1)
+	end
+
+	local function ScaleSample(Value: number, BitDepth: number): number
+		if BitDepth == 1 then
+			return Value * 255
+		elseif BitDepth == 2 then
+			return Value * 85
+		elseif BitDepth == 4 then
+			return Value * 17
+		end
+		return Value
+	end
+
+	local function WritePixel(Output: buffer, OutputOffset: number, Row: buffer, PixelIndex: number, ColorType: number, BitDepth: number, Palette: buffer, PaletteEntries: number, TransparentGray: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number)
+		local Red = 0
+		local Green = 0
+		local Blue = 0
+		local Alpha = 255
+		if ColorType == 0 then
+			if BitDepth == 16 then
+				local Offset = PixelIndex * 2
+				Red = buffer.readu8(Row, Offset)
+				Green = Red
+				Blue = Red
+				if TransparentGray >= 0 and ReadU16BE(Row, Offset) == TransparentGray then
+					Alpha = 0
+				end
+			else
+				local Gray = ReadPackedSample(Row, BitDepth, PixelIndex)
+				Red = ScaleSample(Gray, BitDepth)
+				Green = Red
+				Blue = Red
+				if Gray == TransparentGray then
+					Alpha = 0
+				end
+			end
+		elseif ColorType == 2 then
+			if BitDepth == 16 then
+				local Offset = PixelIndex * 6
+				Red = buffer.readu8(Row, Offset)
+				Green = buffer.readu8(Row, Offset + 2)
+				Blue = buffer.readu8(Row, Offset + 4)
+				if TransparentRed >= 0 and ReadU16BE(Row, Offset) == TransparentRed and ReadU16BE(Row, Offset + 2) == TransparentGreen and ReadU16BE(Row, Offset + 4) == TransparentBlue then
+					Alpha = 0
+				end
+			else
+				local Offset = PixelIndex * 3
+				Red = buffer.readu8(Row, Offset)
+				Green = buffer.readu8(Row, Offset + 1)
+				Blue = buffer.readu8(Row, Offset + 2)
+				if Red == TransparentRed and Green == TransparentGreen and Blue == TransparentBlue then
+					Alpha = 0
+				end
+			end
+		elseif ColorType == 3 then
+			local PaletteIndex = ReadPackedSample(Row, BitDepth, PixelIndex)
+			if PaletteIndex >= PaletteEntries then
+				error("PNG palette index out of range")
+			end
+			buffer.writeu32(Output, OutputOffset, buffer.readu32(Palette, PaletteIndex * 4))
+			return
+		elseif ColorType == 4 then
+			if BitDepth == 16 then
+				local Offset = PixelIndex * 4
+				Red = buffer.readu8(Row, Offset)
+				Green = Red
+				Blue = Red
+				Alpha = buffer.readu8(Row, Offset + 2)
+			else
+				local Offset = PixelIndex * 2
+				Red = buffer.readu8(Row, Offset)
+				Green = Red
+				Blue = Red
+				Alpha = buffer.readu8(Row, Offset + 1)
+			end
+		else
+			if BitDepth == 16 then
+				local Offset = PixelIndex * 8
+				Red = buffer.readu8(Row, Offset)
+				Green = buffer.readu8(Row, Offset + 2)
+				Blue = buffer.readu8(Row, Offset + 4)
+				Alpha = buffer.readu8(Row, Offset + 6)
+			else
+				local Offset = PixelIndex * 4
+				Red = buffer.readu8(Row, Offset)
+				Green = buffer.readu8(Row, Offset + 1)
+				Blue = buffer.readu8(Row, Offset + 2)
+				Alpha = buffer.readu8(Row, Offset + 3)
+			end
+		end
+		buffer.writeu32(Output, OutputOffset, Red + Green * 256 + Blue * 65536 + Alpha * 16777216)
+	end
+
+	local function WriteFastRow(Output: buffer, OutputOffset: number, Row: buffer, Width: number, ColorType: number, BitDepth: number, Palette: buffer, PaletteEntries: number, TransparentGray: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number): boolean
+		if ColorType == 6 and BitDepth == 8 then
+			buffer.copy(Output, OutputOffset, Row, 0, Width * 4)
+			return true
+		elseif ColorType == 6 and BitDepth == 16 then
+			local SourceOffset = 0
+			for _ = 1, Width do
+				local Red = buffer.readu8(Row, SourceOffset)
+				local Green = buffer.readu8(Row, SourceOffset + 2)
+				local Blue = buffer.readu8(Row, SourceOffset + 4)
+				local Alpha = buffer.readu8(Row, SourceOffset + 6)
+				buffer.writeu32(Output, OutputOffset, Red + Green * 256 + Blue * 65536 + Alpha * 16777216)
+				SourceOffset = SourceOffset + 8
+				OutputOffset = OutputOffset + 4
+			end
+			return true
+		elseif ColorType == 2 and BitDepth == 8 then
+			local SourceOffset = 0
+			if TransparentRed < 0 then
+				for _ = 1, Width do
+					buffer.writeu32(Output, OutputOffset, 0xff000000 + buffer.readu16(Row, SourceOffset) + buffer.readu8(Row, SourceOffset + 2) * 65536)
+					SourceOffset = SourceOffset + 3
+					OutputOffset = OutputOffset + 4
+				end
+			else
+				local TransparentRgb = TransparentRed + TransparentGreen * 256 + TransparentBlue * 65536
+				for _ = 1, Width do
+					local Rgb = buffer.readu16(Row, SourceOffset) + buffer.readu8(Row, SourceOffset + 2) * 65536
+					local Alpha = 255
+					if Rgb == TransparentRgb then
+						Alpha = 0
+					end
+					buffer.writeu32(Output, OutputOffset, Rgb + Alpha * 16777216)
+					SourceOffset = SourceOffset + 3
+					OutputOffset = OutputOffset + 4
+				end
+			end
+			return true
+		elseif ColorType == 2 and BitDepth == 16 then
+			local SourceOffset = 0
+			if TransparentRed < 0 then
+				for _ = 1, Width do
+					local Red = buffer.readu8(Row, SourceOffset)
+					local Green = buffer.readu8(Row, SourceOffset + 2)
+					local Blue = buffer.readu8(Row, SourceOffset + 4)
+					buffer.writeu32(Output, OutputOffset, 0xff000000 + Red + Green * 256 + Blue * 65536)
+					SourceOffset = SourceOffset + 6
+					OutputOffset = OutputOffset + 4
+				end
+			else
+				for _ = 1, Width do
+					local Red16 = ReadU16BE(Row, SourceOffset)
+					local Green16 = ReadU16BE(Row, SourceOffset + 2)
+					local Blue16 = ReadU16BE(Row, SourceOffset + 4)
+					local Red = buffer.readu8(Row, SourceOffset)
+					local Green = buffer.readu8(Row, SourceOffset + 2)
+					local Blue = buffer.readu8(Row, SourceOffset + 4)
+					local Alpha = 255
+					if Red16 == TransparentRed and Green16 == TransparentGreen and Blue16 == TransparentBlue then
+						Alpha = 0
+					end
+					buffer.writeu32(Output, OutputOffset, Red + Green * 256 + Blue * 65536 + Alpha * 16777216)
+					SourceOffset = SourceOffset + 6
+					OutputOffset = OutputOffset + 4
+				end
+			end
+			return true
+		elseif ColorType == 3 and BitDepth == 8 then
+			for X = 0, Width - 1 do
+				local PaletteIndex = buffer.readu8(Row, X)
+				if PaletteIndex >= PaletteEntries then
+					error("PNG palette index out of range")
+				end
+				buffer.writeu32(Output, OutputOffset, buffer.readu32(Palette, PaletteIndex * 4))
+				OutputOffset = OutputOffset + 4
+			end
+			return true
+		elseif ColorType == 3 then
+			local SourceOffset = 0
+			local PixelIndex = 0
+			while PixelIndex < Width do
+				local Packed = buffer.readu8(Row, SourceOffset)
+				SourceOffset = SourceOffset + 1
+				for Shift = 8 - BitDepth, 0, -BitDepth do
+					local PaletteIndex = bit32.extract(Packed, Shift, BitDepth)
+					if PaletteIndex >= PaletteEntries then
+						error("PNG palette index out of range")
+					end
+					buffer.writeu32(Output, OutputOffset, buffer.readu32(Palette, PaletteIndex * 4))
+					OutputOffset = OutputOffset + 4
+					PixelIndex = PixelIndex + 1
+					if PixelIndex >= Width then
+						break
+					end
+				end
+			end
+			return true
+		elseif ColorType == 0 and BitDepth == 8 then
+			if TransparentGray < 0 then
+				for X = 0, Width - 1 do
+					local Gray = buffer.readu8(Row, X)
+					buffer.writeu32(Output, OutputOffset, 0xff000000 + Gray * 65793)
+					OutputOffset = OutputOffset + 4
+				end
+			else
+				for X = 0, Width - 1 do
+					local Gray = buffer.readu8(Row, X)
+					local Alpha = 255
+					if Gray == TransparentGray then
+						Alpha = 0
+					end
+					buffer.writeu32(Output, OutputOffset, Alpha * 16777216 + Gray * 65793)
+					OutputOffset = OutputOffset + 4
+				end
+			end
+			return true
+		elseif ColorType == 0 and BitDepth < 8 then
+			local Scale = 17
+			if BitDepth == 1 then
+				Scale = 255
+			elseif BitDepth == 2 then
+				Scale = 85
+			end
+			local SourceOffset = 0
+			local PixelIndex = 0
+			while PixelIndex < Width do
+				local Packed = buffer.readu8(Row, SourceOffset)
+				SourceOffset = SourceOffset + 1
+				for Shift = 8 - BitDepth, 0, -BitDepth do
+					local GraySample = bit32.extract(Packed, Shift, BitDepth)
+					local Gray = GraySample * Scale
+					local Alpha = 255
+					if GraySample == TransparentGray then
+						Alpha = 0
+					end
+					buffer.writeu32(Output, OutputOffset, Alpha * 16777216 + Gray * 65793)
+					OutputOffset = OutputOffset + 4
+					PixelIndex = PixelIndex + 1
+					if PixelIndex >= Width then
+						break
+					end
+				end
+			end
+			return true
+		elseif ColorType == 0 and BitDepth == 16 then
+			local SourceOffset = 0
+			if TransparentGray < 0 then
+				for _ = 1, Width do
+					local Gray = buffer.readu8(Row, SourceOffset)
+					buffer.writeu32(Output, OutputOffset, 0xff000000 + Gray * 65793)
+					SourceOffset = SourceOffset + 2
+					OutputOffset = OutputOffset + 4
+				end
+			else
+				for _ = 1, Width do
+					local Gray16 = ReadU16BE(Row, SourceOffset)
+					local Gray = buffer.readu8(Row, SourceOffset)
+					local Alpha = 255
+					if Gray16 == TransparentGray then
+						Alpha = 0
+					end
+					buffer.writeu32(Output, OutputOffset, Alpha * 16777216 + Gray * 65793)
+					SourceOffset = SourceOffset + 2
+					OutputOffset = OutputOffset + 4
+				end
+			end
+			return true
+		elseif ColorType == 4 and BitDepth == 8 then
+			local SourceOffset = 0
+			for _ = 1, Width do
+				local GrayAlpha = buffer.readu16(Row, SourceOffset)
+				local Gray = bit32.band(GrayAlpha, 0xff)
+				local Alpha = bit32.rshift(GrayAlpha, 8)
+				buffer.writeu32(Output, OutputOffset, Alpha * 16777216 + Gray * 65793)
+				SourceOffset = SourceOffset + 2
+				OutputOffset = OutputOffset + 4
+			end
+			return true
+		elseif ColorType == 4 and BitDepth == 16 then
+			local SourceOffset = 0
+			for _ = 1, Width do
+				local Gray = buffer.readu8(Row, SourceOffset)
+				local Alpha = buffer.readu8(Row, SourceOffset + 2)
+				buffer.writeu32(Output, OutputOffset, Alpha * 16777216 + Gray * 65793)
+				SourceOffset = SourceOffset + 4
+				OutputOffset = OutputOffset + 4
+			end
+			return true
+		end
+		return false
+	end
+
+	local function DecodePixels(Inflated: buffer, Width: number, Height: number, ColorType: number, BitDepth: number, Channels: number, InterlaceMethod: number, Palette: buffer, PaletteEntries: number, TransparentGray: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number): buffer
+		if InterlaceMethod == 0 and ColorType == 6 and BitDepth == 8 then
+			return DecodeRgba8NonInterlaced(Inflated, Width, Height)
+		elseif InterlaceMethod == 0 and ColorType == 2 and BitDepth == 8 then
+			return DecodeRgb8NonInterlaced(Inflated, Width, Height, TransparentRed, TransparentGreen, TransparentBlue)
+		elseif InterlaceMethod == 0 and ColorType == 0 and BitDepth == 8 then
+			return DecodeGray8NonInterlaced(Inflated, Width, Height, TransparentGray)
+		elseif InterlaceMethod == 0 and ColorType == 4 and BitDepth == 8 then
+			return DecodeGrayAlpha8NonInterlaced(Inflated, Width, Height)
+		elseif InterlaceMethod == 0 and ColorType == 3 and BitDepth == 8 then
+			return DecodePalette8NonInterlaced(Inflated, Width, Height, Palette, PaletteEntries)
+		end
+		local Output = buffer.create(Width * Height * 4)
+		local BitsPerPixel = Channels * BitDepth
+		local FilterBpp = math.max(1, math.floor((BitsPerPixel + 7) / 8))
+		local InflatedOffset = 0
+		if InterlaceMethod == 0 then
+			local RowBytes = math.floor((Width * BitsPerPixel + 7) / 8)
+			local CurrentRow = buffer.create(RowBytes)
+			local PreviousRow = buffer.create(RowBytes)
+			for Y = 0, Height - 1 do
+				InflatedOffset = ReconstructRow(Inflated, InflatedOffset, CurrentRow, PreviousRow, RowBytes, FilterBpp)
+				local OutputOffset = Y * Width * 4
+				if not WriteFastRow(Output, OutputOffset, CurrentRow, Width, ColorType, BitDepth, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue) then
+					for X = 0, Width - 1 do
+						WritePixel(Output, OutputOffset + X * 4, CurrentRow, X, ColorType, BitDepth, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+					end
+				end
+				local SwapRow = PreviousRow
+				PreviousRow = CurrentRow
+				CurrentRow = SwapRow
+			end
+		else
+			for Pass = 1, 7 do
+				local PassWidth = PassSize(Width, Adam7StartX[Pass], Adam7StepX[Pass])
+				local PassHeight = PassSize(Height, Adam7StartY[Pass], Adam7StepY[Pass])
+				if PassWidth > 0 and PassHeight > 0 then
+					local RowBytes = math.floor((PassWidth * BitsPerPixel + 7) / 8)
+					local CurrentRow = buffer.create(RowBytes)
+					local PreviousRow = buffer.create(RowBytes)
+					for PassY = 0, PassHeight - 1 do
+						InflatedOffset = ReconstructRow(Inflated, InflatedOffset, CurrentRow, PreviousRow, RowBytes, FilterBpp)
+						for PassX = 0, PassWidth - 1 do
+							local X = Adam7StartX[Pass] + PassX * Adam7StepX[Pass]
+							local Y = Adam7StartY[Pass] + PassY * Adam7StepY[Pass]
+							WritePixel(Output, (Y * Width + X) * 4, CurrentRow, PassX, ColorType, BitDepth, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+						end
+						local SwapRow = PreviousRow
+						PreviousRow = CurrentRow
+						CurrentRow = SwapRow
+					end
+				end
+			end
+		end
+		if InflatedOffset ~= buffer.len(Inflated) then
+			error("PNG image data length mismatch")
+		end
+		return Output
+	end
+
+	local function ExpectedInflatedLength(Width: number, Height: number, BitsPerPixel: number, InterlaceMethod: number): number
+		local Total = 0
+		if InterlaceMethod == 0 then
+			return Height * (math.floor((Width * BitsPerPixel + 7) / 8) + 1)
+		end
+		for Pass = 1, 7 do
+			local PassWidth = PassSize(Width, Adam7StartX[Pass], Adam7StepX[Pass])
+			local PassHeight = PassSize(Height, Adam7StartY[Pass], Adam7StepY[Pass])
+			if PassWidth > 0 and PassHeight > 0 then
+				Total = Total + PassHeight * (math.floor((PassWidth * BitsPerPixel + 7) / 8) + 1)
+			end
+		end
+		return Total
+	end
+
+	local function StaticAdvanceFrame()
+	end
+
+	local function StaticReset()
+	end
+
+	local function AddFrameData(Frame: PngFrame, Offset: number, Count: number)
+		if Count > MaxOutputBytes - Frame.DataLength then
+			error("APNG frame data too large")
+		end
+		Frame.DataLength = Frame.DataLength + Count
+		Frame.DataOffsets[#Frame.DataOffsets + 1] = Offset
+		Frame.DataLengths[#Frame.DataLengths + 1] = Count
+	end
+
+	local function BuildChunkData(Source: buffer, Offsets: {[number]: number}, Lengths: {[number]: number}, TotalLength: number): buffer
+		local Data = buffer.create(TotalLength)
+		local DataOffset = 0
+		for Index = 1, #Offsets do
+			local SegmentLength = Lengths[Index]
+			buffer.copy(Data, DataOffset, Source, Offsets[Index], SegmentLength)
+			DataOffset = DataOffset + SegmentLength
+		end
+		return Data
+	end
+
+	local function DecodeFramePixels(PngData: buffer, Frame: PngFrame, ColorType: number, BitDepth: number, Channels: number, InterlaceMethod: number, Palette: buffer, PaletteEntries: number, TransparentGray: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number): buffer
+		if Frame.DataLength <= 0 then
+			error("missing APNG frame data")
+		end
+		local BitsPerPixel = Channels * BitDepth
+		local ExpectedLength = ExpectedInflatedLength(Frame.Width, Frame.Height, BitsPerPixel, InterlaceMethod)
+		if ExpectedLength > MaxOutputBytes then
+			error("APNG frame data too large")
+		end
+		local Inflated = EmptyInflateData
+		if #Frame.DataOffsets == 1 then
+			Inflated = InflateZlibInternal(PngData, Frame.DataOffsets[1], Frame.DataLength, ExpectedLength, ExpectedLength)
+		else
+			local FrameData = BuildChunkData(PngData, Frame.DataOffsets, Frame.DataLengths, Frame.DataLength)
+			Inflated = InflateZlib(FrameData, ExpectedLength)
+		end
+		return DecodePixels(Inflated, Frame.Width, Frame.Height, ColorType, BitDepth, Channels, InterlaceMethod, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+	end
+
+	local function DecodeAnimationFrames(PngData: buffer, Frames: {PngFrame}, StartIndex: number, ColorType: number, BitDepth: number, Channels: number, InterlaceMethod: number, Palette: buffer, PaletteEntries: number, TransparentGray: number, TransparentRed: number, TransparentGreen: number, TransparentBlue: number)
+		for Index = StartIndex, #Frames do
+			Frames[Index].Pixels = DecodeFramePixels(PngData, Frames[Index], ColorType, BitDepth, Channels, InterlaceMethod, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+		end
+	end
+
+	local function ClearFrameArea(Canvas: buffer, CanvasWidth: number, XOffset: number, YOffset: number, Width: number, Height: number)
+		if Width <= 0 or Height <= 0 then
+			return
+		end
+		for Y = 0, Height - 1 do
+			buffer.fill(Canvas, ((YOffset + Y) * CanvasWidth + XOffset) * 4, 0, Width * 4)
+		end
+	end
+
+	local function SaveFrameArea(State: PngState, Frame: PngFrame)
+		local RestoreBuffer = buffer.create(Frame.Width * Frame.Height * 4)
+		for Y = 0, Frame.Height - 1 do
+			buffer.copy(RestoreBuffer, Y * Frame.Width * 4, State.Canvas, ((Frame.YOffset + Y) * State.Width + Frame.XOffset) * 4, Frame.Width * 4)
+		end
+		State.RestoreBuffer = RestoreBuffer
+		State.RestoreX = Frame.XOffset
+		State.RestoreY = Frame.YOffset
+		State.RestoreWidth = Frame.Width
+		State.RestoreHeight = Frame.Height
+	end
+
+	local function RestoreFrameArea(State: PngState)
+		local RestoreBuffer = State.RestoreBuffer
+		if RestoreBuffer == nil then
+			return
+		end
+		for Y = 0, State.RestoreHeight - 1 do
+			buffer.copy(State.Canvas, ((State.RestoreY + Y) * State.Width + State.RestoreX) * 4, RestoreBuffer, Y * State.RestoreWidth * 4, State.RestoreWidth * 4)
+		end
+	end
+
+	local function BlendPixel(Source: number, Destination: number): number
+		local SourceAlpha = bit32.rshift(Source, 24)
+		if SourceAlpha == 0 then
+			return Destination
+		elseif SourceAlpha == 255 then
+			return Source
+		end
+		local DestinationAlpha = bit32.rshift(Destination, 24)
+		if DestinationAlpha == 0 then
+			return Source
+		end
+		local SourceRed = bit32.extract(Source, 0, 8)
+		local SourceGreen = bit32.extract(Source, 8, 8)
+		local SourceBlue = bit32.extract(Source, 16, 8)
+		local DestinationRed = bit32.extract(Destination, 0, 8)
+		local DestinationGreen = bit32.extract(Destination, 8, 8)
+		local DestinationBlue = bit32.extract(Destination, 16, 8)
+		local DestinationWeight = math.floor((DestinationAlpha * (255 - SourceAlpha) + 127) / 255)
+		local OutputAlpha = SourceAlpha + DestinationWeight
+		local Red = math.floor((SourceRed * SourceAlpha + DestinationRed * DestinationWeight + math.floor(OutputAlpha / 2)) / OutputAlpha)
+		local Green = math.floor((SourceGreen * SourceAlpha + DestinationGreen * DestinationWeight + math.floor(OutputAlpha / 2)) / OutputAlpha)
+		local Blue = math.floor((SourceBlue * SourceAlpha + DestinationBlue * DestinationWeight + math.floor(OutputAlpha / 2)) / OutputAlpha)
+		return Red + Green * 256 + Blue * 65536 + OutputAlpha * 16777216
+	end
+
+	local function DrawAnimationFrame(State: PngState, Frame: PngFrame)
+		if Frame.DisposeOp == 2 then
+			SaveFrameArea(State, Frame)
+		else
+			State.RestoreBuffer = nil
+			State.RestoreX = 0
+			State.RestoreY = 0
+			State.RestoreWidth = 0
+			State.RestoreHeight = 0
+		end
+		local Pixels = Frame.Pixels
+		if Frame.BlendOp == 0 then
+			for Y = 0, Frame.Height - 1 do
+				buffer.copy(State.Canvas, ((Frame.YOffset + Y) * State.Width + Frame.XOffset) * 4, Pixels, Y * Frame.Width * 4, Frame.Width * 4)
+			end
+		else
+			for Y = 0, Frame.Height - 1 do
+				local OutputOffset = ((Frame.YOffset + Y) * State.Width + Frame.XOffset) * 4
+				local SourceOffset = Y * Frame.Width * 4
+				for _ = 1, Frame.Width do
+					buffer.writeu32(State.Canvas, OutputOffset, BlendPixel(buffer.readu32(Pixels, SourceOffset), buffer.readu32(State.Canvas, OutputOffset)))
+					OutputOffset = OutputOffset + 4
+					SourceOffset = SourceOffset + 4
+				end
+			end
+		end
+	end
+
+	local function DisposeAnimationFrame(State: PngState, Frame: PngFrame)
+		if Frame.DisposeOp == 1 then
+			ClearFrameArea(State.Canvas, State.Width, Frame.XOffset, Frame.YOffset, Frame.Width, Frame.Height)
+		elseif Frame.DisposeOp == 2 then
+			RestoreFrameArea(State)
+		end
+		State.RestoreBuffer = nil
+		State.RestoreX = 0
+		State.RestoreY = 0
+		State.RestoreWidth = 0
+		State.RestoreHeight = 0
+	end
+
+	local function FrameDelay(Frame: PngFrame): number
+		local Denominator = Frame.DelayDenominator
+		if Denominator == 0 then
+			Denominator = 100
+		end
+		return Frame.DelayNumerator / Denominator
+	end
+
+	local function SyncAnimationResult(State: PngState)
+		local Result = State.Result
+		if Result == nil then
+			return
+		end
+		local Frame = State.Frames[State.CurrentFrameIndex]
+		Result.Frame = State.Canvas
+		Result.RGBA8 = State.Canvas
+		Result.Delay = FrameDelay(Frame)
+		Result.Finished = State.PlayCount > 0 and State.CurrentFrameIndex >= #State.Frames and State.CompletedPlays + 1 >= State.PlayCount
+	end
+
+	local function AdvancePngFrame(State: PngState)
+		if State.CurrentFrameIndex >= #State.Frames then
+			if State.PlayCount == 0 or State.CompletedPlays + 1 < State.PlayCount then
+				DisposeAnimationFrame(State, State.Frames[State.CurrentFrameIndex])
+				State.CompletedPlays = State.CompletedPlays + 1
+				State.CurrentFrameIndex = 1
+				DrawAnimationFrame(State, State.Frames[State.CurrentFrameIndex])
+				SyncAnimationResult(State)
+				return
+			end
+			SyncAnimationResult(State)
+			return
+		end
+		DisposeAnimationFrame(State, State.Frames[State.CurrentFrameIndex])
+		State.CurrentFrameIndex = State.CurrentFrameIndex + 1
+		DrawAnimationFrame(State, State.Frames[State.CurrentFrameIndex])
+		SyncAnimationResult(State)
+	end
+
+	local function ResetPngAnimation(State: PngState)
+		buffer.fill(State.Canvas, 0, 0)
+		State.CurrentFrameIndex = 1
+		State.CompletedPlays = 0
+		State.RestoreBuffer = nil
+		State.RestoreX = 0
+		State.RestoreY = 0
+		State.RestoreWidth = 0
+		State.RestoreHeight = 0
+		DrawAnimationFrame(State, State.Frames[1])
+		SyncAnimationResult(State)
+	end
+
+	-- Main DecodePng function
+	local Length = buffer.len(PngData)
+	if Length < 8 or buffer.readu8(PngData, 0) ~= PngSignature0 or buffer.readu8(PngData, 1) ~= PngSignature1 or buffer.readu8(PngData, 2) ~= PngSignature2 or buffer.readu8(PngData, 3) ~= PngSignature3 or buffer.readu8(PngData, 4) ~= PngSignature4 or buffer.readu8(PngData, 5) ~= PngSignature5 or buffer.readu8(PngData, 6) ~= PngSignature6 or buffer.readu8(PngData, 7) ~= PngSignature7 then
+		error("missing PNG signature")
+	end
+	local Cursor = 8
+	local Width = 0
+	local Height = 0
+	local BitDepth = 0
+	local ColorType = 0
+	local CompressionMethod = 0
+	local FilterMethod = 0
+	local InterlaceMethod = 0
+	local Channels = 0
+	local SawIHDR = false
+	local SawPLTE = false
+	local SawIDAT = false
+	local SawTRNS = false
+	local FinishedIDAT = false
+	local SawIEND = false
+	local SawSRGB = false
+	local SawGAMA = false
+	local SawCHRM = false
+	local SawICCP = false
+	local SawSBIT = false
+	local SawBKGD = false
+	local SawPHYS = false
+	local SawHIST = false
+	local SawTIME = false
+	local SawCICP = false
+	local SawEXIF = false
+	local SawOFFS = false
+	local SawGIFG = false
+	local SawSTER = false
+	local SawACTL = false
+	local IdatLength = 0
+	local ApngFrameCount = 0
+	local ApngPlayCount = 0
+	local NextApngSequence = 0
+	local CurrentAnimationFrameIndex = 0
+	local PaletteEntries = 0
+	local TransparentGray = -1
+	local TransparentRed = -1
+	local TransparentGreen = -1
+	local TransparentBlue = -1
+	local Palette = buffer.create(1024)
+	local IdatOffsets = {}
+	local IdatLengths = {}
+	local AnimationFrames = {}
+	buffer.fill(Palette, 3, 255, 1021)
+	while Cursor < Length do
+		if Cursor + 12 > Length then
+			error("truncated PNG chunk")
+		end
+		local ChunkLength = ReadU32BE(PngData, Cursor)
+		local ChunkTypeOffset = Cursor + 4
+		local ChunkType = ReadU32BE(PngData, ChunkTypeOffset)
+		local ChunkDataOffset = Cursor + 8
+		local ChunkCrcOffset = ChunkDataOffset + ChunkLength
+		if ChunkLength > 0x7fffffff then
+			error("invalid PNG chunk length")
+		end
+		if ChunkCrcOffset + 4 > Length then
+			error("PNG chunk extends past data")
+		end
+		ValidateChunkName(PngData, ChunkTypeOffset)
+		if Crc32(PngData, ChunkTypeOffset, ChunkDataOffset, ChunkLength) ~= ReadU32BE(PngData, ChunkCrcOffset) then
+			error("invalid PNG chunk CRC")
+		end
+		if not SawIHDR and ChunkType ~= ChunkIHDR then
+			error("PNG IHDR must be first")
+		end
+		if SawIDAT and ChunkType ~= ChunkIDAT then
+			FinishedIDAT = true
+		end
+		if ChunkType == ChunkACTL then
+			if not SawIHDR or SawACTL or SawIDAT or ChunkLength ~= 8 then
+				error("invalid APNG acTL")
+			end
+			ApngFrameCount = ReadU32BE(PngData, ChunkDataOffset)
+			ApngPlayCount = ReadU32BE(PngData, ChunkDataOffset + 4)
+			if ApngFrameCount <= 0 then
+				error("invalid APNG frame count")
+			end
+			SawACTL = true
+		elseif ChunkType == ChunkFCTL then
+			if not SawACTL or ChunkLength ~= 26 then
+				error("invalid APNG fcTL")
+			end
+			if CurrentAnimationFrameIndex > 0 and AnimationFrames[CurrentAnimationFrameIndex].DataLength <= 0 then
+				error("missing APNG frame data")
+			end
+			local SequenceNumber = ReadU32BE(PngData, ChunkDataOffset)
+			if SequenceNumber ~= NextApngSequence then
+				error("invalid APNG sequence number")
+			end
+			NextApngSequence = NextApngSequence + 1
+			local FrameWidth = ReadU32BE(PngData, ChunkDataOffset + 4)
+			local FrameHeight = ReadU32BE(PngData, ChunkDataOffset + 8)
+			local XOffset = ReadU32BE(PngData, ChunkDataOffset + 12)
+			local YOffset = ReadU32BE(PngData, ChunkDataOffset + 16)
+			local DelayNumerator = ReadU16BE(PngData, ChunkDataOffset + 20)
+			local DelayDenominator = ReadU16BE(PngData, ChunkDataOffset + 22)
+			local DisposeOp = buffer.readu8(PngData, ChunkDataOffset + 24)
+			local BlendOp = buffer.readu8(PngData, ChunkDataOffset + 25)
+			if FrameWidth <= 0 or FrameHeight <= 0 or XOffset > Width or YOffset > Height or FrameWidth > Width - XOffset or FrameHeight > Height - YOffset or DisposeOp > 2 or BlendOp > 1 or FrameWidth > MaxOutputBytes / 4 / FrameHeight then
+				error("invalid APNG frame control")
+			end
+			if not SawIDAT and #AnimationFrames == 0 and (FrameWidth ~= Width or FrameHeight ~= Height or XOffset ~= 0 or YOffset ~= 0) then
+				error("invalid APNG default frame")
+			end
+			if #AnimationFrames >= ApngFrameCount then
+				error("too many APNG frames")
+			end
+			AnimationFrames[#AnimationFrames + 1] = {
+				Width = FrameWidth,
+				Height = FrameHeight,
+				XOffset = XOffset,
+				YOffset = YOffset,
+				DelayNumerator = DelayNumerator,
+				DelayDenominator = DelayDenominator,
+				DisposeOp = DisposeOp,
+				BlendOp = BlendOp,
+				DataOffsets = {},
+				DataLengths = {},
+				DataLength = 0,
+				DataFromIdat = false,
+				Pixels = EmptyInflateData,
+			}
+			CurrentAnimationFrameIndex = #AnimationFrames
+		elseif ChunkType == ChunkFDAT then
+			if not SawACTL or not SawIDAT or CurrentAnimationFrameIndex <= 0 or ChunkLength < 4 then
+				error("invalid APNG fdAT")
+			end
+			if AnimationFrames[CurrentAnimationFrameIndex].DataFromIdat then
+				error("invalid APNG fdAT")
+			end
+			local SequenceNumber = ReadU32BE(PngData, ChunkDataOffset)
+			if SequenceNumber ~= NextApngSequence then
+				error("invalid APNG sequence number")
+			end
+			NextApngSequence = NextApngSequence + 1
+			AddFrameData(AnimationFrames[CurrentAnimationFrameIndex], ChunkDataOffset + 4, ChunkLength - 4)
+		elseif ChunkType == ChunkIHDR then
+			if SawIHDR or Cursor ~= 8 or ChunkLength ~= 13 then
+				error("invalid PNG IHDR")
+			end
+			Width = ReadU32BE(PngData, ChunkDataOffset)
+			Height = ReadU32BE(PngData, ChunkDataOffset + 4)
+			BitDepth = buffer.readu8(PngData, ChunkDataOffset + 8)
+			ColorType = buffer.readu8(PngData, ChunkDataOffset + 9)
+			CompressionMethod = buffer.readu8(PngData, ChunkDataOffset + 10)
+			FilterMethod = buffer.readu8(PngData, ChunkDataOffset + 11)
+			InterlaceMethod = buffer.readu8(PngData, ChunkDataOffset + 12)
+			if Width <= 0 or Height <= 0 or Width > MaxOutputBytes / 4 / Height then
+				error("invalid PNG image dimensions")
+			end
+			if CompressionMethod ~= 0 or FilterMethod ~= 0 or (InterlaceMethod ~= 0 and InterlaceMethod ~= 1) then
+				error("unsupported PNG header method")
+			end
+			Channels = ValidateColorType(ColorType, BitDepth)
+			SawIHDR = true
+		elseif ChunkType == ChunkPLTE then
+			if not SawIHDR or SawPLTE or SawIDAT or ChunkLength % 3 ~= 0 or ChunkLength <= 0 or ChunkLength > 768 then
+				error("invalid PNG PLTE")
+			end
+			PaletteEntries = math.floor(ChunkLength / 3)
+			if ColorType == 0 or ColorType == 4 or (ColorType == 3 and PaletteEntries > BitPowers[BitDepth]) then
+				error("invalid PNG PLTE for color type")
+			end
+			for Index = 0, PaletteEntries - 1 do
+				local SourceOffset = ChunkDataOffset + Index * 3
+				local PaletteOffset = Index * 4
+				buffer.writeu8(Palette, PaletteOffset, buffer.readu8(PngData, SourceOffset))
+				buffer.writeu8(Palette, PaletteOffset + 1, buffer.readu8(PngData, SourceOffset + 1))
+				buffer.writeu8(Palette, PaletteOffset + 2, buffer.readu8(PngData, SourceOffset + 2))
+				buffer.writeu8(Palette, PaletteOffset + 3, 255)
+			end
+			SawPLTE = true
+		elseif ChunkType == ChunkTRNS then
+			if not SawIHDR or SawTRNS or SawIDAT then
+				error("invalid PNG tRNS order")
+			end
+			if ColorType == 0 then
+				if ChunkLength ~= 2 then
+					error("invalid grayscale PNG tRNS")
+				end
+				TransparentGray = ReadU16BE(PngData, ChunkDataOffset)
+				if TransparentGray >= BitPowers[BitDepth] then
+					error("invalid grayscale PNG tRNS value")
+				end
+			elseif ColorType == 2 then
+				if ChunkLength ~= 6 then
+					error("invalid RGB PNG tRNS")
+				end
+				TransparentRed = ReadU16BE(PngData, ChunkDataOffset)
+				TransparentGreen = ReadU16BE(PngData, ChunkDataOffset + 2)
+				TransparentBlue = ReadU16BE(PngData, ChunkDataOffset + 4)
+				if BitDepth == 8 and (TransparentRed > 255 or TransparentGreen > 255 or TransparentBlue > 255) then
+					error("invalid RGB PNG tRNS value")
+				end
+			elseif ColorType == 3 then
+				if not SawPLTE or ChunkLength > PaletteEntries then
+					error("invalid indexed PNG tRNS")
+				end
+				for Index = 0, ChunkLength - 1 do
+					buffer.writeu8(Palette, Index * 4 + 3, buffer.readu8(PngData, ChunkDataOffset + Index))
+				end
+			else
+				error("invalid PNG tRNS for color type")
+			end
+			SawTRNS = true
+		elseif ChunkType == ChunkIDAT then
+			if not SawIHDR or FinishedIDAT then
+				error("invalid PNG IDAT order")
+			end
+			if ColorType == 3 and not SawPLTE then
+				error("indexed PNG missing PLTE")
+			end
+			if ChunkLength > MaxOutputBytes - IdatLength then
+				error("PNG IDAT data too large")
+			end
+			SawIDAT = true
+			IdatLength = IdatLength + ChunkLength
+			IdatOffsets[#IdatOffsets + 1] = ChunkDataOffset
+			IdatLengths[#IdatLengths + 1] = ChunkLength
+			if SawACTL and CurrentAnimationFrameIndex > 0 and #AnimationFrames == 1 then
+				AddFrameData(AnimationFrames[CurrentAnimationFrameIndex], ChunkDataOffset, ChunkLength)
+				AnimationFrames[CurrentAnimationFrameIndex].DataFromIdat = true
+			end
+		elseif ChunkType == ChunkIEND then
+			if not SawIHDR or not SawIDAT or ChunkLength ~= 0 then
+				error("invalid PNG IEND")
+			end
+			SawIEND = true
+			Cursor = ChunkCrcOffset + 4
+			break
+		else
+			if IsCriticalChunk(PngData, ChunkTypeOffset) then
+				error("unsupported critical PNG chunk")
+			end
+		end
+		Cursor = ChunkCrcOffset + 4
+	end
+	if not SawIEND or Cursor ~= Length then
+		error("invalid PNG end")
+	end
+	if SawACTL then
+		if #AnimationFrames ~= ApngFrameCount then
+			error("invalid APNG frame count")
+		end
+		for Index = 1, #AnimationFrames do
+			if AnimationFrames[Index].DataLength <= 0 then
+				error("missing APNG frame data")
+			end
+		end
+	end
+	local BitsPerPixel = Channels * BitDepth
+	local ExpectedLength = ExpectedInflatedLength(Width, Height, BitsPerPixel, InterlaceMethod)
+	if ExpectedLength > MaxOutputBytes then
+		error("PNG image data too large")
+	end
+	local Inflated = EmptyInflateData
+	if #IdatOffsets == 1 then
+		Inflated = InflateZlibInternal(PngData, IdatOffsets[1], IdatLength, ExpectedLength, ExpectedLength)
+	else
+		local IdatData = BuildChunkData(PngData, IdatOffsets, IdatLengths, IdatLength)
+		Inflated = InflateZlib(IdatData, ExpectedLength)
+	end
+	local Output = DecodePixels(Inflated, Width, Height, ColorType, BitDepth, Channels, InterlaceMethod, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+	if SawACTL then
+		local AnimationDecodeStart = 1
+		if AnimationFrames[1].DataFromIdat then
+			AnimationFrames[1].Pixels = Output
+			AnimationDecodeStart = 2
+		end
+		DecodeAnimationFrames(PngData, AnimationFrames, AnimationDecodeStart, ColorType, BitDepth, Channels, InterlaceMethod, Palette, PaletteEntries, TransparentGray, TransparentRed, TransparentGreen, TransparentBlue)
+		local State = {
+			Width = Width,
+			Height = Height,
+			Frames = AnimationFrames,
+			PlayCount = ApngPlayCount,
+			CompletedPlays = 0,
+			Canvas = buffer.create(Width * Height * 4),
+			CurrentFrameIndex = 1,
+			RestoreBuffer = nil,
+			RestoreX = 0,
+			RestoreY = 0,
+			RestoreWidth = 0,
+			RestoreHeight = 0,
+			Result = nil,
+		}
+		DrawAnimationFrame(State, AnimationFrames[1])
+		local function AdvanceFrame()
+			AdvancePngFrame(State)
+		end
+		local function Reset()
+			ResetPngAnimation(State)
+		end
+		local Result = {
+			Animated = true,
+			Size = Vector2.new(Width, Height),
+			RGBA8 = State.Canvas,
+			Frame = State.Canvas,
+			AdvanceFrame = AdvanceFrame,
+			Reset = Reset,
+			Finished = ApngPlayCount == 1 and #AnimationFrames <= 1,
+			Delay = FrameDelay(AnimationFrames[1]),
+		}
+		State.Result = Result
+		return Result
+	end
+	return {
+		Animated = false,
+		Size = Vector2.new(Width, Height),
+		RGBA8 = Output,
+		Frame = Output,
+		AdvanceFrame = StaticAdvanceFrame,
+		Reset = StaticReset,
+		Finished = true,
+		Delay = 0,
+	}
+end
+
+-- Helper function to fetch and decode PNG images
+local function fetchAndDecodePng(url: string): (boolean, buffer?, Vector2?)
+	local HttpService = game:GetService("HttpService")
+	local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+	
+	if not requestFunction then
+		return false, nil, nil
+	end
+	
+	local success, result = pcall(function()
+		return requestFunction({
+			Url = url,
+			Method = "GET"
+		})
+	end)
+	
+	if not success or not result then
+		return false, nil, nil
+	end
+	
+	local responseBody = result.Body or result.body or result
+	if not responseBody then
+		return false, nil, nil
+	end
+	
+	-- Convert response to buffer
+	local dataBuffer
+	if type(responseBody) == "string" then
+		dataBuffer = buffer.fromstring(responseBody)
+	elseif type(responseBody) == "table" then
+		-- Handle table response (some executors return tables)
+		local str = ""
+		for i = 1, #responseBody do
+			str = str .. string.char(responseBody[i])
+		end
+		dataBuffer = buffer.fromstring(str)
+	else
+		return false, nil, nil
+	end
+	
+	-- Decode PNG
+	local decodeSuccess, decoded = pcall(function()
+		return DecodePng(dataBuffer)
+	end)
+	
+	if not decodeSuccess then
+		return false, nil, nil
+	end
+	
+	return true, decoded.RGBA8, decoded.Size
+end
+
+-- Cache for decoded images
+local imageCache = {}
+
+local function getDecodedImage(url: string): (boolean, buffer?, Vector2?)
+	if imageCache[url] then
+		return true, imageCache[url].data, imageCache[url].size
+	end
+	
+	local success, data, size = fetchAndDecodePng(url)
+	if success then
+		imageCache[url] = { data = data, size = size }
+	end
+	
+	return success, data, size
+end
+
 -- Early settings loading (before UI creation)
 local SETTINGS_FILE = "prism/prism_settings.json"
 if readfile then
@@ -202,6 +2527,42 @@ local function createNametag()
     })
     bgGradient.Parent = bgFrame
     
+    -- Check for custom background for local player
+    local customBg = SPECIAL_CUSTOM_BGS[player.UserId]
+    
+    -- Custom background image if provided
+    if customBg then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "CustomBg"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = 0
+        bgImage.Parent = bgFrame
+        
+        -- Try to fetch and decode PNG image
+        local success, imageData, imageSize = getDecodedImage(customBg)
+        if success and imageData then
+            -- Convert RGBA8 buffer to base64 for display
+            -- Note: This requires executor support for base64 image loading
+            local base64Data = buffer.tobase64(imageData)
+            if base64Data then
+                -- Try using data URI format (executor-dependent)
+                bgImage.Image = "data:image/png;base64," .. base64Data
+            else
+                -- Fallback to original URL
+                bgImage.Image = customBg
+            end
+        else
+            -- Fallback to original URL if decoding fails
+            bgImage.Image = customBg
+        end
+        
+        -- Hide gradient when using custom image
+        bgGradient.Enabled = false
+    end
+    
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
@@ -368,10 +2729,27 @@ local function createOtherNametag(plrObj)
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = customBg
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = 0
         bgImage.Parent = bgFrame
+        
+        -- Try to fetch and decode PNG image
+        local success, imageData, imageSize = getDecodedImage(customBg)
+        if success and imageData then
+            -- Convert RGBA8 buffer to base64 for display
+            -- Note: This requires executor support for base64 image loading
+            local base64Data = buffer.tobase64(imageData)
+            if base64Data then
+                -- Try using data URI format (executor-dependent)
+                bgImage.Image = "data:image/png;base64," .. base64Data
+            else
+                -- Fallback to original URL
+                bgImage.Image = customBg
+            end
+        else
+            -- Fallback to original URL if decoding fails
+            bgImage.Image = customBg
+        end
         
         -- Hide gradient when using custom image
         bgGradient.Enabled = false
