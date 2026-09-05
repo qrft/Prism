@@ -78,8 +78,8 @@ local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
 
 -- SPECIAL table: custom backgrounds per userId
 local SPECIAL_CUSTOM_BGS = {
-    -- Add userId -> image URL mappings here
-    -- Example: [12345678] = "https://prismscript.vercel.app/images/coolbg.png",
+    [7275889224] = "https://prismscript.vercel.app/images/cat.jpg",
+    -- Add more userId -> image URL mappings here
 }
 
 local nametagEnabled = true
