@@ -82,6 +82,7 @@ local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 30
+local originalNameDisplayDistance = 0
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -124,6 +125,15 @@ local function clearAllNametags()
     nametagGui = nil
 end
 
+local function hideDefaultNametags()
+    originalNameDisplayDistance = PM.Svc.Players.NameDisplayDistance
+    PM.Svc.Players.NameDisplayDistance = 0
+end
+
+local function restoreDefaultNametags()
+    PM.Svc.Players.NameDisplayDistance = originalNameDisplayDistance
+end
+
 local function createNametag()
     local player = PM.Svc.Players.LocalPlayer
     if not player.Character then return end
@@ -148,7 +158,7 @@ local function createNametag()
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 1000
+    billboard.MaxDistance = 9999
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
     local bgFrame = Instance.new("Frame")
@@ -174,12 +184,13 @@ local function createNametag()
     })
     bgGradient.Parent = bgFrame
     
-    local frame = Instance.new("Frame")
+    local frame = Instance.new("TextButton")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
+    frame.Text = ""
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -247,6 +258,13 @@ local function createNametag()
     
     nametagGui = billboard
     pcall(function() billboard.Parent = head end)
+    
+    frame.MouseButton1Click:Connect(function()
+        local myChar = PM.Svc.Players.LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+            myChar:MoveTo(head.Position + Vector3.new(0, 3, 0))
+        end
+    end)
 end
 
 local function removeNametag()
@@ -263,6 +281,7 @@ end
 local function toggleNametag()
     nametagEnabled = not nametagEnabled
     if nametagEnabled then
+        hideDefaultNametags()
         if nametagGui then
             nametagGui.Enabled = true
         else
@@ -274,6 +293,7 @@ local function toggleNametag()
             end
         end
     else
+        restoreDefaultNametags()
         if nametagGui then
             nametagGui.Enabled = false
         end
@@ -312,7 +332,7 @@ local function createOtherNametag(plrObj)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 50
+    billboard.MaxDistance = 9999
     
     local bgFrame = Instance.new("Frame")
     bgFrame.Name = "BgFrame"
@@ -337,12 +357,13 @@ local function createOtherNametag(plrObj)
     })
     bgGradient.Parent = bgFrame
     
-    local frame = Instance.new("Frame")
+    local frame = Instance.new("TextButton")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
+    frame.Text = ""
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -416,6 +437,13 @@ local function createOtherNametag(plrObj)
     }
     
     pcall(function() billboard.Parent = head end)
+    
+    frame.MouseButton1Click:Connect(function()
+        local myChar = PM.Svc.Players.LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
+            myChar:MoveTo(plrObj.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
+        end
+    end)
 end
 
 local function removeOtherNametag(userId)
@@ -2786,6 +2814,7 @@ pcall(PM.createMainGUI)
 
 -- Initialize nametag system
 clearAllNametags()
+hideDefaultNametags()
 local player = PM.Svc.Players.LocalPlayer
 if player.Character then
     createNametag()
