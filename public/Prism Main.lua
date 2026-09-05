@@ -151,6 +151,12 @@ local function createNametag()
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
     
+    -- Disconnect old connection before creating new one
+    if nametagConnection then
+        nametagConnection:Disconnect()
+        nametagConnection = nil
+    end
+    
     if nametagGui then
         pcall(function() nametagGui:Destroy() end)
         nametagGui = nil
@@ -170,6 +176,7 @@ local function createNametag()
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.ClipsDescendants = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
@@ -251,6 +258,8 @@ local function createNametag()
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
+        billboard.Enabled = nametagEnabled
+        
         -- Track head
         local currentHead = player.Character and player.Character:FindFirstChild("Head")
         if currentHead then
@@ -327,6 +336,7 @@ local function createOtherNametag(plrObj)
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Active = true
+    billboard.ClipsDescendants = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     local bgFrame = Instance.new("Frame")
@@ -421,6 +431,8 @@ local function createOtherNametag(plrObj)
         if bgGradient and bgGradient.Parent then
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
+        
+        billboard.Enabled = nametagEnabled
         
         -- Track head
         local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
