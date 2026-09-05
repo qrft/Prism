@@ -2832,7 +2832,6 @@ pcall(PM.createMainGUI)
 
 -- Initialize nametag system
 clearAllNametags()
-hideDefaultNametags()
 local player = PM.Svc.Players.LocalPlayer
 if player.Character then
     createNametag()
@@ -2848,6 +2847,9 @@ end)
 -- Check for other Prism users on load
 task.wait(1)
 updateOtherNametags()
+
+-- Hide default nametags for Prism users after we know who they are
+hideDefaultNametags()
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
