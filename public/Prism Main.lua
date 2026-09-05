@@ -385,6 +385,19 @@ local function createOtherNametag(plrObj)
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
     -- Click to teleport behind target
     frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -412,6 +425,20 @@ local function createOtherNametag(plrObj)
         local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
         if targetHead then
             billboard.Adornee = targetHead
+        end
+        
+        -- Distance-based visibility (no size tweening)
+        local myChar = PM.Svc.Players.LocalPlayer.Character
+        local targetChar = plrObj.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            local myHRP = myChar.HumanoidRootPart
+            local targetHRP = targetChar.HumanoidRootPart
+            local dist = (myHRP.Position - targetHRP.Position).Magnitude
+            local isFar = dist > 50
+            
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
         end
     end)
     
