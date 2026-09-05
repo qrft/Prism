@@ -76,6 +76,12 @@ local C = PM.C
 local API_BASE_URL = "https://prismscript.vercel.app"
 local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
 
+-- SPECIAL table: custom backgrounds per userId
+local SPECIAL_CUSTOM_BGS = {
+    -- Add userId -> image URL mappings here
+    -- Example: [12345678] = "https://prismscript.vercel.app/images/coolbg.png",
+}
+
 local nametagEnabled = true
 local nametagGui = nil
 local nametagConnection = nil
@@ -304,6 +310,9 @@ local function createOtherNametag(plrObj)
     local head = plrObj.Character:FindFirstChild("Head")
     if not head then return end
     
+    -- Check SPECIAL table for custom background
+    local customBg = SPECIAL_CUSTOM_BGS[plrObj.UserId]
+    
     if otherNametags[plrObj.UserId] then
         if otherNametags[plrObj.UserId].connection then
             otherNametags[plrObj.UserId].connection:Disconnect()
@@ -351,6 +360,22 @@ local function createOtherNametag(plrObj)
         ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
     })
     bgGradient.Parent = bgFrame
+    
+    -- Custom background image if provided
+    if customBg then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "CustomBg"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        bgImage.Image = customBg
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = 0
+        bgImage.Parent = bgFrame
+        
+        -- Hide gradient when using custom image
+        bgGradient.Enabled = false
+    end
     
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
