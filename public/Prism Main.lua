@@ -126,28 +126,37 @@ local function clearAllNametags()
     nametagGui = nil
 end
 
+local function hidePlayerDefaultNametag(plr)
+    if plr then
+        originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
+        plr.NameDisplayDistance = 0
+    end
+end
+
+local function restorePlayerDefaultNametag(plr)
+    if plr and originalNameDisplayDistances[plr.UserId] then
+        plr.NameDisplayDistance = originalNameDisplayDistances[plr.UserId]
+        originalNameDisplayDistances[plr.UserId] = nil
+    end
+end
+
 local function hideDefaultNametags()
     local localPlayer = PM.Svc.Players.LocalPlayer
-    originalNameDisplayDistances[localPlayer.UserId] = localPlayer.NameDisplayDistance
-    localPlayer.NameDisplayDistance = 0
+    hidePlayerDefaultNametag(localPlayer)
     
     for userId in pairs(prismUserIds) do
         local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-        if plr then
-            originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
-            plr.NameDisplayDistance = 0
-        end
+        hidePlayerDefaultNametag(plr)
     end
 end
 
 local function restoreDefaultNametags()
-    for userId, dist in pairs(originalNameDisplayDistances) do
+    restorePlayerDefaultNametag(PM.Svc.Players.LocalPlayer)
+    
+    for userId in pairs(prismUserIds) do
         local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-        if plr then
-            plr.NameDisplayDistance = dist
-        end
+        restorePlayerDefaultNametag(plr)
     end
-    originalNameDisplayDistances = {}
 end
 
 local function createNametag()
@@ -275,6 +284,8 @@ local function createNametag()
     nametagGui = billboard
     pcall(function() billboard.Parent = head end)
     
+    hidePlayerDefaultNametag(player)
+    
     frame.MouseButton1Click:Connect(function()
         local myChar = PM.Svc.Players.LocalPlayer.Character
         if myChar and myChar:FindFirstChild("HumanoidRootPart") then
@@ -292,6 +303,7 @@ local function removeNametag()
         pcall(function() nametagGui:Destroy() end)
         nametagGui = nil
     end
+    restorePlayerDefaultNametag(PM.Svc.Players.LocalPlayer)
 end
 
 local function toggleNametag()
@@ -454,6 +466,8 @@ local function createOtherNametag(plrObj)
     
     pcall(function() billboard.Parent = head end)
     
+    hidePlayerDefaultNametag(plrObj)
+    
     frame.MouseButton1Click:Connect(function()
         local myChar = PM.Svc.Players.LocalPlayer.Character
         if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
@@ -470,6 +484,8 @@ local function removeOtherNametag(userId)
         pcall(function() otherNametags[userId].gui:Destroy() end)
         otherNametags[userId] = nil
     end
+    local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+    restorePlayerDefaultNametag(plr)
 end
 
 local function readFromAPI()
@@ -2847,9 +2863,6 @@ end)
 -- Check for other Prism users on load
 task.wait(1)
 updateOtherNametags()
-
--- Hide default nametags for Prism users after we know who they are
-hideDefaultNametags()
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
