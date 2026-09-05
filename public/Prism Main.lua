@@ -150,6 +150,7 @@ local function createNametag()
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 1000
     
+    -- Background frame for border (fixes corner gaps) - added first to be behind
     local bgFrame = Instance.new("Frame")
     bgFrame.Name = "BgFrame"
     bgFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -157,7 +158,6 @@ local function createNametag()
     bgFrame.BackgroundColor3 = C.sep
     bgFrame.BackgroundTransparency = 0
     bgFrame.BorderSizePixel = 0
-    bgFrame.ZIndex = 1
     bgFrame.Parent = billboard
     
     local bgCorner = Instance.new("UICorner")
@@ -180,7 +180,6 @@ local function createNametag()
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
-    frame.ZIndex = 2
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -322,7 +321,6 @@ local function createOtherNametag(plrObj)
     bgFrame.BackgroundColor3 = C.sep
     bgFrame.BackgroundTransparency = 0
     bgFrame.BorderSizePixel = 0
-    bgFrame.ZIndex = 1
     bgFrame.Parent = billboard
     
     local bgCorner = Instance.new("UICorner")
@@ -345,7 +343,6 @@ local function createOtherNametag(plrObj)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
-    frame.ZIndex = 2
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
