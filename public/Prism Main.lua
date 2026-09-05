@@ -82,7 +82,7 @@ local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 30
-local originalNameDisplayDistance = 0
+local originalNameDisplayDistances = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -126,12 +126,18 @@ local function clearAllNametags()
 end
 
 local function hideDefaultNametags()
-    originalNameDisplayDistance = PM.Svc.Players.NameDisplayDistance
-    PM.Svc.Players.NameDisplayDistance = 0
+    for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
+        originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
+        plr.NameDisplayDistance = 0
+    end
 end
 
 local function restoreDefaultNametags()
-    PM.Svc.Players.NameDisplayDistance = originalNameDisplayDistance
+    for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
+        if originalNameDisplayDistances[plr.UserId] then
+            plr.NameDisplayDistance = originalNameDisplayDistances[plr.UserId]
+        end
+    end
 end
 
 local function createNametag()
