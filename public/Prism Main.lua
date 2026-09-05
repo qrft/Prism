@@ -603,6 +603,53 @@ local function sendToAPI(userInfo)
     end
 end
 
+local function deleteFromAPI(userId)
+    local HttpService = game:GetService("HttpService")
+    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        return false, "No HTTP function available"
+    end
+    
+    local requestBody = HttpService:JSONEncode({userId = tostring(userId)})
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "DELETE",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = requestBody
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if not success then
+        return false, result
+    end
+    
+    local responseBody = result.Body or result.body or result
+    
+    if responseBody then
+        local responseSuccess, responseData = pcall(function()
+            return HttpService:JSONDecode(responseBody)
+        end)
+        
+        if responseSuccess then
+            if responseData.success then
+                return true, responseData
+            else
+                return false, responseData.error
+            end
+        else
+            return false, "Parse error"
+        end
+    else
+        return false, "No response"
+    end
+end
+
 local function sendNametagData()
     local userInfo = getUserInfo()
     if not userInfo then
@@ -651,6 +698,14 @@ PM.PrismNametags = {
             end
         end
         otherNametags = {}
+        
+        -- Remove self from API
+        local player = PM.Svc.Players.LocalPlayer
+        if player then
+            task.spawn(function()
+                deleteFromAPI(player.UserId)
+            end)
+        end
         
         -- Reset flags
         nametagGui = nil
@@ -2856,6 +2911,15 @@ player.CharacterAdded:Connect(function(char)
     end
     -- Recreate other players' nametags since PlayerGui was reset
     updateOtherNametags()
+end)
+
+-- Remove nametag when player leaves
+PM.Svc.Players.PlayerRemoving:Connect(function(leavingPlayer)
+    removeOtherNametag(leavingPlayer.UserId)
+    -- Also remove from API instantly
+    task.spawn(function()
+        deleteFromAPI(leavingPlayer.UserId)
+    end)
 end)
 
 -- Check for other Prism users on load
