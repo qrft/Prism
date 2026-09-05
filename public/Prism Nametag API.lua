@@ -121,10 +121,49 @@ local function createNametag()
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
-    -- Rotating animation
+    -- Small "P" label for far distance
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
+    -- Rotating animation with distance LOD
     nametagConnection = RunService.Heartbeat:Connect(function(dt)
         if stroke and stroke.Parent then
             gradient.Rotation = (gradient.Rotation + 120 * dt) % 360
+        end
+        
+        -- Distance LOD: beyond 50 studs shrink to just "P"
+        local myChar = player.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+            local myHRP = myChar.HumanoidRootPart
+            local targetHRP = head
+            if targetHRP then
+                local dist = (myHRP.Position - targetHRP.Position).Magnitude
+                local isFar = dist > 50
+                
+                displayNameLabel.Visible = not isFar
+                usernameLabel.Visible = not isFar
+                smallLabel.Visible = isFar
+                
+                if isFar then
+                    TweenService:Create(billboard, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, 40, 0, 40)
+                    }):Play()
+                else
+                    TweenService:Create(billboard, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, 150, 0, 50)
+                    }):Play()
+                end
+            end
         end
     end)
     
@@ -244,10 +283,47 @@ local function createOtherNametag(plrObj)
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
-    -- Rotating animation
+    -- Small "P" label for far distance
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
+    -- Rotating animation with distance LOD
     local connection = RunService.Heartbeat:Connect(function(dt)
         if stroke and stroke.Parent then
             gradient.Rotation = (gradient.Rotation + 120 * dt) % 360
+        end
+        
+        -- Distance LOD: beyond 50 studs shrink to just "P"
+        local myChar = Players.LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
+            local myHRP = myChar.HumanoidRootPart
+            local targetHRP = plrObj.Character.HumanoidRootPart
+            local dist = (myHRP.Position - targetHRP.Position).Magnitude
+            local isFar = dist > 50
+            
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
+            
+            if isFar then
+                TweenService:Create(billboard, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 40, 0, 40)
+                }):Play()
+            else
+                TweenService:Create(billboard, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(0, 150, 0, 50)
+                }):Play()
+            end
         end
     end)
     
