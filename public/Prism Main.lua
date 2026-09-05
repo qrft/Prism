@@ -68,8 +68,540 @@ PM.C = {
     border = Color3.fromRGB(45, 45, 45),
     green = Color3.fromRGB(70, 170, 70),
     red = Color3.fromRGB(170, 70, 70),
+    sep = Color3.fromRGB(60, 60, 70),
 }
 local C = PM.C
+
+-- Prism Nametag System Integration
+local API_BASE_URL = "https://prismscript.vercel.app"
+local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
+
+local nametagEnabled = true
+local nametagGui = nil
+local nametagConnection = nil
+local otherNametags = {}
+local autoSyncEnabled = true
+local autoSyncInterval = 30
+
+local function clearAllNametags()
+    local player = PM.Svc.Players.LocalPlayer
+    
+    if player.Character then
+        local head = player.Character:FindFirstChild("Head")
+        if head then
+            for _, child in ipairs(head:GetChildren()) do
+                if child.Name == "PrismNametag" then
+                    pcall(function() child:Destroy() end)
+                end
+            end
+        end
+    end
+    
+    for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
+        if plr.Character then
+            local head = plr.Character:FindFirstChild("Head")
+            if head then
+                for _, child in ipairs(head:GetChildren()) do
+                    if child.Name:sub(1, 13) == "PrismNametag_" then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
+            end
+        end
+    end
+    
+    for userId, tagData in pairs(otherNametags) do
+        if tagData.connection then
+            tagData.connection:Disconnect()
+        end
+    end
+    otherNametags = {}
+    
+    if nametagConnection then
+        nametagConnection:Disconnect()
+        nametagConnection = nil
+    end
+    nametagGui = nil
+end
+
+local function createNametag()
+    local player = PM.Svc.Players.LocalPlayer
+    if not player.Character then return end
+    
+    local head = player.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    if nametagGui then
+        pcall(function() nametagGui:Destroy() end)
+        nametagGui = nil
+    end
+    
+    for _, child in ipairs(head:GetChildren()) do
+        if child.Name == "PrismNametag" then
+            pcall(function() child:Destroy() end)
+        end
+    end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PrismNametag"
+    billboard.Size = UDim2.new(0, 150, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 1000
+    
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Name = "BgFrame"
+    bgFrame.Size = UDim2.new(1, 4, 1, 4)
+    bgFrame.Position = UDim2.new(0, -2, 0, -2)
+    bgFrame.BackgroundColor3 = C.sep
+    bgFrame.BackgroundTransparency = 0
+    bgFrame.BorderSizePixel = 0
+    bgFrame.ZIndex = 1
+    bgFrame.Parent = billboard
+    
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 10)
+    bgCorner.Parent = bgFrame
+    
+    local bgGradient = Instance.new("UIGradient")
+    bgGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.25, C.sep),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+        ColorSequenceKeypoint.new(0.75, C.sep),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+    })
+    bgGradient.Parent = bgFrame
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "TagFrame"
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = C.card
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 2
+    frame.Parent = billboard
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    local displayNameLabel = Instance.new("TextLabel")
+    displayNameLabel.Name = "DisplayName"
+    displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
+    displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
+    displayNameLabel.BackgroundTransparency = 1
+    displayNameLabel.Text = player.DisplayName
+    displayNameLabel.TextColor3 = C.text
+    displayNameLabel.TextSize = 14
+    displayNameLabel.Font = Enum.Font.GothamBold
+    displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    displayNameLabel.Parent = frame
+    
+    local usernameLabel = Instance.new("TextLabel")
+    usernameLabel.Name = "Username"
+    usernameLabel.Size = UDim2.new(1, -10, 0, 16)
+    usernameLabel.Position = UDim2.new(0, 5, 0, 25)
+    usernameLabel.BackgroundTransparency = 1
+    usernameLabel.Text = "@ " .. player.Name
+    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextSize = 11
+    usernameLabel.Font = Enum.Font.Gotham
+    usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    usernameLabel.Parent = frame
+    
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
+    nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        if bgGradient and bgGradient.Parent then
+            bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
+        end
+        
+        local camera = workspace.CurrentCamera
+        if camera and head then
+            local dist = (camera.CFrame.Position - head.Position).Magnitude
+            local isFar = dist > 50
+            
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
+            
+            if isFar then
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
+            else
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
+            end
+        end
+    end)
+    
+    nametagGui = billboard
+    pcall(function() billboard.Parent = head end)
+end
+
+local function removeNametag()
+    if nametagConnection then
+        nametagConnection:Disconnect()
+        nametagConnection = nil
+    end
+    if nametagGui then
+        pcall(function() nametagGui:Destroy() end)
+        nametagGui = nil
+    end
+end
+
+local function toggleNametag()
+    nametagEnabled = not nametagEnabled
+    if nametagEnabled then
+        if nametagGui then
+            nametagGui.Enabled = true
+        else
+            createNametag()
+        end
+        for userId, tagData in pairs(otherNametags) do
+            if tagData.gui then
+                tagData.gui.Enabled = true
+            end
+        end
+    else
+        if nametagGui then
+            nametagGui.Enabled = false
+        end
+        for userId, tagData in pairs(otherNametags) do
+            if tagData.gui then
+                tagData.gui.Enabled = false
+            end
+        end
+    end
+    return nametagEnabled
+end
+
+local function createOtherNametag(plrObj)
+    if not plrObj.Character then return end
+    
+    local head = plrObj.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    if otherNametags[plrObj.UserId] then
+        if otherNametags[plrObj.UserId].connection then
+            otherNametags[plrObj.UserId].connection:Disconnect()
+        end
+        pcall(function() otherNametags[plrObj.UserId].gui:Destroy() end)
+        otherNametags[plrObj.UserId] = nil
+    end
+    
+    for _, child in ipairs(head:GetChildren()) do
+        if child.Name == "PrismNametag_" .. plrObj.UserId then
+            pcall(function() child:Destroy() end)
+        end
+    end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PrismNametag_" .. plrObj.UserId
+    billboard.Size = UDim2.new(0, 150, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 50
+    
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Name = "BgFrame"
+    bgFrame.Size = UDim2.new(1, 4, 1, 4)
+    bgFrame.Position = UDim2.new(0, -2, 0, -2)
+    bgFrame.BackgroundColor3 = C.sep
+    bgFrame.BackgroundTransparency = 0
+    bgFrame.BorderSizePixel = 0
+    bgFrame.ZIndex = 1
+    bgFrame.Parent = billboard
+    
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 10)
+    bgCorner.Parent = bgFrame
+    
+    local bgGradient = Instance.new("UIGradient")
+    bgGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.25, C.sep),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+        ColorSequenceKeypoint.new(0.75, C.sep),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+    })
+    bgGradient.Parent = bgFrame
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "TagFrame"
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = C.card
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 2
+    frame.Parent = billboard
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    local displayNameLabel = Instance.new("TextLabel")
+    displayNameLabel.Name = "DisplayName"
+    displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
+    displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
+    displayNameLabel.BackgroundTransparency = 1
+    displayNameLabel.Text = plrObj.DisplayName
+    displayNameLabel.TextColor3 = C.text
+    displayNameLabel.TextSize = 14
+    displayNameLabel.Font = Enum.Font.GothamBold
+    displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    displayNameLabel.Parent = frame
+    
+    local usernameLabel = Instance.new("TextLabel")
+    usernameLabel.Name = "Username"
+    usernameLabel.Size = UDim2.new(1, -10, 0, 16)
+    usernameLabel.Position = UDim2.new(0, 5, 0, 25)
+    usernameLabel.BackgroundTransparency = 1
+    usernameLabel.Text = "@ " .. plrObj.Name
+    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextSize = 11
+    usernameLabel.Font = Enum.Font.Gotham
+    usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    usernameLabel.Parent = frame
+    
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
+    local connection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        if bgGradient and bgGradient.Parent then
+            bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
+        end
+        
+        local myChar = PM.Svc.Players.LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
+            local myHRP = myChar.HumanoidRootPart
+            local targetHRP = plrObj.Character.HumanoidRootPart
+            local dist = (myHRP.Position - targetHRP.Position).Magnitude
+            local isFar = dist > 50
+            
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
+            
+            if isFar then
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
+            else
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
+            end
+        end
+    end)
+    
+    otherNametags[plrObj.UserId] = {
+        gui = billboard,
+        connection = connection
+    }
+    
+    pcall(function() billboard.Parent = head end)
+end
+
+local function removeOtherNametag(userId)
+    if otherNametags[userId] then
+        if otherNametags[userId].connection then
+            otherNametags[userId].connection:Disconnect()
+        end
+        pcall(function() otherNametags[userId].gui:Destroy() end)
+        otherNametags[userId] = nil
+    end
+end
+
+local function readFromAPI()
+    local HttpService = game:GetService("HttpService")
+    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        return nil
+    end
+    
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "GET"
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if not success then
+        return nil
+    end
+    
+    local responseBody = result.Body or result.body or result
+    
+    if responseBody then
+        local responseSuccess, responseData = pcall(function()
+            return HttpService:JSONDecode(responseBody)
+        end)
+        
+        if responseSuccess and responseData.success then
+            return responseData.data
+        end
+    end
+    
+    return nil
+end
+
+local function updateOtherNametags()
+    local data = readFromAPI()
+    if not data or not data.users then return end
+    
+    local myJobId = game.JobId
+    local myUserId = PM.Svc.Players.LocalPlayer.UserId
+    
+    local prismUsers = {}
+    for _, user in ipairs(data.users) do
+        if user.jobId == myJobId and tostring(user.userId) ~= tostring(myUserId) then
+            prismUsers[user.userId] = user
+        end
+    end
+    
+    for userId, userData in pairs(prismUsers) do
+        local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
+        if plrObj and not otherNametags[tonumber(userId)] then
+            if plrObj.Character then
+                createOtherNametag(plrObj)
+            else
+                plrObj.CharacterAdded:Connect(function(char)
+                    task.wait(0.5)
+                    if prismUsers[userId] and not otherNametags[tonumber(userId)] then
+                        createOtherNametag(plrObj)
+                    end
+                end)
+            end
+        end
+    end
+    
+    for userId, tagData in pairs(otherNametags) do
+        if not prismUsers[tostring(userId)] then
+            removeOtherNametag(userId)
+        end
+    end
+end
+
+local function getUserInfo()
+    local player = PM.Svc.Players.LocalPlayer
+    if not player then
+        return nil
+    end
+    
+    local jobId = game.JobId
+    local serverId = jobId
+    local userId = player.UserId
+    local username = player.Name
+    local displayName = player.DisplayName or username
+    
+    return {
+        username = username,
+        displayName = displayName,
+        userId = tostring(userId),
+        jobId = jobId ~= "" and jobId or "unknown",
+        serverId = serverId ~= "" and serverId or "unknown"
+    }
+end
+
+local function sendToAPI(userInfo)
+    local HttpService = game:GetService("HttpService")
+    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        return false, "No HTTP function available"
+    end
+    
+    local requestBody = HttpService:JSONEncode(userInfo)
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = requestBody
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if not success then
+        return false, result
+    end
+    
+    local responseBody = result.Body or result.body or result
+    
+    if responseBody then
+        local responseSuccess, responseData = pcall(function()
+            return HttpService:JSONDecode(responseBody)
+        end)
+        
+        if responseSuccess then
+            if responseData.success then
+                return true, responseData
+            else
+                return false, responseData.error
+            end
+        else
+            return false, "Parse error"
+        end
+    else
+        return false, "No response"
+    end
+end
+
+local function sendNametagData()
+    local userInfo = getUserInfo()
+    if not userInfo then
+        return
+    end
+    
+    local success, result = sendToAPI(userInfo)
+    
+    if success then
+        updateOtherNametags()
+    end
+end
+
+local function startAutoSync()
+    while autoSyncEnabled and PM.Svc.RunService.Heartbeat:Wait() do
+        task.wait(autoSyncInterval)
+        if autoSyncEnabled then
+            sendNametagData()
+        end
+    end
+end
+
+PM.PrismNametags = {
+    toggle = toggleNametag,
+    create = createNametag,
+    remove = removeNametag,
+    isEnabled = function()
+        return nametagEnabled
+    end
+}
 
 PM.createMainGUI = function()
     if PM.Svc.CoreGui:FindFirstChild("PrismMainGui") then return end
@@ -2254,6 +2786,30 @@ end
 repeat task.wait() until LP
 
 pcall(PM.createMainGUI)
+
+-- Initialize nametag system
+clearAllNametags()
+local player = PM.Svc.Players.LocalPlayer
+if player.Character then
+    createNametag()
+end
+
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if nametagEnabled then
+        createNametag()
+    end
+end)
+
+-- Check for other Prism users on load
+task.wait(1)
+updateOtherNametags()
+
+-- Send initial data IMMEDIATELY on execute
+sendNametagData()
+
+-- Start auto-sync in background
+task.spawn(startAutoSync)
 
 -- Panel population is handled by Prism Commands.lua after it loads
 
