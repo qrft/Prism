@@ -326,6 +326,7 @@ local function createOtherNametag(plrObj)
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.Active = true
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     local bgFrame = Instance.new("Frame")
