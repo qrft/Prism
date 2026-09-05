@@ -594,6 +594,11 @@ registerCommand("destroy", "Destroy Prism", {}, function(args)
 end, true)
 
 registerCommand("reload", "Reload Prism script", {}, function(args)
+    -- Cleanup nametags and disconnect from API
+    if PM.PrismNametags and PM.PrismNametags.cleanup then
+        PM.PrismNametags.cleanup()
+    end
+    
     cleanupPrism()
     getgenv().PrismMain = nil
     task.wait(0.5)

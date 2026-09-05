@@ -357,6 +357,7 @@ local function createOtherNametag(plrObj)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
+    frame.Active = true
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -399,6 +400,20 @@ local function createOtherNametag(plrObj)
     smallLabel.TextYAlignment = Enum.TextYAlignment.Center
     smallLabel.Visible = false
     smallLabel.Parent = frame
+    
+    -- Click to teleport behind target
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local myChar = PM.Svc.Players.LocalPlayer.Character
+            local targetChar = plrObj.Character
+            if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                local myHRP = myChar.HumanoidRootPart
+                local targetHRP = targetChar.HumanoidRootPart
+                local behind = targetHRP.CFrame * CFrame.new(0, 0, 3)
+                myHRP.CFrame = CFrame.new(behind.Position, behind.Position + targetHRP.CFrame.LookVector)
+            end
+        end
+    end)
     
     local connection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
@@ -617,6 +632,30 @@ PM.PrismNametags = {
     remove = removeNametag,
     isEnabled = function()
         return nametagEnabled
+    end,
+    cleanup = function()
+        -- Stop auto-sync
+        autoSyncEnabled = false
+        
+        -- Clear all nametags
+        clearAllNametags()
+        
+        -- Disconnect heartbeat connections
+        if nametagConnection then
+            nametagConnection:Disconnect()
+            nametagConnection = nil
+        end
+        
+        for userId, tagData in pairs(otherNametags) do
+            if tagData.connection then
+                tagData.connection:Disconnect()
+            end
+        end
+        otherNametags = {}
+        
+        -- Reset flags
+        nametagGui = nil
+        nametagEnabled = false
     end
 }
 
