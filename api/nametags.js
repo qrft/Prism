@@ -4,8 +4,8 @@
 // In-memory storage (resets on function cold start)
 let nametagData = { users: [], lastUpdated: null };
 
-// Auto-remove users inactive for more than 2 minutes
-const INACTIVE_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
+// Auto-remove users inactive for more than 30 seconds
+const INACTIVE_TIMEOUT = 30 * 1000; // 30 seconds in milliseconds
 
 function cleanupInactiveUsers() {
   const now = new Date();

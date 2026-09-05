@@ -81,7 +81,7 @@ local nametagGui = nil
 local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
-local autoSyncInterval = 30
+local autoSyncInterval = 2
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -2925,6 +2925,25 @@ end)
 -- Check for other Prism users on load
 task.wait(1)
 updateOtherNametags()
+
+-- Poll loop failsafe: remove nametags for players no longer in server
+task.spawn(function()
+    while autoSyncEnabled do
+        task.wait(2) -- Check every 2 seconds (like env.lua)
+        pcall(function()
+            local currentPlayers = {}
+            for _, plrObj in ipairs(PM.Svc.Players:GetPlayers()) do
+                currentPlayers[plrObj.UserId] = true
+            end
+            
+            for userId, tagData in pairs(otherNametags) do
+                if not currentPlayers[userId] then
+                    removeOtherNametag(userId)
+                end
+            end
+        end)
+    end
+end)
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
