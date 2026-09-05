@@ -151,12 +151,14 @@ local function hideDefaultNametags()
 end
 
 local function restoreDefaultNametags()
-    restorePlayerDefaultNametag(PM.Svc.Players.LocalPlayer)
-    
-    for userId in pairs(prismUserIds) do
+    -- Restore all tracked nametags
+    for userId, dist in pairs(originalNameDisplayDistances) do
         local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-        restorePlayerDefaultNametag(plr)
+        if plr then
+            plr.NameDisplayDistance = dist
+        end
     end
+    originalNameDisplayDistances = {}
 end
 
 local function createNametag()
@@ -309,7 +311,6 @@ end
 local function toggleNametag()
     nametagEnabled = not nametagEnabled
     if nametagEnabled then
-        hideDefaultNametags()
         if nametagGui then
             nametagGui.Enabled = true
         else
@@ -321,7 +322,6 @@ local function toggleNametag()
             end
         end
     else
-        restoreDefaultNametags()
         if nametagGui then
             nametagGui.Enabled = false
         end
