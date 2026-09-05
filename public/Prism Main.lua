@@ -85,7 +85,27 @@ local autoSyncInterval = 30
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
+    local playerGui = player:FindFirstChild("PlayerGui")
     
+    -- Clear own nametag from PlayerGui
+    if playerGui then
+        for _, child in ipairs(playerGui:GetChildren()) do
+            if child.Name == "PrismNametag" then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+    
+    -- Clear other players' nametags from PlayerGui
+    if playerGui then
+        for _, child in ipairs(playerGui:GetChildren()) do
+            if child.Name:sub(1, 13) == "PrismNametag_" then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+    
+    -- Also clear from heads (cleanup from old version)
     if player.Character then
         local head = player.Character:FindFirstChild("Head")
         if head then
@@ -145,10 +165,12 @@ local function createNametag()
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
     billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.8, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
     local bgFrame = Instance.new("Frame")
@@ -229,8 +251,14 @@ local function createNametag()
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
-        local camera = workspace.CurrentCamera
+        -- Track head
         local currentHead = player.Character and player.Character:FindFirstChild("Head")
+        if currentHead then
+            billboard.Adornee = currentHead
+        end
+        
+        -- Camera distance LOD: beyond 50 studs shrink to just "P"
+        local camera = workspace.CurrentCamera
         if camera and currentHead then
             local dist = (camera.CFrame.Position - currentHead.Position).Magnitude
             local isFar = dist > 50
@@ -248,7 +276,6 @@ local function createNametag()
     end)
     
     nametagGui = billboard
-    pcall(function() billboard.Parent = head end)
 end
 
 local function removeNametag()
@@ -311,10 +338,12 @@ local function createOtherNametag(plrObj)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
     billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.8, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     local bgFrame = Instance.new("Frame")
     bgFrame.Name = "BgFrame"
@@ -394,6 +423,12 @@ local function createOtherNametag(plrObj)
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
+        -- Track head
+        local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
+        if targetHead then
+            billboard.Adornee = targetHead
+        end
+        
         local myChar = PM.Svc.Players.LocalPlayer.Character
         local targetChar = plrObj.Character
         if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
@@ -418,8 +453,6 @@ local function createOtherNametag(plrObj)
         gui = billboard,
         connection = connection
     }
-    
-    pcall(function() billboard.Parent = head end)
 end
 
 local function removeOtherNametag(userId)
