@@ -177,6 +177,7 @@ local function createNametag()
     billboard.MaxDistance = 9999
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.ClipsDescendants = false
+    billboard.ResetOnSpawn = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
@@ -337,6 +338,7 @@ local function createOtherNametag(plrObj)
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Active = true
     billboard.ClipsDescendants = false
+    billboard.ResetOnSpawn = false
     billboard.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     local bgFrame = Instance.new("Frame")
@@ -2915,11 +2917,20 @@ end
 
 player.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    if nametagEnabled then
+    -- Just update Adornee to new head, don't recreate
+    if nametagGui and char:FindFirstChild("Head") then
+        nametagGui.Adornee = char.Head
+    elseif nametagEnabled then
         createNametag()
     end
-    -- Recreate other players' nametags since PlayerGui was reset
-    updateOtherNametags()
+    -- Don't recreate other nametags - they persist in PlayerGui
+    -- Just update their Adornees if needed
+    for userId, tagData in pairs(otherNametags) do
+        local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+        if plrObj and plrObj.Character and plrObj.Character:FindFirstChild("Head") then
+            tagData.gui.Adornee = plrObj.Character.Head
+        end
+    end
 end)
 
 -- Remove nametag when player leaves
