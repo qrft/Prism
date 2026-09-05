@@ -82,8 +82,6 @@ local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 30
-local originalNameDisplayDistances = {}
-local prismUserIds = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -124,41 +122,6 @@ local function clearAllNametags()
         nametagConnection = nil
     end
     nametagGui = nil
-end
-
-local function hidePlayerDefaultNametag(plr)
-    if plr then
-        originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
-        plr.NameDisplayDistance = 0
-    end
-end
-
-local function restorePlayerDefaultNametag(plr)
-    if plr and originalNameDisplayDistances[plr.UserId] then
-        plr.NameDisplayDistance = originalNameDisplayDistances[plr.UserId]
-        originalNameDisplayDistances[plr.UserId] = nil
-    end
-end
-
-local function hideDefaultNametags()
-    local localPlayer = PM.Svc.Players.LocalPlayer
-    hidePlayerDefaultNametag(localPlayer)
-    
-    for userId in pairs(prismUserIds) do
-        local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-        hidePlayerDefaultNametag(plr)
-    end
-end
-
-local function restoreDefaultNametags()
-    -- Restore all tracked nametags
-    for userId, dist in pairs(originalNameDisplayDistances) do
-        local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-        if plr then
-            plr.NameDisplayDistance = dist
-        end
-    end
-    originalNameDisplayDistances = {}
 end
 
 local function createNametag()
@@ -211,13 +174,12 @@ local function createNametag()
     })
     bgGradient.Parent = bgFrame
     
-    local frame = Instance.new("TextButton")
+    local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
-    frame.Text = ""
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -285,15 +247,6 @@ local function createNametag()
     
     nametagGui = billboard
     pcall(function() billboard.Parent = head end)
-    
-    hidePlayerDefaultNametag(player)
-    
-    frame.MouseButton1Click:Connect(function()
-        local myChar = PM.Svc.Players.LocalPlayer.Character
-        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-            myChar:MoveTo(head.Position + Vector3.new(0, 3, 0))
-        end
-    end)
 end
 
 local function removeNametag()
@@ -305,7 +258,6 @@ local function removeNametag()
         pcall(function() nametagGui:Destroy() end)
         nametagGui = nil
     end
-    restorePlayerDefaultNametag(PM.Svc.Players.LocalPlayer)
 end
 
 local function toggleNametag()
@@ -385,13 +337,12 @@ local function createOtherNametag(plrObj)
     })
     bgGradient.Parent = bgFrame
     
-    local frame = Instance.new("TextButton")
+    local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
-    frame.Text = ""
     frame.Parent = billboard
     
     local corner = Instance.new("UICorner")
@@ -465,15 +416,6 @@ local function createOtherNametag(plrObj)
     }
     
     pcall(function() billboard.Parent = head end)
-    
-    hidePlayerDefaultNametag(plrObj)
-    
-    frame.MouseButton1Click:Connect(function()
-        local myChar = PM.Svc.Players.LocalPlayer.Character
-        if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
-            myChar:MoveTo(plrObj.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
-        end
-    end)
 end
 
 local function removeOtherNametag(userId)
@@ -484,8 +426,6 @@ local function removeOtherNametag(userId)
         pcall(function() otherNametags[userId].gui:Destroy() end)
         otherNametags[userId] = nil
     end
-    local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-    restorePlayerDefaultNametag(plr)
 end
 
 local function readFromAPI()
@@ -538,9 +478,7 @@ local function updateOtherNametags()
         end
     end
     
-    prismUserIds = {}
     for userId, userData in pairs(prismUsers) do
-        prismUserIds[tonumber(userId)] = true
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
         if plrObj and not otherNametags[tonumber(userId)] then
             if plrObj.Character then

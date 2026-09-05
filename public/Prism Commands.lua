@@ -9913,14 +9913,6 @@ registerCommand("discord", "Discord invite", {"support", "help"}, function(args,
 	end
 end, true)
 
-registerCommand("unload", "Unload Prism script", {"exit", "quit"}, function(args, speaker)
-	if PM.UI.Gui then
-		PM.UI.Gui:Destroy()
-	end
-	getgenv().PrismMain = nil
-	return true
-end, true)
-
 -- Create panels if they don't exist
 if not PM.UI.CommandsPanel and PM.createCommandsPanel then
     PM.createCommandsPanel()
