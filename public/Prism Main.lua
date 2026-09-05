@@ -514,6 +514,15 @@ local function updateOtherNametags()
         end
     end
     
+    -- Only remove nametags if API fetch was successful and returned data
+    if data.users and #data.users > 0 then
+        for userId, tagData in pairs(otherNametags) do
+            if not prismUsers[tostring(userId)] then
+                removeOtherNametag(userId)
+            end
+        end
+    end
+    
     for userId, userData in pairs(prismUsers) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
         if plrObj and not otherNametags[tonumber(userId)] then
@@ -527,12 +536,6 @@ local function updateOtherNametags()
                     end
                 end)
             end
-        end
-    end
-    
-    for userId, tagData in pairs(otherNametags) do
-        if not prismUsers[tostring(userId)] then
-            removeOtherNametag(userId)
         end
     end
 end
