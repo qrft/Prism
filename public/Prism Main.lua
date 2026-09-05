@@ -126,18 +126,35 @@ local function clearAllNametags()
 end
 
 local function hideDefaultNametags()
-    for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
-        originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
-        plr.NameDisplayDistance = 0
+    local data = readFromAPI()
+    if not data or not data.users then return end
+    
+    local myJobId = game.JobId
+    local myUserId = PM.Svc.Players.LocalPlayer.UserId
+    
+    for _, user in ipairs(data.users) do
+        if user.jobId == myJobId then
+            local plr = PM.Svc.Players:GetPlayerByUserId(tonumber(user.userId))
+            if plr then
+                originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
+                plr.NameDisplayDistance = 0
+            end
+        end
     end
+    
+    local localPlayer = PM.Svc.Players.LocalPlayer
+    originalNameDisplayDistances[localPlayer.UserId] = localPlayer.NameDisplayDistance
+    localPlayer.NameDisplayDistance = 0
 end
 
 local function restoreDefaultNametags()
-    for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
-        if originalNameDisplayDistances[plr.UserId] then
-            plr.NameDisplayDistance = originalNameDisplayDistances[plr.UserId]
+    for userId, dist in pairs(originalNameDisplayDistances) do
+        local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+        if plr then
+            plr.NameDisplayDistance = dist
         end
     end
+    originalNameDisplayDistances = {}
 end
 
 local function createNametag()
