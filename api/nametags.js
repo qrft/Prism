@@ -4,10 +4,29 @@
 // In-memory storage (resets on function cold start)
 let nametagData = { users: [], lastUpdated: null };
 
+// Auto-remove users inactive for more than 1 minute
+const INACTIVE_TIMEOUT = 1 * 60 * 1000; // 1 minute in milliseconds
+
+function cleanupInactiveUsers() {
+  const now = new Date();
+  const beforeCount = nametagData.users.length;
+  
+  nametagData.users = nametagData.users.filter(user => {
+    const lastSeen = new Date(user.lastSeen);
+    const inactiveTime = now - lastSeen;
+    return inactiveTime < INACTIVE_TIMEOUT;
+  });
+  
+  const removedCount = beforeCount - nametagData.users.length;
+  if (removedCount > 0) {
+    console.log('[CLEANUP] Removed ' + removedCount + ' inactive users');
+  }
+}
+
 module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -15,6 +34,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Run cleanup on every request
+    cleanupInactiveUsers();
+
     if (req.method === 'GET') {
       console.log('[DEBUG] Reading nametag data:', {
         userCount: nametagData.users?.length || 0,
@@ -71,6 +93,30 @@ module.exports = async function handler(req, res) {
         success: true,
         message: existingIndex >= 0 ? 'User updated' : 'User added',
         data: userData
+      });
+    } else if (req.method === 'DELETE') {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing userId'
+        });
+      }
+      
+      const existingIndex = nametagData.users.findIndex(u => u.userId === userId);
+      if (existingIndex >= 0) {
+        nametagData.users.splice(existingIndex, 1);
+        console.log('[DEBUG] Manually removed user:', userId);
+        return res.status(200).json({
+          success: true,
+          message: 'User removed'
+        });
+      }
+      
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
       });
     } else {
       return res.status(405).json({

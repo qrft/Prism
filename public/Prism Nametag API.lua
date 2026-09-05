@@ -34,6 +34,7 @@ local C = {
 local nametagEnabled = true
 local nametagGui = nil
 local nametagConnection = nil
+local otherNametags = {} -- Stores nametags for other players
 
 local function createNametag()
     local player = Players.LocalPlayer
@@ -46,6 +47,14 @@ local function createNametag()
     if nametagGui then
         pcall(function() nametagGui:Destroy() end)
         nametagGui = nil
+    end
+    
+    -- Check for and destroy any existing Prism nametags on head (from previous script runs)
+    for _, child in ipairs(head:GetChildren()) do
+        if child.Name == "PrismNametag" then
+            pcall(function() child:Destroy() end)
+            print("Destroyed duplicate nametag from previous run")
+        end
     end
     
     -- Create BillboardGui
@@ -145,6 +154,210 @@ local function toggleNametag()
         removeNametag()
     end
     return nametagEnabled
+end
+
+-- Create nametag for another player
+local function createOtherNametag(plrObj)
+    if not plrObj.Character then return end
+    
+    local head = plrObj.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    -- Remove existing nametag for this player
+    if otherNametags[plrObj.UserId] then
+        if otherNametags[plrObj.UserId].connection then
+            otherNametags[plrObj.UserId].connection:Disconnect()
+        end
+        pcall(function() otherNametags[plrObj.UserId].gui:Destroy() end)
+        otherNametags[plrObj.UserId] = nil
+    end
+    
+    -- Check for and destroy any existing Prism nametags on head (from previous script runs)
+    for _, child in ipairs(head:GetChildren()) do
+        if child.Name == "PrismNametag_" .. plrObj.UserId then
+            pcall(function() child:Destroy() end)
+            print("Destroyed duplicate nametag for " .. plrObj.Name .. " from previous run")
+        end
+    end
+    
+    -- Create BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PrismNametag_" .. plrObj.UserId
+    billboard.Size = UDim2.new(0, 150, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 50
+    
+    -- Main frame
+    local frame = Instance.new("Frame")
+    frame.Name = "TagFrame"
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = C.card
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 0
+    frame.Parent = billboard
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    -- Rotating gradient border
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = C.sep
+    stroke.Thickness = 2
+    stroke.Parent = frame
+    
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.25, C.sep),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+        ColorSequenceKeypoint.new(0.75, C.sep),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+    })
+    gradient.Parent = stroke
+    
+    -- Display name label
+    local displayNameLabel = Instance.new("TextLabel")
+    displayNameLabel.Name = "DisplayName"
+    displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
+    displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
+    displayNameLabel.BackgroundTransparency = 1
+    displayNameLabel.Text = plrObj.DisplayName
+    displayNameLabel.TextColor3 = C.text
+    displayNameLabel.TextSize = 14
+    displayNameLabel.Font = Enum.Font.GothamBold
+    displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    displayNameLabel.Parent = frame
+    
+    -- Username label
+    local usernameLabel = Instance.new("TextLabel")
+    usernameLabel.Name = "Username"
+    usernameLabel.Size = UDim2.new(1, -10, 0, 16)
+    usernameLabel.Position = UDim2.new(0, 5, 0, 25)
+    usernameLabel.BackgroundTransparency = 1
+    usernameLabel.Text = "@" .. plrObj.Name
+    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextSize = 11
+    usernameLabel.Font = Enum.Font.Gotham
+    usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    usernameLabel.Parent = frame
+    
+    -- Rotating animation
+    local connection = RunService.Heartbeat:Connect(function(dt)
+        if stroke and stroke.Parent then
+            gradient.Rotation = (gradient.Rotation + 120 * dt) % 360
+        end
+    end)
+    
+    nametagGui = billboard
+    pcall(function() billboard.Parent = head end)
+    
+    otherNametags[plrObj.UserId] = {
+        gui = billboard,
+        connection = connection
+    }
+    
+    print("Created nametag for: " .. plrObj.Name)
+end
+
+-- Remove nametag for another player
+local function removeOtherNametag(userId)
+    if otherNametags[userId] then
+        if otherNametags[userId].connection then
+            otherNametags[userId].connection:Disconnect()
+        end
+        pcall(function() otherNametags[userId].gui:Destroy() end)
+        otherNametags[userId] = nil
+    end
+end
+
+-- Read data from API
+local function readFromAPI()
+    print("Reading nametag data from API...")
+    
+    local http = game:GetService("HttpService")
+    local requestFunction = request or (http and http.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        print("ERROR: No HTTP request function available")
+        return nil
+    end
+    
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "GET"
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if not success then
+        print("ERROR: API read failed - " .. tostring(result))
+        return nil
+    end
+    
+    local responseBody = result.Body or result.body or result
+    
+    if responseBody then
+        local responseSuccess, responseData = pcall(function()
+            return http:JSONDecode(responseBody)
+        end)
+        
+        if responseSuccess and responseData.success then
+            print("Successfully read API data")
+            return responseData.data
+        else
+            print("ERROR: Failed to parse API response")
+            return nil
+        end
+    end
+    
+    return nil
+end
+
+-- Update nametags for other Prism users
+local function updateOtherNametags()
+    local data = readFromAPI()
+    if not data or not data.users then return end
+    
+    local myJobId = game.JobId
+    local myUserId = Players.LocalPlayer.UserId
+    
+    -- Get current Prism users in same server
+    local prismUsers = {}
+    for _, user in ipairs(data.users) do
+        if user.jobId == myJobId and tostring(user.userId) ~= tostring(myUserId) then
+            prismUsers[user.userId] = user
+        end
+    end
+    
+    -- Create nametags for Prism users in the game
+    for userId, userData in pairs(prismUsers) do
+        local plrObj = Players:GetPlayerByUserId(tonumber(userId))
+        if plrObj and not otherNametags[tonumber(userId)] then
+            if plrObj.Character then
+                createOtherNametag(plrObj)
+            else
+                -- Wait for character to load
+                plrObj.CharacterAdded:Connect(function(char)
+                    task.wait(0.5)
+                    if prismUsers[userId] and not otherNametags[tonumber(userId)] then
+                        createOtherNametag(plrObj)
+                    end
+                end)
+            end
+        end
+    end
+    
+    -- Remove nametags for users no longer in Prism
+    for userId, tagData in pairs(otherNametags) do
+        if not prismUsers[tostring(userId)] then
+            removeOtherNametag(userId)
+        end
+    end
 end
 
 -- Get user information
@@ -263,6 +476,53 @@ local function sendToAPI(userInfo)
     end
 end
 
+-- Delete user from API
+local function deleteFromAPI()
+    print("Deleting user from API...")
+    print("API Endpoint: " .. API_ENDPOINT)
+    
+    local player = Players.LocalPlayer
+    local userId = tostring(player.UserId)
+    
+    local requestBody = HttpService:JSONEncode({ userId = userId })
+    
+    local requestFunction = request or (http and http.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        print("ERROR: No HTTP request function available")
+        return false
+    end
+    
+    local requestTable = {
+        Url = API_ENDPOINT,
+        Method = "DELETE",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = requestBody
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if success then
+        local responseBody = result.Body or result.body or result
+        if responseBody then
+            local responseSuccess, responseData = pcall(function()
+                return HttpService:JSONDecode(responseBody)
+            end)
+            if responseSuccess and responseData.success then
+                print("SUCCESS: User removed from API")
+                return true
+            end
+        end
+    end
+    
+    print("ERROR: Failed to remove user from API")
+    return false
+end
+
 -- Main function to send nametag data
 local function sendNametagData()
     print("SEND NAME TAG DATA CALLED")
@@ -278,6 +538,8 @@ local function sendNametagData()
     
     if success then
         print("SUCCESS: Nametag data sync completed!")
+        -- Update nametags for other Prism users after sending data
+        updateOtherNametags()
     else
         print("ERROR: Nametag data sync failed - " .. tostring(result))
     end
@@ -320,6 +582,11 @@ player.CharacterAdded:Connect(function(char)
     end
 end)
 
+-- Check for other Prism users on load
+print("CHECKING FOR OTHER PRISM USERS")
+task.wait(1)
+updateOtherNametags()
+
 -- Send initial data IMMEDIATELY on execute
 print("SENDING INITIAL DATA")
 sendNametagData()
@@ -328,32 +595,19 @@ sendNametagData()
 print("STARTING AUTO-SYNC")
 task.spawn(startAutoSync)
 
--- Export functions for external use
-print("EXPORTING FUNCTIONS")
-getgenv().PrismNametagAPI = {
-    sendNametagData = sendNametagData,
-    getUserInfo = getUserInfo,
-    toggleNametag = toggleNametag,
-    createNametag = createNametag,
-    removeNametag = removeNametag,
-    setAPIUrl = function(url)
-        API_BASE_URL = url
-        API_ENDPOINT = url .. "/api/nametags"
-        print("API URL updated to: " .. API_BASE_URL)
-    end,
-    setDebugMode = function(enabled)
-        DEBUG_MODE = enabled
-        print("Debug mode set to: " .. tostring(enabled))
-    end,
-    setAutoSync = function(enabled, interval)
-        autoSyncEnabled = enabled
-        if interval then
-            autoSyncInterval = interval
+-- Handle script unload (when user runs unload command)
+local scriptUnloading = false
+task.spawn(function()
+    while not scriptUnloading do
+        task.wait(1)
+        -- Check if script is being unloaded (common executor pattern)
+        if not script or not script.Parent then
+            scriptUnloading = true
+            print("Script unload detected, removing from API...")
+            deleteFromAPI()
+            break
         end
-        print("Auto-sync " .. (enabled and "enabled" or "disabled"))
     end
-}
+end)
 
-print("Functions exported to getgenv().PrismNametagAPI")
-print("Available functions: sendNametagData(), toggleNametag(), createNametag(), removeNametag(), getUserInfo(), setAPIUrl(), setDebugMode(), setAutoSync()")
 print("PRISM NAMETAG API INITIALIZATION COMPLETE")
