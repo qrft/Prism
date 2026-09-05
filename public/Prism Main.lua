@@ -148,7 +148,7 @@ local function createNametag()
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 1000
+    billboard.MaxDistance = 9999
     
     -- Background frame for border (fixes corner gaps) - added first to be behind
     local bgFrame = Instance.new("Frame")
@@ -224,13 +224,15 @@ local function createNametag()
     smallLabel.Parent = frame
     
     nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        if not billboard or not billboard.Parent then return end
         if bgGradient and bgGradient.Parent then
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
         local camera = workspace.CurrentCamera
-        if camera and head then
-            local dist = (camera.CFrame.Position - head.Position).Magnitude
+        local currentHead = player.Character and player.Character:FindFirstChild("Head")
+        if camera and currentHead then
+            local dist = (camera.CFrame.Position - currentHead.Position).Magnitude
             local isFar = dist > 50
             
             displayNameLabel.Visible = not isFar
@@ -312,7 +314,7 @@ local function createOtherNametag(plrObj)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 50
+    billboard.MaxDistance = 9999
     
     local bgFrame = Instance.new("Frame")
     bgFrame.Name = "BgFrame"
@@ -387,14 +389,16 @@ local function createOtherNametag(plrObj)
     smallLabel.Parent = frame
     
     local connection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        if not billboard or not billboard.Parent then return end
         if bgGradient and bgGradient.Parent then
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
         local myChar = PM.Svc.Players.LocalPlayer.Character
-        if myChar and myChar:FindFirstChild("HumanoidRootPart") and plrObj.Character and plrObj.Character:FindFirstChild("HumanoidRootPart") then
+        local targetChar = plrObj.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
             local myHRP = myChar.HumanoidRootPart
-            local targetHRP = plrObj.Character.HumanoidRootPart
+            local targetHRP = targetChar.HumanoidRootPart
             local dist = (myHRP.Position - targetHRP.Position).Magnitude
             local isFar = dist > 50
             
