@@ -68,7 +68,7 @@
         </div>
         
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="glass-card rounded-xl p-4 glow-purple">
                 <div class="flex items-center justify-between">
                     <div>
@@ -78,20 +78,6 @@
                     <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
                         <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="glass-card rounded-xl p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-400 text-sm">Active Servers</p>
-                        <p id="activeServers" class="text-2xl font-bold text-green-400">-</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
                         </svg>
                     </div>
                 </div>
@@ -253,9 +239,6 @@
             // Update stats
             document.getElementById('totalUsers').textContent = users.length;
             
-            const uniqueServers = [...new Set(users.map(u => u.serverId))].length;
-            document.getElementById('activeServers').textContent = uniqueServers;
-            
             if (data.lastUpdated) {
                 const lastUpdate = new Date(data.lastUpdated);
                 document.getElementById('lastUpdated').textContent = lastUpdate.toLocaleTimeString();
@@ -302,14 +285,6 @@
                         <div class="flex justify-between">
                             <span class="text-gray-500">User ID:</span>
                             <span class="text-gray-300 font-mono">${user.userId}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Job ID:</span>
-                            <span class="text-gray-300 font-mono text-xs">${escapeHtml(user.jobId || 'N/A')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Server ID:</span>
-                            <span class="text-gray-300 font-mono text-xs">${escapeHtml(user.serverId || 'N/A')}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-500">Last Seen:</span>
