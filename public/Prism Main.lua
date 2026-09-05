@@ -603,32 +603,6 @@ local function sendToAPI(userInfo)
     end
 end
 
-local function deleteFromAPI()
-    local HttpService = game:GetService("HttpService")
-    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-    
-    if not requestFunction then
-        return false
-    end
-    
-    local player = PM.Svc.Players.LocalPlayer
-    if not player then return false end
-    
-    local requestBody = HttpService:JSONEncode({ userId = tostring(player.UserId) })
-    local requestTable = {
-        Url = API_ENDPOINT,
-        Method = "DELETE",
-        Headers = {
-            ["Content-Type"] = "application/json"
-        },
-        Body = requestBody
-    }
-    
-    pcall(function()
-        requestFunction(requestTable)
-    end)
-end
-
 local function sendNametagData()
     local userInfo = getUserInfo()
     if not userInfo then
@@ -2941,31 +2915,6 @@ local queueTeleport = queue_on_teleport or queueonteleport or (syn and syn.queue
 if queueTeleport and PM.autoExecutePrism then
     pcall(function()
         queueTeleport([[loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()]])
-    end)
-end
-
--- Always queue DELETE request on teleport to remove nametag data
--- This ensures you won't show up in nametags until you re-execute
-if queueTeleport then
-    pcall(function()
-        queueTeleport([[
-            local HttpService = game:GetService("HttpService")
-            local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-            if requestFunction then
-                local player = game:GetService("Players").LocalPlayer
-                if player then
-                    local requestBody = HttpService:JSONEncode({ userId = tostring(player.UserId) })
-                    requestFunction({
-                        Url = "https://prismscript.vercel.app/api/nametags",
-                        Method = "DELETE",
-                        Headers = {
-                            ["Content-Type"] = "application/json"
-                        },
-                        Body = requestBody
-                    })
-                end
-            end
-        ]])
     end)
 end
 
