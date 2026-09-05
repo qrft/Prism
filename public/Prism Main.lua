@@ -83,6 +83,7 @@ local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 30
 local originalNameDisplayDistances = {}
+local prismUserIds = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -126,25 +127,17 @@ local function clearAllNametags()
 end
 
 local function hideDefaultNametags()
-    local data = readFromAPI()
-    if not data or not data.users then return end
-    
-    local myJobId = game.JobId
-    local myUserId = PM.Svc.Players.LocalPlayer.UserId
-    
-    for _, user in ipairs(data.users) do
-        if user.jobId == myJobId then
-            local plr = PM.Svc.Players:GetPlayerByUserId(tonumber(user.userId))
-            if plr then
-                originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
-                plr.NameDisplayDistance = 0
-            end
-        end
-    end
-    
     local localPlayer = PM.Svc.Players.LocalPlayer
     originalNameDisplayDistances[localPlayer.UserId] = localPlayer.NameDisplayDistance
     localPlayer.NameDisplayDistance = 0
+    
+    for userId in pairs(prismUserIds) do
+        local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+        if plr then
+            originalNameDisplayDistances[plr.UserId] = plr.NameDisplayDistance
+            plr.NameDisplayDistance = 0
+        end
+    end
 end
 
 local function restoreDefaultNametags()
@@ -529,7 +522,9 @@ local function updateOtherNametags()
         end
     end
     
+    prismUserIds = {}
     for userId, userData in pairs(prismUsers) do
+        prismUserIds[tonumber(userId)] = true
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
         if plrObj and not otherNametags[tonumber(userId)] then
             if plrObj.Character then
