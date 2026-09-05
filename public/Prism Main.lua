@@ -165,7 +165,7 @@ local function createNametag()
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
     billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.8, 0)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.5, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
@@ -256,23 +256,6 @@ local function createNametag()
         if currentHead then
             billboard.Adornee = currentHead
         end
-        
-        -- Camera distance LOD: beyond 50 studs shrink to just "P"
-        local camera = workspace.CurrentCamera
-        if camera and currentHead then
-            local dist = (camera.CFrame.Position - currentHead.Position).Magnitude
-            local isFar = dist > 50
-            
-            displayNameLabel.Visible = not isFar
-            usernameLabel.Visible = not isFar
-            smallLabel.Visible = isFar
-            
-            if isFar then
-                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
-            else
-                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
-            end
-        end
     end)
     
     nametagGui = billboard
@@ -338,7 +321,7 @@ local function createOtherNametag(plrObj)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
     billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffsetWorldSpace = Vector3.new(0, 4.8, 0)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.5, 0)
     billboard.Adornee = head
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 9999
