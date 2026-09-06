@@ -315,7 +315,6 @@ local function createOtherNametag(plrObj, userData)
     if not head then return end
     
     local textEffect = userData and userData.textEffect or "none"
-    warn("[Prism Nametag] Creating nametag for " .. plrObj.Name .. " (ID: " .. plrObj.UserId .. ") with effect: " .. textEffect)
     
     if otherNametags[plrObj.UserId] then
         if otherNametags[plrObj.UserId].connection then
@@ -512,8 +511,7 @@ local function createOtherNametag(plrObj, userData)
     
     otherNametags[plrObj.UserId] = {
         gui = billboard,
-        connection = connection,
-        effect = textEffect
+        connection = connection
     }
 end
 
@@ -565,47 +563,29 @@ end
 
 local function updateOtherNametags()
     local data = readFromAPI()
-    if not data or not data.users then 
-        warn("[Prism Nametag] No data received from API")
-        return 
-    end
+    if not data or not data.users then return end
     
     local myUserId = PM.Svc.Players.LocalPlayer.UserId
-    warn("[Prism Nametag] Fetched " .. #data.users .. " users from API")
     
     local prismUsers = {}
     for _, user in ipairs(data.users) do
         if tostring(user.userId) ~= tostring(myUserId) then
             prismUsers[user.userId] = user
-            warn("[Prism Nametag] User " .. user.username .. " (ID: " .. user.userId .. ") has effect: " .. (user.textEffect or "none"))
         end
     end
     
     for userId, userData in pairs(prismUsers) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
-        if plrObj then
-            local existingTag = otherNametags[tonumber(userId)]
-            local newEffect = userData.textEffect or "none"
-            local currentEffect = existingTag and existingTag.effect or "none"
-            
-            -- Create new nametag if doesn't exist, or if effect changed
-            if not existingTag then
-                if plrObj.Character then
-                    createOtherNametag(plrObj, userData)
-                else
-                    plrObj.CharacterAdded:Connect(function(char)
-                        task.wait(0.5)
-                        if prismUsers[userId] and not otherNametags[tonumber(userId)] then
-                            createOtherNametag(plrObj, userData)
-                        end
-                    end)
-                end
-            elseif newEffect ~= currentEffect then
-                warn("[Prism Nametag] Effect changed for " .. plrObj.Name .. " from " .. currentEffect .. " to " .. newEffect .. ", recreating nametag")
-                removeOtherNametag(tonumber(userId))
-                if plrObj.Character then
-                    createOtherNametag(plrObj, userData)
-                end
+        if plrObj and not otherNametags[tonumber(userId)] then
+            if plrObj.Character then
+                createOtherNametag(plrObj, userData)
+            else
+                plrObj.CharacterAdded:Connect(function(char)
+                    task.wait(0.5)
+                    if prismUsers[userId] and not otherNametags[tonumber(userId)] then
+                        createOtherNametag(plrObj, userData)
+                    end
+                end)
             end
         end
     end

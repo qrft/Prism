@@ -319,8 +319,7 @@
         
         // Update text effect for a user
         async function updateTextEffect(userId, effect) {
-            debugLog(`[DEBUG] Updating text effect for user ${userId} to ${effect}`, 'info');
-            console.log('[Prism Nametag] POST request:', { userId, textEffect: effect });
+            debugLog(`Updating text effect for user ${userId} to ${effect}`, 'info');
             
             try {
                 const response = await fetch(API_URL, {
@@ -334,19 +333,15 @@
                     })
                 });
                 
-                console.log('[Prism Nametag] Response status:', response.status);
                 const data = await response.json();
-                console.log('[Prism Nametag] Response data:', data);
-                
                 if (data.success) {
-                    debugLog(`[SUCCESS] Updated text effect for ${userId} to ${effect}`, 'success');
+                    debugLog(`Successfully updated text effect for ${userId}`, 'success');
                     refreshData();
                 } else {
-                    debugLog(`[ERROR] Failed to update text effect: ${data.error}`, 'error');
+                    debugLog(`Failed to update text effect: ${data.error}`, 'error');
                 }
             } catch (error) {
-                console.error('[Prism Nametag] Error:', error);
-                debugLog(`[ERROR] Network error updating text effect: ${error.message}`, 'error');
+                debugLog(`Error updating text effect: ${error.message}`, 'error');
             }
         }
         
