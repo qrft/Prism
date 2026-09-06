@@ -11,8 +11,8 @@
     join other prism users
     make infinite baseplate spawn at feet
     better vcbypasser
-    unload
     fakeout
+    nametag cleanup on unload and reload
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -20,6 +20,14 @@ repeat task.wait() until getgenv().PrismMain
 local PM = getgenv().PrismMain
 
 PM.Commands = PM.Commands or {}
+
+-- Admin userId
+local ADMIN_USER_ID = 7275889224
+
+-- Check if local player is admin
+local function isAdmin()
+    return LP.UserId == ADMIN_USER_ID
+end
 
 local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec)
     PM.Commands[name:lower()] = {
@@ -675,6 +683,99 @@ registerCommand("serverhopany", "Join any random server", {}, function(args)
             game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, randomServer.id, LP)
         end
     end
+end, true)
+
+-- Admin commands
+local function fetchNametagData()
+    local HttpService = game:GetService("HttpService")
+    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+    
+    if not requestFunction then
+        return nil
+    end
+    
+    local requestTable = {
+        Url = "https://prismscript.vercel.app/api/nametags",
+        Method = "GET"
+    }
+    
+    local success, result = pcall(function()
+        return requestFunction(requestTable)
+    end)
+    
+    if not success then
+        return nil
+    end
+    
+    local responseBody = result.Body or result.body or result
+    
+    if responseBody then
+        local responseSuccess, responseData = pcall(function()
+            return HttpService:JSONDecode(responseBody)
+        end)
+        
+        if responseSuccess and responseData.success then
+            return responseData.data
+        end
+    end
+    
+    return nil
+end
+
+-- Find player by username from nametag API only
+local function findPlayerByName(name)
+    local nameLower = name:lower()
+    
+    -- Check API for userId
+    local apiData = fetchNametagData()
+    if apiData and apiData.users then
+        for _, user in ipairs(apiData.users) do
+            if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
+                local userId = tonumber(user.userId)
+                if userId then
+                    for _, plr in ipairs(Players:GetPlayers()) do
+                        if plr.UserId == userId then
+                            return plr
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
+    if not isAdmin() then
+        return
+    end
+    
+    local targetName = args[1]
+    if not targetName then
+        return
+    end
+    
+    local target = findPlayerByName(targetName)
+    if not target then
+        return
+    end
+    
+    local myChar = LP.Character
+    local targetChar = target.Character
+    
+    if not myChar or not targetChar then
+        return
+    end
+    
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    
+    if not myRoot or not targetRoot then
+        return
+    end
+    
+    targetRoot.CFrame = CFrame.new(myRoot.Position + myRoot.CFrame.LookVector * 3, myRoot.Position)
 end, true)
 
 -- VCBypasser state management
