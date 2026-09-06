@@ -527,6 +527,7 @@ local function updateOtherNametags()
         end
     end
     
+    -- Create nametags for Prism users in the API
     for userId, userData in pairs(prismUsers) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
         if plrObj and not otherNametags[tonumber(userId)] then
@@ -543,8 +544,15 @@ local function updateOtherNametags()
         end
     end
     
+    -- Only remove nametags for players who are NOT in the server
+    -- Don't remove just because they're not in API response (API might be stale)
+    local currentPlayers = {}
+    for _, plrObj in ipairs(PM.Svc.Players:GetPlayers()) do
+        currentPlayers[plrObj.UserId] = true
+    end
+    
     for userId, tagData in pairs(otherNametags) do
-        if not prismUsers[tostring(userId)] then
+        if not currentPlayers[userId] then
             removeOtherNametag(userId)
         end
     end
@@ -2964,6 +2972,18 @@ task.spawn(function()
         end)
     end
 end)
+
+-- Expose nametag cleanup function for destroy/reload commands
+PM.PrismNametags = {
+    cleanup = function()
+        clearAllNametags()
+        -- Remove self from API
+        local myUserId = PM.Svc.Players.LocalPlayer.UserId
+        deleteFromAPI(myUserId)
+        -- Stop auto-sync
+        autoSyncEnabled = false
+    end
+}
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
