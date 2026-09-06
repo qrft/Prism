@@ -2982,7 +2982,8 @@ PM.PrismNametags = {
         deleteFromAPI(myUserId)
         -- Stop auto-sync
         autoSyncEnabled = false
-    end
+    end,
+    toggle = toggleNametag
 }
 
 -- Send initial data IMMEDIATELY on execute
