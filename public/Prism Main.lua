@@ -82,7 +82,7 @@ local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 2
-local originalNameDisplayDistances = {}
+local originalDisplaySettings = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -156,10 +156,16 @@ local function hideRobloxNametag(character)
         userId = plr.UserId
     end
     
+    -- Store original settings
     if userId then
-        originalNameDisplayDistances[userId] = humanoid.NameDisplayDistance
+        originalDisplaySettings[userId] = {
+            DisplayDistanceType = humanoid.DisplayDistanceType,
+            NameDisplayDistance = humanoid.NameDisplayDistance
+        }
     end
     
+    -- Hide nametag (keep health)
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
     humanoid.NameDisplayDistance = 0
     return true
 end
@@ -175,10 +181,14 @@ local function restoreRobloxNametag(character)
         userId = plr.UserId
     end
     
-    if userId and originalNameDisplayDistances[userId] then
-        humanoid.NameDisplayDistance = originalNameDisplayDistances[userId]
-        originalNameDisplayDistances[userId] = nil
+    -- Restore original settings
+    if userId and originalDisplaySettings[userId] then
+        humanoid.DisplayDistanceType = originalDisplaySettings[userId].DisplayDistanceType
+        humanoid.NameDisplayDistance = originalDisplaySettings[userId].NameDisplayDistance
+        originalDisplaySettings[userId] = nil
     else
+        -- Default to Viewer if no original stored
+        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
         humanoid.NameDisplayDistance = 100
     end
     return true
@@ -312,6 +322,14 @@ local function createNametag()
     
     -- Hide Roblox nametag for local player
     hideRobloxNametag(player.Character)
+    
+    -- Handle respawns - keep Roblox nametag hidden
+    player.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if nametagEnabled then
+            hideRobloxNametag(char)
+        end
+    end)
 end
 
 local function removeNametag()
@@ -339,6 +357,11 @@ local function toggleNametag()
         else
             createNametag()
         end
+        -- Hide Roblox nametag for local player
+        local player = PM.Svc.Players.LocalPlayer
+        if player.Character then
+            hideRobloxNametag(player.Character)
+        end
         for userId, tagData in pairs(otherNametags) do
             if tagData.gui then
                 tagData.gui.Enabled = true
@@ -351,6 +374,11 @@ local function toggleNametag()
     else
         if nametagGui then
             nametagGui.Enabled = false
+        end
+        -- Restore Roblox nametag for local player
+        local player = PM.Svc.Players.LocalPlayer
+        if player.Character then
+            restoreRobloxNametag(player.Character)
         end
         for userId, tagData in pairs(otherNametags) do
             if tagData.gui then
@@ -526,6 +554,14 @@ local function createOtherNametag(plrObj)
     
     -- Hide Roblox nametag for this Prism user
     hideRobloxNametag(plrObj.Character)
+    
+    -- Handle respawns - keep Roblox nametag hidden
+    plrObj.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if otherNametags[plrObj.UserId] and nametagEnabled then
+            hideRobloxNametag(char)
+        end
+    end)
 end
 
 local function removeOtherNametag(userId)
@@ -790,8 +826,8 @@ PM.PrismNametags = {
             end
         end
         
-        -- Clear original distances cache
-        originalNameDisplayDistances = {}
+        -- Clear display settings cache
+        originalDisplaySettings = {}
         
         -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
@@ -3017,6 +3053,26 @@ player.CharacterAdded:Connect(function(char)
             end
         end
     end
+end)
+
+-- Handle other players joining - hide Roblox nametag for Prism users on spawn
+PM.Svc.Players.PlayerAdded:Connect(function(newPlayer)
+    newPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if otherNametags[newPlayer.UserId] and nametagEnabled then
+            hideRobloxNametag(char)
+        end
+    end)
+end)
+
+-- Handle other players joining - hide Roblox nametag for Prism users on spawn
+PM.Svc.Players.PlayerAdded:Connect(function(newPlayer)
+    newPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if otherNametags[newPlayer.UserId] and nametagEnabled then
+            hideRobloxNametag(char)
+        end
+    end)
 end)
 
 -- Handle other players joining - hide Roblox nametag for Prism users on spawn
