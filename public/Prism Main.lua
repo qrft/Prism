@@ -82,8 +82,7 @@ local nametagConnection = nil
 local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 2
-local originalDisplaySettings = {}
-local robloxNametagBlockers = {}
+local originalDisplayTypes = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -144,64 +143,6 @@ local function clearAllNametags()
         nametagConnection = nil
     end
     nametagGui = nil
-end
-
-local function hideRobloxNametag(character)
-    if not character then return false end
-    local head = character:FindFirstChild("Head")
-    if not head then return false end
-    
-    local userId = nil
-    local plr = PM.Svc.Players:GetPlayerFromCharacter(character)
-    if plr then
-        userId = plr.UserId
-    end
-    
-    -- Remove existing blocker if any
-    if robloxNametagBlockers[userId] then
-        pcall(function() robloxNametagBlockers[userId]:Destroy() end)
-    end
-    
-    -- Create invisible BillboardGui to block Roblox nametag
-    local blocker = Instance.new("BillboardGui")
-    blocker.Name = "PrismNametagBlocker"
-    blocker.Size = UDim2.new(0, 10, 0, 10)
-    blocker.StudsOffsetWorldSpace = Vector3.new(0, 0, 0)
-    blocker.Adornee = head
-    blocker.AlwaysOnTop = true
-    blocker.MaxDistance = 100
-    blocker.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    blocker.Active = false
-    blocker.ClipsDescendants = false
-    blocker.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
-    
-    -- Add an invisible frame to actually block the nametag
-    local frame = Instance.new("Frame")
-    frame.Name = "BlockerFrame"
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.new(1, 1, 1)
-    frame.BackgroundTransparency = 1
-    frame.BorderSizePixel = 0
-    frame.Parent = blocker
-    
-    robloxNametagBlockers[userId] = blocker
-    return true
-end
-
-local function restoreRobloxNametag(character)
-    if not character then return false end
-    
-    local userId = nil
-    local plr = PM.Svc.Players:GetPlayerFromCharacter(character)
-    if plr then
-        userId = plr.UserId
-    end
-    
-    if userId and robloxNametagBlockers[userId] then
-        pcall(function() robloxNametagBlockers[userId]:Destroy() end)
-        robloxNametagBlockers[userId] = nil
-    end
-    return true
 end
 
 local function createNametag()
@@ -329,17 +270,6 @@ local function createNametag()
     end)
     
     nametagGui = billboard
-    
-    -- Hide Roblox nametag for local player
-    hideRobloxNametag(player.Character)
-    
-    -- Handle respawns - keep Roblox nametag hidden
-    player.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        if nametagEnabled then
-            hideRobloxNametag(char)
-        end
-    end)
 end
 
 local function removeNametag()
@@ -351,11 +281,23 @@ local function removeNametag()
         pcall(function() nametagGui:Destroy() end)
         nametagGui = nil
     end
-    
-    -- Restore Roblox nametag for local player
-    local player = PM.Svc.Players.LocalPlayer
-    if player.Character then
-        restoreRobloxNametag(player.Character)
+end
+
+local function hideDefaultNametag(plr)
+    if not plr.Character then return end
+    local humanoid = plr.Character:FindFirstChildWhichIsA("Humanoid")
+    if humanoid then
+        originalDisplayTypes[plr.UserId] = humanoid.DisplayDistanceType
+        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    end
+end
+
+local function restoreDefaultNametag(plr)
+    if not plr.Character then return end
+    local humanoid = plr.Character:FindFirstChildWhichIsA("Humanoid")
+    if humanoid then
+        humanoid.DisplayDistanceType = originalDisplayTypes[plr.UserId] or Enum.HumanoidDisplayDistanceType.Viewer
+        originalDisplayTypes[plr.UserId] = nil
     end
 end
 
@@ -367,36 +309,34 @@ local function toggleNametag()
         else
             createNametag()
         end
-        -- Hide Roblox nametag for local player
-        local player = PM.Svc.Players.LocalPlayer
-        if player.Character then
-            hideRobloxNametag(player.Character)
-        end
         for userId, tagData in pairs(otherNametags) do
             if tagData.gui then
                 tagData.gui.Enabled = true
             end
+        end
+        -- Hide default nametags for prism users
+        hideDefaultNametag(PM.Svc.Players.LocalPlayer)
+        for userId, tagData in pairs(otherNametags) do
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr and plr.Character then
-                hideRobloxNametag(plr.Character)
+            if plr then
+                hideDefaultNametag(plr)
             end
         end
     else
         if nametagGui then
             nametagGui.Enabled = false
         end
-        -- Restore Roblox nametag for local player
-        local player = PM.Svc.Players.LocalPlayer
-        if player.Character then
-            restoreRobloxNametag(player.Character)
-        end
         for userId, tagData in pairs(otherNametags) do
             if tagData.gui then
                 tagData.gui.Enabled = false
             end
+        end
+        -- Restore default nametags for prism users
+        restoreDefaultNametag(PM.Svc.Players.LocalPlayer)
+        for userId, tagData in pairs(otherNametags) do
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr and plr.Character then
-                restoreRobloxNametag(plr.Character)
+            if plr then
+                restoreDefaultNametag(plr)
             end
         end
     end
@@ -562,14 +502,16 @@ local function createOtherNametag(plrObj)
         connection = connection
     }
     
-    -- Hide Roblox nametag for this Prism user
-    hideRobloxNametag(plrObj.Character)
+    -- Hide default nametag for this prism user if nametags are enabled
+    if nametagEnabled then
+        hideDefaultNametag(plrObj)
+    end
     
-    -- Handle respawns - keep Roblox nametag hidden
+    -- Re-hide on respawn
     plrObj.CharacterAdded:Connect(function(char)
         task.wait(0.5)
-        if otherNametags[plrObj.UserId] and nametagEnabled then
-            hideRobloxNametag(char)
+        if nametagEnabled then
+            hideDefaultNametag(plrObj)
         end
     end)
 end
@@ -582,11 +524,10 @@ local function removeOtherNametag(userId)
         pcall(function() otherNametags[userId].gui:Destroy() end)
         otherNametags[userId] = nil
     end
-    
-    -- Restore Roblox nametag for this user
+    -- Restore default nametag when removing prism tag
     local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-    if plr and plr.Character then
-        restoreRobloxNametag(plr.Character)
+    if plr then
+        restoreDefaultNametag(plr)
     end
 end
 
@@ -813,6 +754,15 @@ PM.PrismNametags = {
         -- Stop auto-sync
         autoSyncEnabled = false
         
+        -- Restore default nametags for all prism users
+        restoreDefaultNametag(PM.Svc.Players.LocalPlayer)
+        for userId, tagData in pairs(otherNametags) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        
         -- Clear all nametags
         clearAllNametags()
         
@@ -829,19 +779,6 @@ PM.PrismNametags = {
         end
         otherNametags = {}
         
-        -- Restore Roblox nametags for all players
-        for _, plr in ipairs(PM.Svc.Players:GetPlayers()) do
-            if plr.Character then
-                restoreRobloxNametag(plr.Character)
-            end
-        end
-        
-        -- Clear blockers cache
-        for userId, blocker in pairs(robloxNametagBlockers) do
-            pcall(function() blocker:Destroy() end)
-        end
-        robloxNametagBlockers = {}
-        
         -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
         if player then
@@ -853,6 +790,7 @@ PM.PrismNametags = {
         -- Reset flags
         nametagGui = nil
         nametagEnabled = false
+        originalDisplayTypes = {}
     end
 }
 
@@ -3045,47 +2983,28 @@ clearAllNametags()
 local player = PM.Svc.Players.LocalPlayer
 if player.Character then
     createNametag()
+    if nametagEnabled then
+        hideDefaultNametag(player)
+    end
 end
 
 player.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     if nametagGui and char:FindFirstChild("Head") then
         nametagGui.Adornee = char.Head
-        if nametagEnabled then
-            hideRobloxNametag(char)
-        end
     elseif nametagEnabled then
         createNametag()
+    end
+    -- Re-hide default nametag if nametags are enabled
+    if nametagEnabled then
+        hideDefaultNametag(player)
     end
     for userId, tagData in pairs(otherNametags) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
         if plrObj and plrObj.Character and plrObj.Character:FindFirstChild("Head") then
             tagData.gui.Adornee = plrObj.Character.Head
-            if nametagEnabled then
-                hideRobloxNametag(plrObj.Character)
-            end
         end
     end
-end)
-
--- Handle other players joining - hide Roblox nametag for Prism users on spawn
-PM.Svc.Players.PlayerAdded:Connect(function(newPlayer)
-    newPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        if otherNametags[newPlayer.UserId] and nametagEnabled then
-            hideRobloxNametag(char)
-        end
-    end)
-end)
-
--- Handle other players joining - hide Roblox nametag for Prism users on spawn
-PM.Svc.Players.PlayerAdded:Connect(function(newPlayer)
-    newPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        if otherNametags[newPlayer.UserId] and nametagEnabled then
-            hideRobloxNametag(char)
-        end
-    end)
 end)
 
 -- Remove nametag when player leaves
