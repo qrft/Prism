@@ -795,12 +795,25 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
     local targetUserId = nil
     local nameLower = targetName:lower()
     
+    -- First try exact match
     for _, user in ipairs(apiData.users) do
-        print("[Prism Debug] Checking user:", user.username, "displayName:", user.displayName)
+        print("[Prism Debug] Checking user (exact):", user.username, "displayName:", user.displayName)
         if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
             targetUserId = tonumber(user.userId)
-            print("[Prism Debug] Found matching user ID:", targetUserId)
+            print("[Prism Debug] Found exact matching user ID:", targetUserId)
             break
+        end
+    end
+    
+    -- If no exact match, try partial match
+    if not targetUserId then
+        for _, user in ipairs(apiData.users) do
+            print("[Prism Debug] Checking user (partial):", user.username, "displayName:", user.displayName)
+            if user.username:lower():find(nameLower, 1, true) or (user.displayName and user.displayName:lower():find(nameLower, 1, true)) then
+                targetUserId = tonumber(user.userId)
+                print("[Prism Debug] Found partial matching user ID:", targetUserId)
+                break
+            end
         end
     end
     
