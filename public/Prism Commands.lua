@@ -9,9 +9,9 @@
     animation cloning
     shaders
     join other prism users
-    better vcbypasser
+    better vcbypasser icons / bypass
     nametag cleanup on unload and reload
-    custom nametag pictures
+    custom nametag pictures / gifs
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -447,6 +447,7 @@ local function cleanupPrism()
         PM.Noclip.active = false
         if PM.Noclip.connection then pcall(function() PM.Noclip.connection:Disconnect() end) end
         if PM.Noclip.keyConnection then pcall(function() PM.Noclip.keyConnection:Disconnect() end) end
+        if PM.Noclip.charAddedConn then pcall(function() PM.Noclip.charAddedConn:Disconnect() end) end
         local snapshot = PM.Noclip.snapshot or {}
         local char = LP.Character
         if char then
@@ -6983,11 +6984,12 @@ PM.Noclip = {
     key = nil,
     connection = nil,
     keyConnection = nil,
+    charAddedConn = nil,
     snapshot = {},
     noclipKey = nil
 }
 
--- Load saved noclip key
+-- Load saved noclip key and state
 local NC_SAVE_FILE = "prism/prism_nc_settings.json"
 local savedNCSettings = {}
 pcall(function()
@@ -7000,13 +7002,15 @@ if savedNCSettings.key then
         PM.Noclip.key = Enum.KeyCode[savedNCSettings.key]
     end)
 end
+PM.Noclip.active = savedNCSettings.enabled or false
 
 local function SaveNCSettings()
     pcall(function()
         if writefile then
             if makefolder and not isfolder("prism") then makefolder("prism") end
             writefile(NC_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
-                key = PM.Noclip.key and PM.Noclip.key.Name or nil
+                key = PM.Noclip.key and PM.Noclip.key.Name or nil,
+                enabled = PM.Noclip.active
             }))
         end
     end)
@@ -7212,7 +7216,7 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
     end
 
     -- Noclip logic
-    local ncOn = false
+    local ncOn = PM.Noclip.active or false
     local ncKey = PM.Noclip.key
     local ncCapturing = false
     local ncCaptureConn = nil
@@ -7264,6 +7268,13 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
     local BindBtnCorner = Instance.new("UICorner")
     BindBtnCorner.CornerRadius = UDim.new(0, 6)
     BindBtnCorner.Parent = BindBtn
+
+    -- Set initial button text based on saved state
+    if ncOn then
+        NCBtn.Text = "Stop"
+    else
+        NCBtn.Text = "Noclip"
+    end
 
     -- Hover effects
     NCBtn.MouseEnter:Connect(function()
@@ -7392,6 +7403,7 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
             StopNC()
         end
         PM.Noclip.active = ncOn
+        SaveNCSettings()
     end
 
     NCBtn.MouseButton1Click:Connect(function()
@@ -7416,9 +7428,58 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
         StopNC()
         if ncCaptureConn then ncCaptureConn:Disconnect(); ncCaptureConn = nil end
         if PM.Noclip.keyConnection then PM.Noclip.keyConnection:Disconnect(); PM.Noclip.keyConnection = nil end
+        PM.Noclip.active = false
+        SaveNCSettings()
         ScreenGui:Destroy()
     end)
 end)
+
+-- Auto-start noclip if saved as enabled
+if PM.Noclip.active then
+    local char = LP.Character
+    if char then
+        PM.Noclip.snapshot = {}
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                PM.Noclip.snapshot[part] = part.CanCollide
+            end
+        end
+        local RunService = game:GetService("RunService")
+        PM.Noclip.connection = RunService.Stepped:Connect(function()
+            local c = LP.Character
+            if not c then return end
+            for _, part in ipairs(c:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end)
+    end
+end
+
+-- Re-enable noclip on respawn if saved as enabled
+if not PM.Noclip.charAddedConn then
+    PM.Noclip.charAddedConn = LP.CharacterAdded:Connect(function(char)
+        if PM.Noclip.active then
+            task.wait(0.5)
+            PM.Noclip.snapshot = {}
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    PM.Noclip.snapshot[part] = part.CanCollide
+                end
+            end
+            local RunService = game:GetService("RunService")
+            if PM.Noclip.connection then PM.Noclip.connection:Disconnect() end
+            PM.Noclip.connection = RunService.Stepped:Connect(function()
+                local c = LP.Character
+                if not c then return end
+                for _, part in ipairs(c:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end)
+        end
+    end)
+end
+
+
 
 -- Speed state management
 PM.Speed = {
