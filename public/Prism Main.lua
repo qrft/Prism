@@ -83,6 +83,7 @@ local otherNametags = {}
 local autoSyncEnabled = true
 local autoSyncInterval = 2
 local originalDisplaySettings = {}
+local robloxNametagBlockers = {}
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
@@ -147,8 +148,8 @@ end
 
 local function hideRobloxNametag(character)
     if not character then return false end
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return false end
+    local head = character:FindFirstChild("Head")
+    if not head then return false end
     
     local userId = nil
     local plr = PM.Svc.Players:GetPlayerFromCharacter(character)
@@ -156,24 +157,39 @@ local function hideRobloxNametag(character)
         userId = plr.UserId
     end
     
-    -- Store original settings
-    if userId then
-        originalDisplaySettings[userId] = {
-            DisplayDistanceType = humanoid.DisplayDistanceType,
-            NameDisplayDistance = humanoid.NameDisplayDistance
-        }
+    -- Remove existing blocker if any
+    if robloxNametagBlockers[userId] then
+        pcall(function() robloxNametagBlockers[userId]:Destroy() end)
     end
     
-    -- Hide nametag (keep health)
-    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
-    humanoid.NameDisplayDistance = 0
+    -- Create invisible BillboardGui to block Roblox nametag
+    local blocker = Instance.new("BillboardGui")
+    blocker.Name = "PrismNametagBlocker"
+    blocker.Size = UDim2.new(0, 10, 0, 10)
+    blocker.StudsOffsetWorldSpace = Vector3.new(0, 0, 0)
+    blocker.Adornee = head
+    blocker.AlwaysOnTop = true
+    blocker.MaxDistance = 100
+    blocker.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    blocker.Active = false
+    blocker.ClipsDescendants = false
+    blocker.Parent = PM.Svc.Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Add an invisible frame to actually block the nametag
+    local frame = Instance.new("Frame")
+    frame.Name = "BlockerFrame"
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.new(1, 1, 1)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Parent = blocker
+    
+    robloxNametagBlockers[userId] = blocker
     return true
 end
 
 local function restoreRobloxNametag(character)
     if not character then return false end
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return false end
     
     local userId = nil
     local plr = PM.Svc.Players:GetPlayerFromCharacter(character)
@@ -181,15 +197,9 @@ local function restoreRobloxNametag(character)
         userId = plr.UserId
     end
     
-    -- Restore original settings
-    if userId and originalDisplaySettings[userId] then
-        humanoid.DisplayDistanceType = originalDisplaySettings[userId].DisplayDistanceType
-        humanoid.NameDisplayDistance = originalDisplaySettings[userId].NameDisplayDistance
-        originalDisplaySettings[userId] = nil
-    else
-        -- Default to Viewer if no original stored
-        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-        humanoid.NameDisplayDistance = 100
+    if userId and robloxNametagBlockers[userId] then
+        pcall(function() robloxNametagBlockers[userId]:Destroy() end)
+        robloxNametagBlockers[userId] = nil
     end
     return true
 end
@@ -826,8 +836,11 @@ PM.PrismNametags = {
             end
         end
         
-        -- Clear display settings cache
-        originalDisplaySettings = {}
+        -- Clear blockers cache
+        for userId, blocker in pairs(robloxNametagBlockers) do
+            pcall(function() blocker:Destroy() end)
+        end
+        robloxNametagBlockers = {}
         
         -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
@@ -3053,16 +3066,6 @@ player.CharacterAdded:Connect(function(char)
             end
         end
     end
-end)
-
--- Handle other players joining - hide Roblox nametag for Prism users on spawn
-PM.Svc.Players.PlayerAdded:Connect(function(newPlayer)
-    newPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        if otherNametags[newPlayer.UserId] and nametagEnabled then
-            hideRobloxNametag(char)
-        end
-    end)
 end)
 
 -- Handle other players joining - hide Roblox nametag for Prism users on spawn
