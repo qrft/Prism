@@ -4,23 +4,17 @@
 // In-memory storage (resets on function cold start)
 let nametagData = { users: [], lastUpdated: null };
 
-// Auto-remove users inactive for more than 30 seconds
+// Auto-remove users inactive for more than 10 seconds
 const INACTIVE_TIMEOUT = 10 * 1000; // 10 seconds in milliseconds
 
 function cleanupInactiveUsers() {
   const now = new Date();
-  const beforeCount = nametagData.users.length;
   
   nametagData.users = nametagData.users.filter(user => {
     const lastSeen = new Date(user.lastSeen);
     const inactiveTime = now - lastSeen;
     return inactiveTime < INACTIVE_TIMEOUT;
   });
-  
-  const removedCount = beforeCount - nametagData.users.length;
-  if (removedCount > 0) {
-    console.log('[CLEANUP] Removed ' + removedCount + ' inactive users');
-  }
 }
 
 module.exports = async function handler(req, res) {
@@ -38,24 +32,12 @@ module.exports = async function handler(req, res) {
     cleanupInactiveUsers();
 
     if (req.method === 'GET') {
-      console.log('[DEBUG] Reading nametag data:', {
-        userCount: nametagData.users?.length || 0,
-        lastUpdated: nametagData.lastUpdated
-      });
-      
       return res.status(200).json({
         success: true,
         data: nametagData
       });
     } else if (req.method === 'POST') {
-      console.log('[DEBUG] POST request body:', JSON.stringify(req.body));
       const { username, displayName, userId } = req.body;
-      
-      console.log('[DEBUG] Received nametag data:', {
-        username,
-        displayName,
-        userId
-      });
       
       if (!username || !userId) {
         return res.status(400).json({
@@ -64,7 +46,6 @@ module.exports = async function handler(req, res) {
         });
       }
       
-      // Check if user already exists and update, or add new
       const existingIndex = nametagData.users.findIndex(u => u.userId === userId);
       const userData = {
         username,
@@ -75,15 +56,11 @@ module.exports = async function handler(req, res) {
       
       if (existingIndex >= 0) {
         nametagData.users[existingIndex] = userData;
-        console.log('[DEBUG] Updated existing user:', userId);
       } else {
         nametagData.users.push(userData);
-        console.log('[DEBUG] Added new user:', userId);
       }
       
       nametagData.lastUpdated = new Date().toISOString();
-      
-      console.log('[DEBUG] Successfully stored nametag data in memory');
       
       return res.status(200).json({
         success: true,
@@ -103,7 +80,6 @@ module.exports = async function handler(req, res) {
       const existingIndex = nametagData.users.findIndex(u => u.userId === userId);
       if (existingIndex >= 0) {
         nametagData.users.splice(existingIndex, 1);
-        console.log('[DEBUG] Manually removed user:', userId);
         return res.status(200).json({
           success: true,
           message: 'User removed'
@@ -121,7 +97,6 @@ module.exports = async function handler(req, res) {
       });
     }
   } catch (error) {
-    console.error('[ERROR] Nametag API error:', error);
     return res.status(500).json({
       success: false,
       error: error.message

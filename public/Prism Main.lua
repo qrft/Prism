@@ -545,7 +545,6 @@ local function updateOtherNametags()
     end
     
     -- Only remove nametags for players who are NOT in the server
-    -- Don't remove just because they're not in API response (API might be stale)
     local currentPlayers = {}
     for _, plrObj in ipairs(PM.Svc.Players:GetPlayers()) do
         currentPlayers[plrObj.UserId] = true
@@ -2925,14 +2924,11 @@ end
 
 player.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    -- Just update Adornee to new head, don't recreate
     if nametagGui and char:FindFirstChild("Head") then
         nametagGui.Adornee = char.Head
     elseif nametagEnabled then
         createNametag()
     end
-    -- Don't recreate other nametags - they persist in PlayerGui
-    -- Just update their Adornees if needed
     for userId, tagData in pairs(otherNametags) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
         if plrObj and plrObj.Character and plrObj.Character:FindFirstChild("Head") then
@@ -2944,7 +2940,6 @@ end)
 -- Remove nametag when player leaves
 PM.Svc.Players.PlayerRemoving:Connect(function(leavingPlayer)
     removeOtherNametag(leavingPlayer.UserId)
-    -- Also remove from API instantly
     task.spawn(function()
         deleteFromAPI(leavingPlayer.UserId)
     end)
@@ -2957,7 +2952,7 @@ updateOtherNametags()
 -- Poll loop failsafe: remove nametags for players no longer in server
 task.spawn(function()
     while autoSyncEnabled do
-        task.wait(2) -- Check every 2 seconds (like env.lua)
+        task.wait(2)
         pcall(function()
             local currentPlayers = {}
             for _, plrObj in ipairs(PM.Svc.Players:GetPlayers()) do

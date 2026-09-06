@@ -153,17 +153,6 @@
             <h3 class="text-xl font-semibold text-gray-400 mb-2">No Users Found</h3>
             <p class="text-gray-500">Users will appear here when they run the Prism script</p>
         </div>
-        
-        <!-- Debug Console -->
-        <div class="glass-card rounded-xl p-4 mt-8">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-purple-400">Debug Console</h3>
-                <button onclick="clearDebugLog()" class="text-sm text-gray-400 hover:text-white transition-colors">Clear</button>
-            </div>
-            <div id="debugConsole" class="bg-gray-900 rounded-lg p-4 h-48 overflow-y-auto font-mono text-sm">
-                <p class="text-gray-500">Debug logs will appear here...</p>
-            </div>
-        </div>
     </div>
     
     <script>
@@ -172,45 +161,11 @@
         let autoRefreshInterval = null;
         let allUsers = [];
         
-        // Debug logging
-        function debugLog(message, type = 'info') {
-            const console = document.getElementById('debugConsole');
-            const timestamp = new Date().toLocaleTimeString();
-            const colors = {
-                info: 'text-blue-400',
-                success: 'text-green-400',
-                error: 'text-red-400',
-                warning: 'text-yellow-400'
-            };
-            
-            const logEntry = document.createElement('p');
-            logEntry.className = colors[type] || 'text-gray-400';
-            logEntry.textContent = `[${timestamp}] ${message}`;
-            
-            // Remove initial message if present
-            if (console.querySelector('.text-gray-500')) {
-                console.innerHTML = '';
-            }
-            
-            console.appendChild(logEntry);
-            console.scrollTop = console.scrollHeight;
-        }
-        
-        function clearDebugLog() {
-            const console = document.getElementById('debugConsole');
-            console.innerHTML = '<p class="text-gray-500">Debug logs will appear here...</p>';
-        }
-        
         // Fetch nametag data
         async function fetchNametagData() {
-            debugLog('Fetching nametag data from API...', 'info');
-            
             try {
                 const response = await fetch(API_URL);
                 const responseText = await response.text();
-                
-                debugLog(`Response status: ${response.status}`, 'info');
-                debugLog(`Response text: ${responseText.substring(0, 200)}...`, 'info');
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${responseText}`);
@@ -219,14 +174,10 @@
                 const data = JSON.parse(responseText);
                 
                 if (data.success) {
-                    debugLog(`Successfully fetched ${data.data.users?.length || 0} users`, 'success');
                     allUsers = data.data.users || [];
                     updateUI(data.data);
-                } else {
-                    debugLog(`API Error: ${data.error}`, 'error');
                 }
             } catch (error) {
-                debugLog(`Fetch Error: ${error.message}`, 'error');
                 document.getElementById('systemStatus').textContent = 'Disconnected';
                 document.getElementById('systemStatus').className = 'text-lg font-semibold text-red-400';
             }
