@@ -290,16 +290,6 @@
                             <span class="text-gray-500">Last Seen:</span>
                             <span class="text-gray-300">${user.lastSeen ? new Date(user.lastSeen).toLocaleString() : 'N/A'}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-500">Text Effect:</span>
-                            <select onchange="updateTextEffect('${user.userId}', this.value)" 
-                                    class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 text-xs focus:outline-none focus:border-purple-500">
-                                <option value="none" ${user.textEffect === 'none' ? 'selected' : ''}>None</option>
-                                <option value="glitch" ${user.textEffect === 'glitch' ? 'selected' : ''}>Glitch</option>
-                                <option value="typing" ${user.textEffect === 'typing' ? 'selected' : ''}>Typing</option>
-                                <option value="rainbow" ${user.textEffect === 'rainbow' ? 'selected' : ''}>Rainbow</option>
-                            </select>
-                        </div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -315,34 +305,6 @@
                 user.userId?.toString().includes(searchTerm)
             );
             renderUsers(filtered);
-        }
-        
-        // Update text effect for a user
-        async function updateTextEffect(userId, effect) {
-            debugLog(`Updating text effect for user ${userId} to ${effect}`, 'info');
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userId: userId,
-                        textEffect: effect
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    debugLog(`Successfully updated text effect for ${userId}`, 'success');
-                    refreshData();
-                } else {
-                    debugLog(`Failed to update text effect: ${data.error}`, 'error');
-                }
-            } catch (error) {
-                debugLog(`Error updating text effect: ${error.message}`, 'error');
-            }
         }
         
         // Refresh data
