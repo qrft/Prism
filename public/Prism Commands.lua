@@ -769,44 +769,59 @@ end
 
 registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
     if not isAdmin() then
+        print("[Prism Debug] Bring failed: Not admin")
         return
     end
     
+    print("[Prism Debug] Bring command executed by admin")
+    
     local targetName = args[1]
     if not targetName then
+        print("[Prism Debug] Bring failed: No target name provided")
         return
     end
+    
+    print("[Prism Debug] Target name:", targetName)
     
     -- Get userId from API
     local apiData = fetchNametagData()
     if not apiData or not apiData.users then
+        print("[Prism Debug] Bring failed: API data not available")
         return
     end
+    
+    print("[Prism Debug] API data fetched, users count:", #apiData.users)
     
     local targetUserId = nil
     local nameLower = targetName:lower()
     
     for _, user in ipairs(apiData.users) do
+        print("[Prism Debug] Checking user:", user.username, "displayName:", user.displayName)
         if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
             targetUserId = tonumber(user.userId)
+            print("[Prism Debug] Found matching user ID:", targetUserId)
             break
         end
     end
     
     if not targetUserId then
+        print("[Prism Debug] Bring failed: User not found in API")
         return
     end
     
     -- Check if user is in current server
     local target = nil
     for _, plr in ipairs(Players:GetPlayers()) do
+        print("[Prism Debug] Checking player in server:", plr.Name, "UserId:", plr.UserId)
         if plr.UserId == targetUserId then
             target = plr
+            print("[Prism Debug] Found target in server:", target.Name)
             break
         end
     end
     
     if not target then
+        print("[Prism Debug] Bring failed: Target not in current server")
         return
     end
     
@@ -814,6 +829,7 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
     local targetChar = target.Character
     
     if not myChar or not targetChar then
+        print("[Prism Debug] Bring failed: Missing character (myChar:", myChar ~= nil, "targetChar:", targetChar ~= nil, ")")
         return
     end
     
@@ -821,11 +837,14 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
     
     if not myRoot or not targetRoot then
+        print("[Prism Debug] Bring failed: Missing HumanoidRootPart (myRoot:", myRoot ~= nil, "targetRoot:", targetRoot ~= nil, ")")
         return
     end
     
     -- Teleport target once to 3 studs in front of me, facing me
-    targetRoot.CFrame = CFrame.new(myRoot.Position + myRoot.CFrame.LookVector * 3, myRoot.Position)
+    local targetCFrame = CFrame.new(myRoot.Position + myRoot.CFrame.LookVector * 3, myRoot.Position)
+    targetRoot.CFrame = targetCFrame
+    print("[Prism Debug] Bring successful: Teleported", target.Name, "to position:", targetCFrame.Position)
 end, true, true)
 
 -- VCBypasser state management
