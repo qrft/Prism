@@ -699,7 +699,7 @@ PM.PrismNametags = {
         return nametagEnabled
     end,
     cleanup = function()
-        -- Stop auto-sync FIRST to prevent any new API calls
+        -- Stop auto-sync
         autoSyncEnabled = false
         
         -- Clear all nametags
@@ -718,14 +718,12 @@ PM.PrismNametags = {
         end
         otherNametags = {}
         
-        -- Remove self from API synchronously (wait for completion)
+        -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
         if player then
-            local success, err = deleteFromAPI(player.UserId)
-            if not success then
-                -- Log error but continue with cleanup
-                warn("Failed to delete from API:", err)
-            end
+            task.spawn(function()
+                deleteFromAPI(player.UserId)
+            end)
         end
         
         -- Reset flags
@@ -2975,16 +2973,8 @@ task.spawn(function()
     end
 end)
 
--- Expose nametag cleanup function for destroy/reload commands
+-- Expose nametag toggle function for the UI button
 PM.PrismNametags = {
-    cleanup = function()
-        clearAllNametags()
-        -- Remove self from API
-        local myUserId = PM.Svc.Players.LocalPlayer.UserId
-        deleteFromAPI(myUserId)
-        -- Stop auto-sync
-        autoSyncEnabled = false
-    end,
     toggle = toggleNametag
 }
 

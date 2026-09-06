@@ -5,7 +5,7 @@
 let nametagData = { users: [], lastUpdated: null };
 
 // Auto-remove users inactive for more than 30 seconds
-const INACTIVE_TIMEOUT = 30 * 1000; // 30 seconds in milliseconds
+const INACTIVE_TIMEOUT = 10 * 1000; // 10 seconds in milliseconds
 
 function cleanupInactiveUsers() {
   const now = new Date();
