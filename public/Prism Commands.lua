@@ -29,13 +29,14 @@ local function isAdmin()
     return LP.UserId == ADMIN_USER_ID
 end
 
-local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec)
+local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec, adminOnly)
     PM.Commands[name:lower()] = {
         name = name,
         desc = desc,
         aliases = aliases or {},
         execute = execute,
         excludeFromAutoExec = excludeFromAutoExec or false,
+        adminOnly = adminOnly or false,
     }
 end
 
@@ -507,7 +508,22 @@ local function cleanupPrism()
         end
     end
     
-    -- Clear state objects
+    -- Cleanup Fakeout
+    if PM.Fakeout then
+        PM.Fakeout.active = false
+        if PM.Fakeout.connection then pcall(function() PM.Fakeout.connection:Disconnect() end) end
+        if PM.Fakeout.originalVoidY then
+            pcall(function() workspace.FallenPartsDestroyHeight = PM.Fakeout.originalVoidY end)
+            PM.Fakeout.originalVoidY = nil
+        end
+        local camera = workspace.CurrentCamera
+        camera.CameraType = Enum.CameraType.Custom
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            camera.CameraSubject = LP.Character.Humanoid
+        end
+    end
+    
+    -- Cleanup Noclipstate objects
     PM.Fly = nil
     PM.Jump = nil
     
@@ -722,6 +738,11 @@ local function fetchNametagData()
     return nil
 end
 
+-- Admin bring state
+PM.AdminBring = {
+    active = false
+}
+
 -- Find player by username from nametag API only
 local function findPlayerByName(name)
     local nameLower = name:lower()
@@ -756,7 +777,35 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
         return
     end
     
-    local target = findPlayerByName(targetName)
+    -- Get userId from API
+    local apiData = fetchNametagData()
+    if not apiData or not apiData.users then
+        return
+    end
+    
+    local targetUserId = nil
+    local nameLower = targetName:lower()
+    
+    for _, user in ipairs(apiData.users) do
+        if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
+            targetUserId = tonumber(user.userId)
+            break
+        end
+    end
+    
+    if not targetUserId then
+        return
+    end
+    
+    -- Check if user is in current server
+    local target = nil
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.UserId == targetUserId then
+            target = plr
+            break
+        end
+    end
+    
     if not target then
         return
     end
@@ -775,8 +824,9 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
         return
     end
     
+    -- Teleport target once to 3 studs in front of me, facing me
     targetRoot.CFrame = CFrame.new(myRoot.Position + myRoot.CFrame.LookVector * 3, myRoot.Position)
-end, true)
+end, true, true)
 
 -- VCBypasser state management
 PM.VCBypasser = {
