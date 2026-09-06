@@ -699,7 +699,7 @@ PM.PrismNametags = {
         return nametagEnabled
     end,
     cleanup = function()
-        -- Stop auto-sync
+        -- Stop auto-sync FIRST to prevent any new API calls
         autoSyncEnabled = false
         
         -- Clear all nametags
@@ -718,12 +718,14 @@ PM.PrismNametags = {
         end
         otherNametags = {}
         
-        -- Remove self from API
+        -- Remove self from API synchronously (wait for completion)
         local player = PM.Svc.Players.LocalPlayer
         if player then
-            task.spawn(function()
-                deleteFromAPI(player.UserId)
-            end)
+            local success, err = deleteFromAPI(player.UserId)
+            if not success then
+                -- Log error but continue with cleanup
+                warn("Failed to delete from API:", err)
+            end
         end
         
         -- Reset flags
