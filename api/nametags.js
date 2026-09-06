@@ -67,11 +67,12 @@ module.exports = async function handler(req, res) {
       
       // Check if user already exists and update, or add new
       const existingIndex = nametagData.users.findIndex(u => u.userId === userId);
+      let userData;
       
       if (existingIndex >= 0) {
         // Update existing user with provided fields
         const existingUser = nametagData.users[existingIndex];
-        const userData = {
+        userData = {
           username: username || existingUser.username,
           displayName: displayName || existingUser.displayName,
           userId: existingUser.userId,
@@ -88,7 +89,7 @@ module.exports = async function handler(req, res) {
             error: 'Missing required field: username (for new users)'
           });
         }
-        const userData = {
+        userData = {
           username,
           displayName: displayName || username,
           userId,
