@@ -10,6 +10,7 @@ getgenv().PrismMain = {
         CoreGui = game:GetService("CoreGui"),
     },
     UI = {},
+    _intentionalBelowVoid = false,
 }
 
 local PM = getgenv().PrismMain

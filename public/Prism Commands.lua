@@ -13,6 +13,7 @@
     better vcbypasser
     fakeout
     nametag cleanup on unload and reload
+    custom nametag pictures
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -3439,14 +3440,16 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 PM.Anti.connections.void = RunService.Heartbeat:Connect(function()
                     -- Lower void so you can never die to it
                     workspace.FallenPartsDestroyHeight = -99999
-                    
-                    -- Save you from falling in void
-                    local char = LocalPlayer.Character
-                    local root = char and char:FindFirstChild("HumanoidRootPart")
-                    if root and root:IsA("BasePart") then
-                        local refY = PM.Anti.origVoidY or workspace.FallenPartsDestroyHeight
-                        if root.Position.Y < refY + 50 then
-                            root.AssemblyLinearVelocity = Vector3.new(0, 500, 0)
+
+                    -- Save you from falling in void (unless fakeout is active)
+                    if not PM._intentionalBelowVoid then
+                        local char = LocalPlayer.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart")
+                        if root and root:IsA("BasePart") then
+                            local refY = PM.Anti.origVoidY or workspace.FallenPartsDestroyHeight
+                            if root.Position.Y < refY + 50 then
+                                root.AssemblyLinearVelocity = Vector3.new(0, 500, 0)
+                            end
                         end
                     end
                 end)
@@ -5685,6 +5688,451 @@ registerCommand("trip", "Trip your character", {}, function(args)
 
     if not success then
         -- Failed to load trip GUI
+    end
+end)
+
+registerCommand("fakeout", "Fake out below void", {}, function(args)
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local HttpService = game:GetService("HttpService")
+    local CoreGui = game:GetService("CoreGui")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = Players.LocalPlayer
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_FakeOutGUI") then return end
+
+    local success, err = pcall(function()
+        -- Load saved GUI settings
+        local FAKEOUT_GUI_FILE = "prism/prism_fakeout_gui_settings.json"
+        local savedFakeOutGUI = {}
+        pcall(function()
+            if readfile and isfile(FAKEOUT_GUI_FILE) then
+                savedFakeOutGUI = HttpService:JSONDecode(readfile(FAKEOUT_GUI_FILE))
+            end
+        end)
+        local savedPos = savedFakeOutGUI.position or {X = {Scale = 0, Offset = 900}, Y = {Scale = 0, Offset = 700}}
+        local savedMinimized = savedFakeOutGUI.minimized or false
+        local savedKey = savedFakeOutGUI.keybind
+
+        local currentFakeOutSettings = {
+            position = savedPos,
+            minimized = savedMinimized,
+            keybind = savedKey
+        }
+
+        local function SaveFakeOutGUISettings()
+            pcall(function()
+                if writefile then
+                    if makefolder and not isfolder("prism") then makefolder("prism") end
+                    writefile(FAKEOUT_GUI_FILE, HttpService:JSONEncode(currentFakeOutSettings))
+                end
+            end)
+        end
+
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "Prism_FakeOutGUI"
+        ScreenGui.ResetOnSpawn = false
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ScreenGui.DisplayOrder = 1000
+        ScreenGui.DisplayOrder = 999
+
+        local ok = pcall(function() ScreenGui.Parent = CoreGui end)
+        if not ok then ScreenGui.Parent = LocalPlayer.PlayerGui end
+
+        local MW, MH = 220, 88
+
+        local MainFrame = Instance.new("Frame")
+        MainFrame.Name = "MainFrame"
+        MainFrame.Size = UDim2.new(0, MW, 0, MH)
+        MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
+        MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+        MainFrame.BackgroundTransparency = 0.3
+        MainFrame.BorderSizePixel = 0
+        MainFrame.ClipsDescendants = true
+        MainFrame.Parent = ScreenGui
+
+        local MainCorner = Instance.new("UICorner")
+        MainCorner.CornerRadius = UDim.new(0, 14)
+        MainCorner.Parent = MainFrame
+
+        local MainStroke = Instance.new("UIStroke")
+        MainStroke.Color = Color3.fromRGB(60, 60, 60)
+        MainStroke.Thickness = 1
+        MainStroke.Parent = MainFrame
+
+        local TitleBar = Instance.new("Frame")
+        TitleBar.Name = "TitleBar"
+        TitleBar.Size = UDim2.new(1, 0, 0, 36)
+        TitleBar.BackgroundTransparency = 1
+        TitleBar.Parent = MainFrame
+
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Name = "Title"
+        TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = "Prism  •  Fake Out"
+        TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TitleLabel.TextSize = 13
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.Parent = TitleBar
+
+        local MinBtn = Instance.new("TextButton")
+        MinBtn.Name = "Minimize"
+        MinBtn.Size = UDim2.new(0, 24, 0, 24)
+        MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
+        MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        MinBtn.BackgroundTransparency = 0.4
+        MinBtn.BorderSizePixel = 0
+        MinBtn.Text = "—"
+        MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        MinBtn.TextSize = 11
+        MinBtn.Font = Enum.Font.GothamBold
+        MinBtn.Parent = TitleBar
+        local MinCorner = Instance.new("UICorner")
+        MinCorner.CornerRadius = UDim.new(0, 6)
+        MinCorner.Parent = MinBtn
+
+        local CloseBtn = Instance.new("TextButton")
+        CloseBtn.Name = "Close"
+        CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+        CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+        CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        CloseBtn.BackgroundTransparency = 0.4
+        CloseBtn.BorderSizePixel = 0
+        CloseBtn.Text = "X"
+        CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        CloseBtn.TextSize = 11
+        CloseBtn.Font = Enum.Font.GothamBold
+        CloseBtn.Parent = TitleBar
+        local CloseCorner = Instance.new("UICorner")
+        CloseCorner.CornerRadius = UDim.new(0, 6)
+        CloseCorner.Parent = CloseBtn
+
+        -- Drag functionality
+        local dragging = false
+        local dragStart = nil
+        local startPos = nil
+
+        TitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+            end
+        end)
+
+        TitleBar.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+                currentFakeOutSettings.position = {
+                    X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                    Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+                }
+                SaveFakeOutGUISettings()
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        local ContentFrame = Instance.new("Frame")
+        ContentFrame.Name = "Content"
+        ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+        ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+        ContentFrame.BackgroundTransparency = 1
+        ContentFrame.ClipsDescendants = true
+        ContentFrame.Parent = MainFrame
+
+        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local isMinimized = savedMinimized
+        local originalSize = UDim2.new(0, MW, 0, MH)
+        local minimizedSize = UDim2.new(0, MW, 0, 36)
+
+        if isMinimized then
+            MinBtn.Text = "+"
+            MainFrame.Size = minimizedSize
+            ContentFrame.Visible = false
+        end
+
+        MinBtn.MouseButton1Click:Connect(function()
+            isMinimized = not isMinimized
+            currentFakeOutSettings.minimized = isMinimized
+            SaveFakeOutGUISettings()
+            if isMinimized then
+                MinBtn.Text = "+"
+                TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize}):Play()
+                ContentFrame.Visible = false
+            else
+                MinBtn.Text = "—"
+                ContentFrame.Visible = true
+                TweenService:Create(MainFrame, tweenInfo, {Size = originalSize}):Play()
+            end
+        end)
+
+        local Padding = Instance.new("UIPadding")
+        Padding.PaddingTop = UDim.new(0, 4)
+        Padding.PaddingBottom = UDim.new(0, 4)
+        Padding.PaddingLeft = UDim.new(0, 8)
+        Padding.PaddingRight = UDim.new(0, 8)
+        Padding.Parent = ContentFrame
+
+        -- Fakeout logic
+        local foActive = false
+        local foSavedCF = nil
+        local foSavedVoid = nil
+        local foHoldConn = nil
+        local foPlatform = nil
+        local antiVoidWasActive = false
+
+        local function EndFakeOut()
+            if not foActive then return end
+            foActive = false
+            if foHoldConn then foHoldConn:Disconnect(); foHoldConn = nil end
+            if foPlatform then
+                pcall(function() foPlatform:Destroy() end)
+                foPlatform = nil
+            end
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root and root.Parent and foSavedCF then
+                root.CFrame = foSavedCF
+                root.AssemblyLinearVelocity = Vector3.zero
+                root.AssemblyAngularVelocity = Vector3.zero
+            end
+            if foSavedVoid then
+                task.wait(0.05)
+                -- Only restore void if anti-void wasn't active before fakeout
+                if not antiVoidWasActive and PM.Anti and not PM.Anti.void then
+                    workspace.FallenPartsDestroyHeight = foSavedVoid
+                end
+                foSavedVoid = nil
+            end
+            if PM then PM._intentionalBelowVoid = false end
+        end
+
+        local function BeginFakeOut()
+            if foActive then return end
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            foActive = true
+            foSavedCF = root.CFrame
+            foSavedVoid = workspace.FallenPartsDestroyHeight
+            antiVoidWasActive = PM.Anti and PM.Anti.void or false
+
+            -- Set void to -99999 (anti-void does this too, but we ensure it)
+            workspace.FallenPartsDestroyHeight = -99999
+            if PM then PM._intentionalBelowVoid = true end
+
+            -- Create anchored invisible platform under the map
+            local platform = Instance.new("Part")
+            platform.Name = "PrismFakeOutPlatform"
+            platform.Anchored = true
+            platform.CanCollide = true
+            platform.Size = Vector3.new(3, 5, 3)
+            platform.Transparency = 1
+            platform.CFrame = CFrame.new(root.Position.X, -653, root.Position.Z)
+            platform.Parent = workspace
+            foPlatform = platform
+
+            -- Teleport onto platform (top = -650.5, HRP hip offset ~2.5 → -648)
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+            root.CFrame = CFrame.new(root.Position.X, -648, root.Position.Z)
+
+            foHoldConn = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if not root or not root.Parent then EndFakeOut(); return end
+                if foPlatform and foPlatform.Parent then
+                    foPlatform.CFrame = CFrame.new(root.Position.X, -653, root.Position.Z)
+                end
+            end)
+        end
+
+        local BtnSection = Instance.new("Frame")
+        BtnSection.Name = "BtnSection"
+        BtnSection.Size = UDim2.new(1, 0, 0, 36)
+        BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        BtnSection.BackgroundTransparency = 0.4
+        BtnSection.BorderSizePixel = 0
+        BtnSection.Parent = ContentFrame
+
+        local BtnSectionCorner = Instance.new("UICorner")
+        BtnSectionCorner.CornerRadius = UDim.new(0, 10)
+        BtnSectionCorner.Parent = BtnSection
+
+        local FakeOutBtn = Instance.new("TextButton")
+        FakeOutBtn.Name = "FakeOutBtn"
+        FakeOutBtn.Size = UDim2.new(0, 130, 0, 24)
+        FakeOutBtn.Position = UDim2.new(0, 6, 0.5, -12)
+        FakeOutBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        FakeOutBtn.BackgroundTransparency = 0.4
+        FakeOutBtn.BorderSizePixel = 0
+        FakeOutBtn.Text = "Fake Out"
+        FakeOutBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        FakeOutBtn.TextSize = 11
+        FakeOutBtn.Font = Enum.Font.GothamBold
+        FakeOutBtn.Parent = BtnSection
+
+        local FakeOutBtnCorner = Instance.new("UICorner")
+        FakeOutBtnCorner.CornerRadius = UDim.new(0, 6)
+        FakeOutBtnCorner.Parent = FakeOutBtn
+
+        local BindBtn = Instance.new("TextButton")
+        BindBtn.Name = "BindBtn"
+        BindBtn.Size = UDim2.new(0, 52, 0, 24)
+        BindBtn.Position = UDim2.new(1, -58, 0.5, -12)
+        BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        BindBtn.BackgroundTransparency = 0.4
+        BindBtn.BorderSizePixel = 0
+        BindBtn.Text = "Bind"
+        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        BindBtn.TextSize = 11
+        BindBtn.Font = Enum.Font.GothamBold
+        BindBtn.Parent = BtnSection
+
+        local BindBtnCorner = Instance.new("UICorner")
+        BindBtnCorner.CornerRadius = UDim.new(0, 6)
+        BindBtnCorner.Parent = BindBtn
+
+        -- Hover effects
+        FakeOutBtn.MouseEnter:Connect(function()
+            TweenService:Create(FakeOutBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+        end)
+        FakeOutBtn.MouseLeave:Connect(function()
+            TweenService:Create(FakeOutBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+        end)
+        BindBtn.MouseEnter:Connect(function()
+            TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+        end)
+        BindBtn.MouseLeave:Connect(function()
+            TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+        end)
+
+        FakeOutBtn.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then BeginFakeOut() end
+        end)
+        FakeOutBtn.InputEnded:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then task.spawn(EndFakeOut) end
+        end)
+
+        -- Keybind button
+        local foKey = nil
+        pcall(function()
+            foKey = Enum.KeyCode[savedKey]
+        end)
+        local foCapturing = false
+        local foCaptureConn = nil
+        local foGlobalConn = nil
+        local foKeyEndConn = nil
+
+        local function UpdateBindDisplay()
+            if foKey then
+                BindBtn.Text = foKey.Name
+            else
+                BindBtn.Text = "Bind"
+            end
+        end
+        UpdateBindDisplay()
+
+        local function SaveFakeOutKey()
+            currentFakeOutSettings.keybind = foKey and foKey.Name or "F"
+            SaveFakeOutGUISettings()
+        end
+
+        local function CancelCapture()
+            foCapturing = false
+            foKey = nil
+            if foCaptureConn then foCaptureConn:Disconnect(); foCaptureConn = nil end
+            UpdateBindDisplay()
+            SaveFakeOutKey()
+        end
+
+        local function EnableGlobalFakeOut()
+            if foGlobalConn then return end
+            foGlobalConn = UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe or foCapturing then return end
+                if UserInputService:GetFocusedTextBox() then return end
+                if input.UserInputType == Enum.UserInputType.Keyboard and foKey and input.KeyCode == foKey then
+                    BeginFakeOut()
+                end
+            end)
+            foKeyEndConn = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Keyboard and foKey and input.KeyCode == foKey then
+                    task.spawn(EndFakeOut)
+                end
+            end)
+        end
+
+        BindBtn.MouseButton1Click:Connect(function()
+            foCapturing = true
+            if foGlobalConn then foGlobalConn:Disconnect(); foGlobalConn = nil end
+            if foKeyEndConn then foKeyEndConn:Disconnect(); foKeyEndConn = nil end
+            BindBtn.Text = "..."
+            BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+            if foCaptureConn then foCaptureConn:Disconnect() end
+            foCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe then return end
+                if not foCapturing then return end
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    if input.KeyCode == Enum.KeyCode.Backspace then
+                        foKey = nil
+                        foCapturing = false
+                        foCaptureConn:Disconnect(); foCaptureConn = nil
+                        UpdateBindDisplay()
+                        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                        SaveFakeOutKey()
+                        EnableGlobalFakeOut()
+                    else
+                        foKey = input.KeyCode
+                        foCapturing = false
+                        foCaptureConn:Disconnect(); foCaptureConn = nil
+                        UpdateBindDisplay()
+                        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                        SaveFakeOutKey()
+                        EnableGlobalFakeOut()
+                    end
+                elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
+                       input.UserInputType == Enum.UserInputType.MouseButton2 or
+                       input.UserInputType == Enum.UserInputType.MouseButton3 then
+                    CancelCapture()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    EnableGlobalFakeOut()
+                end
+            end)
+        end)
+
+        EnableGlobalFakeOut()
+
+        CloseBtn.MouseButton1Click:Connect(function()
+            foCapturing = false
+            if foCaptureConn then foCaptureConn:Disconnect(); foCaptureConn = nil end
+            if foGlobalConn then foGlobalConn:Disconnect(); foGlobalConn = nil end
+            if foKeyEndConn then foKeyEndConn:Disconnect(); foKeyEndConn = nil end
+            EndFakeOut()
+            ScreenGui:Destroy()
+        end)
+    end)
+
+    if not success then
+        -- Failed to load fakeout GUI
     end
 end)
 
