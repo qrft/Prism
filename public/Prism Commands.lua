@@ -706,7 +706,10 @@ local function fetchNametagData()
     local HttpService = game:GetService("HttpService")
     local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
     
+    print("[Prism Debug] fetchNametagData: Request function available:", requestFunction ~= nil)
+    
     if not requestFunction then
+        print("[Prism Debug] fetchNametagData: No request function available")
         return nil
     end
     
@@ -715,23 +718,38 @@ local function fetchNametagData()
         Method = "GET"
     }
     
+    print("[Prism Debug] fetchNametagData: Sending request to", requestTable.Url)
+    
     local success, result = pcall(function()
         return requestFunction(requestTable)
     end)
     
+    print("[Prism Debug] fetchNametagData: Request success:", success)
+    
     if not success then
+        print("[Prism Debug] fetchNametagData: Request failed")
         return nil
     end
     
+    print("[Prism Debug] fetchNametagData: Result type:", type(result))
+    
     local responseBody = result.Body or result.body or result
+    
+    print("[Prism Debug] fetchNametagData: Response body length:", responseBody and #responseBody or 0)
     
     if responseBody then
         local responseSuccess, responseData = pcall(function()
             return HttpService:JSONDecode(responseBody)
         end)
         
-        if responseSuccess and responseData.success then
-            return responseData.data
+        print("[Prism Debug] fetchNametagData: JSON decode success:", responseSuccess)
+        
+        if responseSuccess then
+            print("[Prism Debug] fetchNametagData: Response data success:", responseData.success)
+            if responseData.success and responseData.data then
+                print("[Prism Debug] fetchNametagData: Users count:", responseData.data.users and #responseData.data.users or 0)
+                return responseData.data
+            end
         end
     end
     
@@ -838,26 +856,36 @@ registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
         return
     end
     
-    local myChar = LP.Character
-    local targetChar = target.Character
+    -- Send POST request to API to create bring notification
+    local HttpService = game:GetService("HttpService")
+    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
     
-    if not myChar or not targetChar then
-        print("[Prism Debug] Bring failed: Missing character (myChar:", myChar ~= nil, "targetChar:", targetChar ~= nil, ")")
+    if not requestFunction then
+        print("[Prism Debug] Bring failed: No request function available")
         return
     end
     
-    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    print("[Prism Debug] Sending bring notification to API...")
     
-    if not myRoot or not targetRoot then
-        print("[Prism Debug] Bring failed: Missing HumanoidRootPart (myRoot:", myRoot ~= nil, "targetRoot:", targetRoot ~= nil, ")")
-        return
+    local success, result = pcall(function()
+        return requestFunction({
+            Url = "https://prismscript.vercel.app/api/bring",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode({
+                adminId = LP.UserId,
+                targetId = targetUserId
+            })
+        })
+    end)
+    
+    if success then
+        print("[Prism Debug] Bring notification sent successfully")
+    else
+        print("[Prism Debug] Bring notification failed to send")
     end
-    
-    -- Teleport target once to 3 studs in front of me, facing me
-    local targetCFrame = CFrame.new(myRoot.Position + myRoot.CFrame.LookVector * 3, myRoot.Position)
-    targetRoot.CFrame = targetCFrame
-    print("[Prism Debug] Bring successful: Teleported", target.Name, "to position:", targetCFrame.Position)
 end, true, true)
 
 -- VCBypasser state management
