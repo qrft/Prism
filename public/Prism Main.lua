@@ -512,7 +512,8 @@ local function createOtherNametag(plrObj, userData)
     
     otherNametags[plrObj.UserId] = {
         gui = billboard,
-        connection = connection
+        connection = connection,
+        effect = textEffect
     }
 end
 
@@ -582,16 +583,29 @@ local function updateOtherNametags()
     
     for userId, userData in pairs(prismUsers) do
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
-        if plrObj and not otherNametags[tonumber(userId)] then
-            if plrObj.Character then
-                createOtherNametag(plrObj, userData)
-            else
-                plrObj.CharacterAdded:Connect(function(char)
-                    task.wait(0.5)
-                    if prismUsers[userId] and not otherNametags[tonumber(userId)] then
-                        createOtherNametag(plrObj, userData)
-                    end
-                end)
+        if plrObj then
+            local existingTag = otherNametags[tonumber(userId)]
+            local newEffect = userData.textEffect or "none"
+            local currentEffect = existingTag and existingTag.effect or "none"
+            
+            -- Create new nametag if doesn't exist, or if effect changed
+            if not existingTag then
+                if plrObj.Character then
+                    createOtherNametag(plrObj, userData)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if prismUsers[userId] and not otherNametags[tonumber(userId)] then
+                            createOtherNametag(plrObj, userData)
+                        end
+                    end)
+                end
+            elseif newEffect ~= currentEffect then
+                warn("[Prism Nametag] Effect changed for " .. plrObj.Name .. " from " .. currentEffect .. " to " .. newEffect .. ", recreating nametag")
+                removeOtherNametag(tonumber(userId))
+                if plrObj.Character then
+                    createOtherNametag(plrObj, userData)
+                end
             end
         end
     end
