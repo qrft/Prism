@@ -315,6 +315,7 @@ local function createOtherNametag(plrObj, userData)
     if not head then return end
     
     local textEffect = userData and userData.textEffect or "none"
+    warn("[Prism Nametag] Creating nametag for " .. plrObj.Name .. " (ID: " .. plrObj.UserId .. ") with effect: " .. textEffect)
     
     if otherNametags[plrObj.UserId] then
         if otherNametags[plrObj.UserId].connection then
@@ -563,14 +564,19 @@ end
 
 local function updateOtherNametags()
     local data = readFromAPI()
-    if not data or not data.users then return end
+    if not data or not data.users then 
+        warn("[Prism Nametag] No data received from API")
+        return 
+    end
     
     local myUserId = PM.Svc.Players.LocalPlayer.UserId
+    warn("[Prism Nametag] Fetched " .. #data.users .. " users from API")
     
     local prismUsers = {}
     for _, user in ipairs(data.users) do
         if tostring(user.userId) ~= tostring(myUserId) then
             prismUsers[user.userId] = user
+            warn("[Prism Nametag] User " .. user.username .. " (ID: " .. user.userId .. ") has effect: " .. (user.textEffect or "none"))
         end
     end
     
