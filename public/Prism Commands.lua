@@ -9,9 +9,7 @@
     animation cloning
     shaders
     join other prism users
-    make infinite baseplate spawn at feet
     better vcbypasser
-    fakeout
     nametag cleanup on unload and reload
     custom nametag pictures
 
@@ -4691,6 +4689,26 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate", {}, functi
         return
     end
 
+    -- Get player's foot Y position (like WOA)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local h = char and char:FindFirstChildOfClass("Humanoid")
+    local baseY = -0.001
+    
+    if root and h then
+        local rcParams = RaycastParams.new()
+        rcParams.FilterDescendantsInstances = char and {char} or {}
+        rcParams.FilterType = Enum.RaycastFilterType.Exclude
+        local hit = workspace:Raycast(root.Position, Vector3.new(0, -50, 0), rcParams)
+        if hit then
+            baseY = hit.Position.Y
+        else
+            local hipH = h.HipHeight or 2.3
+            local hrpHalf = root.Size.Y * 0.5
+            baseY = root.Position.Y - hrpHalf - hipH
+        end
+    end
+
     -- Settings
     local BP_COLOR = Color3.fromRGB(115, 231, 117)
     local BP_MATERIAL = Enum.Material.Grass
@@ -4707,8 +4725,6 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate", {}, functi
         if not f then f = Instance.new("Folder"); f.Name = "PrismBaseplateFolder"; f.Parent = workspace end
         return f
     end
-
-    local baseY = -0.001
 
     local function BPGenChunk(cx, cz)
         local key = cx .. "," .. cz
