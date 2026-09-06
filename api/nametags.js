@@ -49,34 +49,52 @@ module.exports = async function handler(req, res) {
       });
     } else if (req.method === 'POST') {
       console.log('[DEBUG] POST request body:', JSON.stringify(req.body));
-      const { username, displayName, userId } = req.body;
+      const { username, displayName, userId, textEffect } = req.body;
       
       console.log('[DEBUG] Received nametag data:', {
         username,
         displayName,
-        userId
+        userId,
+        textEffect
       });
       
-      if (!username || !userId) {
+      if (!userId) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: username and userId'
+          error: 'Missing required field: userId'
         });
       }
       
       // Check if user already exists and update, or add new
       const existingIndex = nametagData.users.findIndex(u => u.userId === userId);
-      const userData = {
-        username,
-        displayName: displayName || username,
-        userId,
-        lastSeen: new Date().toISOString()
-      };
       
       if (existingIndex >= 0) {
+        // Update existing user with provided fields
+        const existingUser = nametagData.users[existingIndex];
+        const userData = {
+          username: username || existingUser.username,
+          displayName: displayName || existingUser.displayName,
+          userId: existingUser.userId,
+          textEffect: textEffect !== undefined ? textEffect : (existingUser.textEffect || 'none'),
+          lastSeen: new Date().toISOString()
+        };
         nametagData.users[existingIndex] = userData;
         console.log('[DEBUG] Updated existing user:', userId);
       } else {
+        // Create new user (requires username)
+        if (!username) {
+          return res.status(400).json({
+            success: false,
+            error: 'Missing required field: username (for new users)'
+          });
+        }
+        const userData = {
+          username,
+          displayName: displayName || username,
+          userId,
+          textEffect: textEffect || 'none',
+          lastSeen: new Date().toISOString()
+        };
         nametagData.users.push(userData);
         console.log('[DEBUG] Added new user:', userId);
       }

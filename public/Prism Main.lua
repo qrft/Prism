@@ -308,11 +308,13 @@ local function toggleNametag()
     return nametagEnabled
 end
 
-local function createOtherNametag(plrObj)
+local function createOtherNametag(plrObj, userData)
     if not plrObj.Character then return end
     
     local head = plrObj.Character:FindFirstChild("Head")
     if not head then return end
+    
+    local textEffect = userData and userData.textEffect or "none"
     
     if otherNametags[plrObj.UserId] then
         if otherNametags[plrObj.UserId].connection then
@@ -389,6 +391,16 @@ local function createOtherNametag(plrObj)
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
+    -- Text effect state
+    local effectState = {
+        type = textEffect,
+        originalText = plrObj.DisplayName,
+        typingIndex = 0,
+        typingTimer = 0,
+        glitchTimer = 0,
+        rainbowHue = 0
+    }
+    
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
     usernameLabel.Size = UDim2.new(1, -10, 0, 16)
@@ -435,6 +447,41 @@ local function createOtherNametag(plrObj)
         end
         
         billboard.Enabled = nametagEnabled
+        
+        -- Apply text effects
+        if effectState.type == "glitch" then
+            effectState.glitchTimer = effectState.glitchTimer + dt
+            if effectState.glitchTimer > 0.1 then
+                effectState.glitchTimer = 0
+                local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
+                local glitched = ""
+                for i = 1, #effectState.originalText do
+                    if math.random() < 0.3 then
+                        glitched = glitched .. string.sub(chars, math.random(1, #chars), math.random(1, #chars))
+                    else
+                        glitched = glitched .. string.sub(effectState.originalText, i, i)
+                    end
+                end
+                displayNameLabel.Text = glitched
+            end
+        elseif effectState.type == "typing" then
+            effectState.typingTimer = effectState.typingTimer + dt
+            if effectState.typingTimer > 0.1 then
+                effectState.typingTimer = 0
+                effectState.typingIndex = effectState.typingIndex + 1
+                if effectState.typingIndex > #effectState.originalText then
+                    effectState.typingIndex = 0
+                end
+                displayNameLabel.Text = string.sub(effectState.originalText, 1, effectState.typingIndex) .. "|"
+            end
+        elseif effectState.type == "rainbow" then
+            effectState.rainbowHue = (effectState.rainbowHue + dt * 2) % 1
+            local color = Color3.fromHSV(effectState.rainbowHue, 1, 1)
+            displayNameLabel.TextColor3 = color
+        else
+            displayNameLabel.Text = effectState.originalText
+            displayNameLabel.TextColor3 = C.text
+        end
         
         -- Track head
         local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
@@ -531,12 +578,12 @@ local function updateOtherNametags()
         local plrObj = PM.Svc.Players:GetPlayerByUserId(tonumber(userId))
         if plrObj and not otherNametags[tonumber(userId)] then
             if plrObj.Character then
-                createOtherNametag(plrObj)
+                createOtherNametag(plrObj, userData)
             else
                 plrObj.CharacterAdded:Connect(function(char)
                     task.wait(0.5)
                     if prismUsers[userId] and not otherNametags[tonumber(userId)] then
-                        createOtherNametag(plrObj)
+                        createOtherNametag(plrObj, userData)
                     end
                 end)
             end
@@ -563,7 +610,8 @@ local function getUserInfo()
     return {
         username = username,
         displayName = displayName,
-        userId = tostring(userId)
+        userId = tostring(userId),
+        textEffect = "none"
     }
 end
 
