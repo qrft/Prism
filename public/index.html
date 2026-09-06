@@ -260,6 +260,22 @@
             }
         }
         
+        // Fetch bring data for debug logging
+        async function fetchBringData() {
+            try {
+                const response = await fetch('/api/bring');
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.active) {
+                    const { adminId, targetId, timestamp } = data.data.active;
+                    const time = new Date(timestamp).toLocaleTimeString();
+                    debugLog(`Bring active: Admin ${adminId} → Target ${targetId} at ${time}`, 'warning');
+                }
+            } catch (error) {
+                // Silent fail for bring data polling
+            }
+        }
+        
         // Update UI with data
         function updateUI(data) {
             const users = data.users || [];
@@ -372,6 +388,9 @@
                 debugLog('Auto-refresh enabled (5s interval)', 'success');
             }
         }
+        
+        // Poll bring data every 2 seconds for debug logging
+        setInterval(fetchBringData, 2000);
         
         // Escape HTML to prevent XSS
         function escapeHtml(text) {
