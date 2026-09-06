@@ -153,29 +153,6 @@
             <h3 class="text-xl font-semibold text-gray-400 mb-2">No Users Found</h3>
             <p class="text-gray-500">Users will appear here when they run the Prism script</p>
         </div>
-        
-        <!-- Debug Console -->
-        <div class="glass-card rounded-xl p-4 mt-8">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    Debug Console
-                </h3>
-                <div class="flex gap-2">
-                    <button onclick="clearDebugConsole()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors">
-                        Clear
-                    </button>
-                    <button onclick="toggleDebugConsole()" id="debugToggleBtn" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition-colors">
-                        Hide
-                    </button>
-                </div>
-            </div>
-            <div id="debugConsole" class="bg-gray-900 rounded-lg p-4 h-64 overflow-y-auto font-mono text-xs">
-                <div class="text-gray-500">Debug messages will appear here...</div>
-            </div>
-        </div>
     </div>
     
     <script>
@@ -183,96 +160,26 @@
         const HEALTH_URL = '/api/health';
         let autoRefreshInterval = null;
         let allUsers = [];
-        let debugConsoleVisible = true;
-        
-        // Debug logging function
-        function debugLog(message, type = 'info') {
-            const console = document.getElementById('debugConsole');
-            const timestamp = new Date().toLocaleTimeString();
-            const colors = {
-                info: 'text-blue-400',
-                success: 'text-green-400',
-                error: 'text-red-400',
-                warning: 'text-yellow-400'
-            };
-            
-            const logEntry = document.createElement('div');
-            logEntry.className = `${colors[type]} mb-1`;
-            logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
-            
-            // Remove placeholder if exists
-            const placeholder = console.querySelector('.text-gray-500');
-            if (placeholder) {
-                placeholder.remove();
-            }
-            
-            console.appendChild(logEntry);
-            console.scrollTop = console.scrollHeight;
-        }
-        
-        // Clear debug console
-        function clearDebugConsole() {
-            const console = document.getElementById('debugConsole');
-            console.innerHTML = '<div class="text-gray-500">Debug messages will appear here...</div>';
-        }
-        
-        // Toggle debug console visibility
-        function toggleDebugConsole() {
-            const console = document.getElementById('debugConsole');
-            const btn = document.getElementById('debugToggleBtn');
-            debugConsoleVisible = !debugConsoleVisible;
-            
-            if (debugConsoleVisible) {
-                console.classList.remove('hidden');
-                btn.textContent = 'Hide';
-            } else {
-                console.classList.add('hidden');
-                btn.textContent = 'Show';
-            }
-        }
         
         // Fetch nametag data
         async function fetchNametagData() {
-            debugLog('Fetching nametag data...', 'info');
-            
             try {
                 const response = await fetch(API_URL);
                 const responseText = await response.text();
-                
-                debugLog(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${responseText}`);
                 }
                 
                 const data = JSON.parse(responseText);
-                debugLog(`Parsed JSON: success=${data.success}, users=${data.data?.users?.length || 0}`, 'info');
                 
                 if (data.success) {
                     allUsers = data.data.users || [];
                     updateUI(data.data);
-                    debugLog('UI updated successfully', 'success');
                 }
             } catch (error) {
-                debugLog(`Error: ${error.message}`, 'error');
                 document.getElementById('systemStatus').textContent = 'Disconnected';
                 document.getElementById('systemStatus').className = 'text-lg font-semibold text-red-400';
-            }
-        }
-        
-        // Fetch bring data for debug logging
-        async function fetchBringData() {
-            try {
-                const response = await fetch('/api/bring');
-                const data = await response.json();
-                
-                if (data.success && data.data && data.data.active) {
-                    const { adminId, targetId, timestamp } = data.data.active;
-                    const time = new Date(timestamp).toLocaleTimeString();
-                    debugLog(`Bring active: Admin ${adminId} → Target ${targetId} at ${time}`, 'warning');
-                }
-            } catch (error) {
-                // Silent fail for bring data polling
             }
         }
         
@@ -388,9 +295,6 @@
                 debugLog('Auto-refresh enabled (5s interval)', 'success');
             }
         }
-        
-        // Poll bring data every 2 seconds for debug logging
-        setInterval(fetchBringData, 2000);
         
         // Escape HTML to prevent XSS
         function escapeHtml(text) {

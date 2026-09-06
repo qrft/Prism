@@ -21,22 +21,13 @@ local PM = getgenv().PrismMain
 
 PM.Commands = PM.Commands or {}
 
--- Admin userId
-local ADMIN_USER_ID = 7275889224
-
--- Check if local player is admin
-local function isAdmin()
-    return LP.UserId == ADMIN_USER_ID
-end
-
-local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec, adminOnly)
+local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec)
     PM.Commands[name:lower()] = {
         name = name,
         desc = desc,
         aliases = aliases or {},
         execute = execute,
         excludeFromAutoExec = excludeFromAutoExec or false,
-        adminOnly = adminOnly or false,
     }
 end
 
@@ -508,22 +499,7 @@ local function cleanupPrism()
         end
     end
     
-    -- Cleanup Fakeout
-    if PM.Fakeout then
-        PM.Fakeout.active = false
-        if PM.Fakeout.connection then pcall(function() PM.Fakeout.connection:Disconnect() end) end
-        if PM.Fakeout.originalVoidY then
-            pcall(function() workspace.FallenPartsDestroyHeight = PM.Fakeout.originalVoidY end)
-            PM.Fakeout.originalVoidY = nil
-        end
-        local camera = workspace.CurrentCamera
-        camera.CameraType = Enum.CameraType.Custom
-        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-            camera.CameraSubject = LP.Character.Humanoid
-        end
-    end
-    
-    -- Cleanup Noclipstate objects
+    -- Clear state objects
     PM.Fly = nil
     PM.Jump = nil
     
@@ -700,193 +676,6 @@ registerCommand("serverhopany", "Join any random server", {}, function(args)
         end
     end
 end, true)
-
--- Admin commands
-local function fetchNametagData()
-    local HttpService = game:GetService("HttpService")
-    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-    
-    print("[Prism Debug] fetchNametagData: Request function available:", requestFunction ~= nil)
-    
-    if not requestFunction then
-        print("[Prism Debug] fetchNametagData: No request function available")
-        return nil
-    end
-    
-    local requestTable = {
-        Url = "https://prismscript.vercel.app/api/nametags",
-        Method = "GET"
-    }
-    
-    print("[Prism Debug] fetchNametagData: Sending request to", requestTable.Url)
-    
-    local success, result = pcall(function()
-        return requestFunction(requestTable)
-    end)
-    
-    print("[Prism Debug] fetchNametagData: Request success:", success)
-    
-    if not success then
-        print("[Prism Debug] fetchNametagData: Request failed")
-        return nil
-    end
-    
-    print("[Prism Debug] fetchNametagData: Result type:", type(result))
-    
-    local responseBody = result.Body or result.body or result
-    
-    print("[Prism Debug] fetchNametagData: Response body length:", responseBody and #responseBody or 0)
-    
-    if responseBody then
-        local responseSuccess, responseData = pcall(function()
-            return HttpService:JSONDecode(responseBody)
-        end)
-        
-        print("[Prism Debug] fetchNametagData: JSON decode success:", responseSuccess)
-        
-        if responseSuccess then
-            print("[Prism Debug] fetchNametagData: Response data success:", responseData.success)
-            if responseData.success and responseData.data then
-                print("[Prism Debug] fetchNametagData: Users count:", responseData.data.users and #responseData.data.users or 0)
-                return responseData.data
-            end
-        end
-    end
-    
-    return nil
-end
-
--- Admin bring state
-PM.AdminBring = {
-    active = false
-}
-
--- Find player by username from nametag API only
-local function findPlayerByName(name)
-    local nameLower = name:lower()
-    
-    -- Check API for userId
-    local apiData = fetchNametagData()
-    if apiData and apiData.users then
-        for _, user in ipairs(apiData.users) do
-            if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
-                local userId = tonumber(user.userId)
-                if userId then
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr.UserId == userId then
-                            return plr
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return nil
-end
-
-registerCommand("bring", "Bring player to you (admin only)", {}, function(args)
-    if not isAdmin() then
-        print("[Prism Debug] Bring failed: Not admin")
-        return
-    end
-    
-    print("[Prism Debug] Bring command executed by admin")
-    
-    local targetName = args[1]
-    if not targetName then
-        print("[Prism Debug] Bring failed: No target name provided")
-        return
-    end
-    
-    print("[Prism Debug] Target name:", targetName)
-    
-    -- Get userId from API
-    local apiData = fetchNametagData()
-    if not apiData or not apiData.users then
-        print("[Prism Debug] Bring failed: API data not available")
-        return
-    end
-    
-    print("[Prism Debug] API data fetched, users count:", #apiData.users)
-    
-    local targetUserId = nil
-    local nameLower = targetName:lower()
-    
-    -- First try exact match
-    for _, user in ipairs(apiData.users) do
-        print("[Prism Debug] Checking user (exact):", user.username, "displayName:", user.displayName)
-        if user.username:lower() == nameLower or (user.displayName and user.displayName:lower() == nameLower) then
-            targetUserId = tonumber(user.userId)
-            print("[Prism Debug] Found exact matching user ID:", targetUserId)
-            break
-        end
-    end
-    
-    -- If no exact match, try partial match
-    if not targetUserId then
-        for _, user in ipairs(apiData.users) do
-            print("[Prism Debug] Checking user (partial):", user.username, "displayName:", user.displayName)
-            if user.username:lower():find(nameLower, 1, true) or (user.displayName and user.displayName:lower():find(nameLower, 1, true)) then
-                targetUserId = tonumber(user.userId)
-                print("[Prism Debug] Found partial matching user ID:", targetUserId)
-                break
-            end
-        end
-    end
-    
-    if not targetUserId then
-        print("[Prism Debug] Bring failed: User not found in API")
-        return
-    end
-    
-    -- Check if user is in current server
-    local target = nil
-    for _, plr in ipairs(Players:GetPlayers()) do
-        print("[Prism Debug] Checking player in server:", plr.Name, "UserId:", plr.UserId)
-        if plr.UserId == targetUserId then
-            target = plr
-            print("[Prism Debug] Found target in server:", target.Name)
-            break
-        end
-    end
-    
-    if not target then
-        print("[Prism Debug] Bring failed: Target not in current server")
-        return
-    end
-    
-    -- Send POST request to API to create bring notification
-    local HttpService = game:GetService("HttpService")
-    local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-    
-    if not requestFunction then
-        print("[Prism Debug] Bring failed: No request function available")
-        return
-    end
-    
-    print("[Prism Debug] Sending bring notification to API...")
-    
-    local success, result = pcall(function()
-        return requestFunction({
-            Url = "https://prismscript.vercel.app/api/bring",
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode({
-                adminId = LP.UserId,
-                targetId = targetUserId
-            })
-        })
-    end)
-    
-    if success then
-        print("[Prism Debug] Bring notification sent successfully")
-    else
-        print("[Prism Debug] Bring notification failed to send")
-    end
-end, true, true)
 
 -- VCBypasser state management
 PM.VCBypasser = {
