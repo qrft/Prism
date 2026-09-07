@@ -3738,12 +3738,11 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
     end
 
     local success, err = pcall(function()
-        -- Load animation data from all 3 sources
+        -- Load animation data from animation sources only
         local animationData = {}
         local jsonUrls = {
             "https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/AnimationSniper.json",
-            "https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/AnimationSniperoffsale.json",
-            "https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/EmoteSniper.json"
+            "https://raw.githubusercontent.com/7yd7/sniper-Emote/refs/heads/test/AnimationSniperoffsale.json"
         }
 
         for _, jsonUrl in ipairs(jsonUrls) do
@@ -4088,8 +4087,10 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
                 return
             end
 
-            local key = TabToKey[animType]
-            if not key then return end
+            -- Stop all playing animations
+            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
 
             local cacheKey = tostring(bundleId)
             local mappings = AnimationCache[cacheKey]
@@ -4129,24 +4130,65 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
                 end
             end
 
-            -- Filter mappings for the specific animation type
-            local targetCategory = animType:gsub(" ", "")
-            targetCategory = targetCategory:sub(1, 1):upper() .. targetCategory:sub(2):lower()
+            -- Map tab names to actual category names in the Animate script
+            local categoryMap = {
+                ["idle"] = "idle",
+                ["walk"] = "walk",
+                ["run"] = "run",
+                ["jump"] = "jump",
+                ["fall"] = "fall",
+                ["climb"] = "climb",
+                ["swim idle"] = "swim",
+                ["swim"] = "swim"
+            }
 
+            local targetCategory = categoryMap[animType]
+            if not targetCategory then return end
+
+            local mappingMap = {}
             for _, m in ipairs(mappings) do
-                if m.category:lower() == targetCategory:lower() then
-                    local categoryFolder = animate:FindFirstChild(m.category)
-                    if categoryFolder then
-                        local animObj = categoryFolder:FindFirstChild(m.name)
-                        if animObj and animObj:IsA("Animation") then
+                local cat = m.category:lower()
+                if not mappingMap[cat] then
+                    mappingMap[cat] = { folderName = m.category, items = {} }
+                end
+                mappingMap[cat].items[m.name:lower()] = m
+            end
+
+            -- Only apply the target category
+            for cat, data in pairs(mappingMap) do
+                if cat ~= targetCategory:lower() then continue end
+
+                local categoryFolder = animate:FindFirstChild(data.folderName)
+                if not categoryFolder then continue end
+
+                local items = data.items
+
+                local sourceByName = {}
+                for name, m in pairs(items) do
+                    sourceByName[name] = m
+                end
+
+                for _, animObj in ipairs(categoryFolder:GetChildren()) do
+                    if animObj:IsA("Animation") then
+                        local lowerName = animObj.Name:lower()
+                        local m = sourceByName[lowerName]
+                        if m then
+                            sourceByName[lowerName] = nil
                             applyAnimationToObject(animObj, m.animationId, m.weights)
+                            if animObj.Name ~= m.name then
+                                animObj.Name = m.name
+                            end
                         else
-                            local newAnim = Instance.new("Animation")
-                            newAnim.Name = m.name
-                            applyAnimationToObject(newAnim, m.animationId, m.weights)
-                            newAnim.Parent = categoryFolder
+                            animObj:Destroy()
                         end
                     end
+                end
+
+                for name, m in pairs(sourceByName) do
+                    local animObj = Instance.new("Animation")
+                    animObj.Name = m.name
+                    applyAnimationToObject(animObj, m.animationId, m.weights)
+                    animObj.Parent = categoryFolder
                 end
             end
 
