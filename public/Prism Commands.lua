@@ -3968,11 +3968,53 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
         StatusLabel.Parent = StatusBar
 
+        -- Tab Bar
+        local TabContainer = Instance.new("Frame")
+        TabContainer.Name = "TabContainer"
+        TabContainer.Size = UDim2.new(1, -16, 0, 26)
+        TabContainer.Position = UDim2.new(0, 8, 0, 26)
+        TabContainer.BackgroundTransparency = 1
+        TabContainer.Parent = ContentFrame
+
+        local TabList = Instance.new("UIListLayout")
+        TabList.Padding = UDim.new(0, 3)
+        TabList.FillDirection = Enum.FillDirection.Horizontal
+        TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        TabList.SortOrder = Enum.SortOrder.LayoutOrder
+        TabList.Parent = TabContainer
+
+        local Tabs = {"all", "idle", "walk", "run", "jump", "fall", "climb", "swim idle", "swim"}
+        local TabButtons = {}
+        local currentTab = "all"
+
+        for i, tabName in ipairs(Tabs) do
+            local tabBtn = Instance.new("TextButton")
+            tabBtn.Name = tabName .. "Tab"
+            tabBtn.Size = UDim2.new(0, 0, 1, 0)
+            tabBtn.AutomaticSize = Enum.AutomaticSize.X
+            tabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            tabBtn.BackgroundTransparency = (tabName == "all") and 0.1 or 0.7
+            tabBtn.BorderSizePixel = 0
+            tabBtn.Text = "  " .. tabName .. "  "
+            tabBtn.TextColor3 = (tabName == "all") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+            tabBtn.TextSize = 10
+            tabBtn.Font = Enum.Font.GothamMedium
+            tabBtn.LayoutOrder = i
+            tabBtn.ZIndex = 10
+            tabBtn.Parent = TabContainer
+
+            local tabCorner = Instance.new("UICorner")
+            tabCorner.CornerRadius = UDim.new(0, 10)
+            tabCorner.Parent = tabBtn
+
+            TabButtons[tabName] = tabBtn
+        end
+
         -- Search Box
         local SearchBox = Instance.new("TextBox")
         SearchBox.Name = "Search"
         SearchBox.Size = UDim2.new(1, -16, 0, 24)
-        SearchBox.Position = UDim2.new(0, 8, 0, 26)
+        SearchBox.Position = UDim2.new(0, 8, 0, 58)
         SearchBox.Visible = true
         SearchBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         SearchBox.BackgroundTransparency = 0.3
@@ -3993,8 +4035,8 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         -- List Container
         local ListContainer = Instance.new("Frame")
         ListContainer.Name = "ListContainer"
-        ListContainer.Size = UDim2.new(1, -16, 1, -54)
-        ListContainer.Position = UDim2.new(0, 8, 0, 58)
+        ListContainer.Size = UDim2.new(1, -16, 1, -108)
+        ListContainer.Position = UDim2.new(0, 8, 0, 88)
         ListContainer.BackgroundTransparency = 1
         ListContainer.ClipsDescendants = true
         ListContainer.Parent = ContentFrame
@@ -4014,11 +4056,108 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ListLayout.Parent = ScrollFrame
 
+        -- Map tab names to bundled item keys
+        local TabToKey = {
+            ["idle"] = "1",
+            ["walk"] = "2",
+            ["run"] = "3",
+            ["jump"] = "4",
+            ["fall"] = "5",
+            ["climb"] = "6",
+            ["swim idle"] = "7",
+            ["swim"] = "7"
+        }
+
+        -- Modified applyAnimation to apply only specific animation type
+        local function applySingleAnimation(animationData, animType)
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = character:FindFirstChild("Humanoid")
+            local animate = character:FindFirstChild("Animate")
+
+            if not animate or not humanoid then
+                return
+            end
+
+            local bundleId = animationData.id
+            local bundledItems = animationData.bundledItems
+
+            if not bundledItems then
+                return
+            end
+
+            local key = TabToKey[animType]
+            if not key then return end
+
+            local cacheKey = tostring(bundleId)
+            local mappings = AnimationCache[cacheKey]
+
+            if mappings and #mappings > 0 and mappings._version ~= 2 then
+                mappings = nil
+            end
+
+            if not mappings then
+                mappings = resolveAnimationMappings(bundledItems)
+                if #mappings > 0 then
+                    mappings._version = 2
+                    AnimationCache[cacheKey] = mappings
+                    task.spawn(saveAnimationCache)
+                end
+            end
+
+            if #mappings == 0 then return end
+
+            local function applyAnimationToObject(animObj, animId, weights)
+                if not animObj or not animObj:IsA("Animation") then return end
+
+                animObj.AnimationId = animId
+
+                if weights ~= nil then
+                    for _, child in ipairs(animObj:GetChildren()) do
+                        if child:IsA("NumberValue") and child.Name == "Weight" then
+                            child:Destroy()
+                        end
+                    end
+                    for _, wVal in ipairs(weights) do
+                        local w = Instance.new("NumberValue")
+                        w.Name = "Weight"
+                        w.Value = wVal
+                        w.Parent = animObj
+                    end
+                end
+            end
+
+            -- Filter mappings for the specific animation type
+            local targetCategory = animType:gsub(" ", "")
+            targetCategory = targetCategory:sub(1, 1):upper() .. targetCategory:sub(2):lower()
+
+            for _, m in ipairs(mappings) do
+                if m.category:lower() == targetCategory:lower() then
+                    local categoryFolder = animate:FindFirstChild(m.category)
+                    if categoryFolder then
+                        local animObj = categoryFolder:FindFirstChild(m.name)
+                        if animObj and animObj:IsA("Animation") then
+                            applyAnimationToObject(animObj, m.animationId, m.weights)
+                        else
+                            local newAnim = Instance.new("Animation")
+                            newAnim.Name = m.name
+                            applyAnimationToObject(newAnim, m.animationId, m.weights)
+                            newAnim.Parent = categoryFolder
+                        end
+                    end
+                end
+            end
+
+            if humanoid.MoveDirection.Magnitude == 0 then
+                animate.Disabled = true
+                animate.Disabled = false
+            end
+        end
+
         -- Create animation row
         local function createAnimationRow(animPack, index)
             local row = Instance.new("Frame")
             row.Name = tostring(animPack.id)
-            row.Size = UDim2.new(1, 0, 0, 32)
+            row.Size = UDim2.new(1, 0, 0, 24)
             row.BackgroundTransparency = 1
             row.LayoutOrder = index
 
@@ -4047,7 +4186,11 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             end)
 
             nameBtn.MouseButton1Click:Connect(function()
-                applyAnimation(animPack)
+                if currentTab == "all" then
+                    applyAnimation(animPack)
+                else
+                    applySingleAnimation(animPack, currentTab)
+                end
             end)
 
             return row
@@ -4057,7 +4200,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         local visibleAnimations = {}
         local loadedRows = {}
         local BATCH_SIZE = 20
-        local ROW_HEIGHT = 36
+        local ROW_HEIGHT = 28
         local isLoading = false
 
         local function updateVisibleAnimations(searchTerm)
@@ -4066,8 +4209,18 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
             for i, animPack in ipairs(animationData) do
                 local matchesSearch = searchTerm == "" or animPack.name:lower():find(searchTerm, 1, true)
-                if matchesSearch then
-                    table.insert(visibleAnimations, {animPack = animPack, index = i})
+
+                if currentTab == "all" then
+                    if matchesSearch then
+                        table.insert(visibleAnimations, {animPack = animPack, index = i})
+                    end
+                else
+                    local key = TabToKey[currentTab]
+                    if key and animPack.bundledItems and animPack.bundledItems[key] then
+                        if matchesSearch then
+                            table.insert(visibleAnimations, {animPack = animPack, index = i})
+                        end
+                    end
                 end
             end
 
@@ -4116,6 +4269,20 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         -- Initial load
         updateVisibleAnimations("")
         loadBatch(1, BATCH_SIZE)
+
+        -- Tab handlers
+        for tabName, tabBtn in pairs(TabButtons) do
+            tabBtn.MouseButton1Click:Connect(function()
+                currentTab = tabName
+                for name, btn in pairs(TabButtons) do
+                    btn.BackgroundTransparency = (name == tabName) and 0.1 or 0.7
+                    btn.TextColor3 = (name == tabName) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+                end
+                updateVisibleAnimations(SearchBox.Text)
+                loadBatch(1, BATCH_SIZE)
+                ScrollFrame.CanvasPosition = Vector2.new(0, 0)
+            end)
+        end
 
         -- Search debounce
         local searchPending = false
