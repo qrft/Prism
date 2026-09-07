@@ -3803,7 +3803,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
         local MainFrame = Instance.new("Frame")
         MainFrame.Name = "MainFrame"
-        MainFrame.Size = UDim2.new(0, 320, 0, 360)
+        MainFrame.Size = UDim2.new(0, 280, 0, 360)
         MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
         MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
         MainFrame.BackgroundTransparency = 0.3
@@ -3915,8 +3915,8 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         ContentFrame.Parent = MainFrame
 
         local isMinimized = savedMinimized
-        local originalSize = UDim2.new(0, 320, 0, 360)
-        local minimizedSize = UDim2.new(0, 320, 0, 36)
+        local originalSize = UDim2.new(0, 280, 0, 360)
+        local minimizedSize = UDim2.new(0, 280, 0, 36)
         local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
         if isMinimized then
@@ -4040,6 +4040,10 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         ListContainer.ClipsDescendants = true
         ListContainer.Parent = ContentFrame
 
+        local ListPadding = Instance.new("UIPadding")
+        ListPadding.PaddingRight = UDim.new(0, 4)
+        ListPadding.Parent = ListContainer
+
         local ScrollFrame = Instance.new("ScrollingFrame")
         ScrollFrame.Name = "ScrollFrame"
         ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -4162,7 +4166,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
             local nameBtn = Instance.new("TextButton")
             nameBtn.Name = "NameBtn"
-            nameBtn.Size = UDim2.new(1, 0, 1, 0)
+            nameBtn.Size = UDim2.new(1, -4, 1, 0)
             nameBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             nameBtn.BackgroundTransparency = 0.5
             nameBtn.BorderSizePixel = 0
@@ -4505,8 +4509,8 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         ContentFrame.Parent = MainFrame
 
         local isMinimized = savedMinimized
-        local originalSize = UDim2.new(0, 320, 0, 360)
-        local minimizedSize = UDim2.new(0, 320, 0, 36)
+        local originalSize = UDim2.new(0, 280, 0, 360)
+        local minimizedSize = UDim2.new(0, 280, 0, 36)
         local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
         -- Apply saved minimized state
