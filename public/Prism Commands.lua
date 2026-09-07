@@ -3903,7 +3903,7 @@ registerCommand("animations", "Animation Replacer", {}, function(args)
         TitleLabel.Size = UDim2.new(1, -80, 1, 0)
         TitleLabel.Position = UDim2.new(0, 14, 0, 0)
         TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Text = "Prism  •  Animation"
+        TitleLabel.Text = "Prism  •  Animations"
         TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         TitleLabel.TextSize = 13
         TitleLabel.Font = Enum.Font.GothamBold
