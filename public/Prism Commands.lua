@@ -3527,7 +3527,7 @@ local function SaveEmotesFavorites()
     end)
 end
 
-registerCommand("animation", "Animation Replacer", {}, function(args)
+registerCommand("animations", "Animation Replacer", {}, function(args)
     local CoreGui = game:GetService("CoreGui")
     local UserInputService = game:GetService("UserInputService")
     local RunService = game:GetService("RunService")
@@ -4108,6 +4108,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             row.Size = UDim2.new(1, 0, 0, 32)
             row.BackgroundTransparency = 1
             row.LayoutOrder = index
+            row.ClipsDescendants = true
 
             local nameBtn = Instance.new("TextButton")
             nameBtn.Name = "NameBtn"
@@ -4120,6 +4121,8 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             nameBtn.TextSize = 11
             nameBtn.Font = Enum.Font.Gotham
             nameBtn.TextXAlignment = Enum.TextXAlignment.Left
+            nameBtn.TextTruncate = Enum.TextTruncate.AtEnd
+            nameBtn.ClipsDescendants = true
             nameBtn.Parent = row
 
             local nameCorner = Instance.new("UICorner")
@@ -5221,6 +5224,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             row.Size = UDim2.new(1, 0, 0, 32)
             row.BackgroundTransparency = 1
             row.LayoutOrder = index
+            row.ClipsDescendants = true
 
             local nameBtn = Instance.new("TextButton")
             nameBtn.Name = "NameBtn"
@@ -5233,6 +5237,8 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
             nameBtn.TextSize = 11
             nameBtn.Font = Enum.Font.Gotham
             nameBtn.TextXAlignment = Enum.TextXAlignment.Left
+            nameBtn.TextTruncate = Enum.TextTruncate.AtEnd
+            nameBtn.ClipsDescendants = true
             nameBtn.Parent = row
 
             local nameCorner = Instance.new("UICorner")
