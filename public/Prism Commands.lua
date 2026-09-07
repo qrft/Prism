@@ -3572,6 +3572,49 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
     loadAnimationCache()
 
+    -- Animation favorites
+    local ANIMATION_FAVORITES_FILE = "prism/prism_animation_favorites.json"
+    local animationFavorites = {}
+
+    local function loadAnimationFavorites()
+        if isfile and isfile(ANIMATION_FAVORITES_FILE) then
+            local success, decoded = pcall(function()
+                return HttpService:JSONDecode(readfile(ANIMATION_FAVORITES_FILE))
+            end)
+            if success and type(decoded) == "table" then
+                animationFavorites = decoded
+            end
+        end
+    end
+
+    local function saveAnimationFavorites()
+        if writefile then
+            pcall(function()
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(ANIMATION_FAVORITES_FILE, HttpService:JSONEncode(animationFavorites))
+            end)
+        end
+    end
+
+    local function isAnimationFavorite(animId)
+        return animationFavorites[tostring(animId)] == true
+    end
+
+    local function toggleAnimationFavorite(animId)
+        local id = tostring(animId)
+        if animationFavorites[id] then
+            animationFavorites[id] = nil
+            saveAnimationFavorites()
+            return false
+        else
+            animationFavorites[id] = true
+            saveAnimationFavorites()
+            return true
+        end
+    end
+
+    loadAnimationFavorites()
+
     -- Resolve animation mappings by downloading assets
     local function resolveAnimationMappings(bundledItems)
         local mappings = {}
@@ -3981,9 +4024,9 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         TabList.SortOrder = Enum.SortOrder.LayoutOrder
         TabList.Parent = TabContainer
 
-        local Tabs = {"all", "idle", "walk", "run", "jump", "fall", "climb", "swim idle", "swim"}
+        local Tabs = {"All", "Favorites"}
         local TabButtons = {}
-        local currentTab = "all"
+        local currentTab = "All"
 
         for i, tabName in ipairs(Tabs) do
             local tabBtn = Instance.new("TextButton")
@@ -3991,11 +4034,11 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             tabBtn.Size = UDim2.new(0, 0, 1, 0)
             tabBtn.AutomaticSize = Enum.AutomaticSize.X
             tabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            tabBtn.BackgroundTransparency = (tabName == "all") and 0.1 or 0.7
+            tabBtn.BackgroundTransparency = (tabName == "All") and 0.1 or 0.7
             tabBtn.BorderSizePixel = 0
             tabBtn.Text = "  " .. tabName .. "  "
-            tabBtn.TextColor3 = (tabName == "all") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-            tabBtn.TextSize = 9
+            tabBtn.TextColor3 = (tabName == "All") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+            tabBtn.TextSize = 10
             tabBtn.Font = Enum.Font.GothamMedium
             tabBtn.LayoutOrder = i
             tabBtn.ZIndex = 10
@@ -4058,146 +4101,6 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ListLayout.Parent = ScrollFrame
 
-        -- Map tab names to bundled item keys
-        local TabToKey = {
-            ["idle"] = "1",
-            ["walk"] = "2",
-            ["run"] = "3",
-            ["jump"] = "4",
-            ["fall"] = "5",
-            ["climb"] = "6",
-            ["swim idle"] = "7",
-            ["swim"] = "7"
-        }
-
-        -- Modified applyAnimation to apply only specific animation type
-        local function applySingleAnimation(animationData, animType)
-            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local humanoid = character:FindFirstChild("Humanoid")
-            local animate = character:FindFirstChild("Animate")
-
-            if not animate or not humanoid then
-                return
-            end
-
-            local bundleId = animationData.id
-            local bundledItems = animationData.bundledItems
-
-            if not bundledItems then
-                return
-            end
-
-            -- Stop all playing animations
-            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-                track:Stop()
-            end
-
-            local cacheKey = tostring(bundleId)
-            local mappings = AnimationCache[cacheKey]
-
-            if mappings and #mappings > 0 and mappings._version ~= 2 then
-                mappings = nil
-            end
-
-            if not mappings then
-                mappings = resolveAnimationMappings(bundledItems)
-                if #mappings > 0 then
-                    mappings._version = 2
-                    AnimationCache[cacheKey] = mappings
-                    task.spawn(saveAnimationCache)
-                end
-            end
-
-            if #mappings == 0 then return end
-
-            local function applyAnimationToObject(animObj, animId, weights)
-                if not animObj or not animObj:IsA("Animation") then return end
-
-                animObj.AnimationId = animId
-
-                if weights ~= nil then
-                    for _, child in ipairs(animObj:GetChildren()) do
-                        if child:IsA("NumberValue") and child.Name == "Weight" then
-                            child:Destroy()
-                        end
-                    end
-                    for _, wVal in ipairs(weights) do
-                        local w = Instance.new("NumberValue")
-                        w.Name = "Weight"
-                        w.Value = wVal
-                        w.Parent = animObj
-                    end
-                end
-            end
-
-            -- Map tab names to actual category names in the Animate script
-            local categoryMap = {
-                ["idle"] = "idle",
-                ["walk"] = "walk",
-                ["run"] = "run",
-                ["jump"] = "jump",
-                ["fall"] = "fall",
-                ["climb"] = "climb",
-                ["swim idle"] = "swim",
-                ["swim"] = "swim"
-            }
-
-            local targetCategory = categoryMap[animType]
-            if not targetCategory then return end
-
-            local mappingMap = {}
-            for _, m in ipairs(mappings) do
-                local cat = m.category:lower()
-                if not mappingMap[cat] then
-                    mappingMap[cat] = { folderName = m.category, items = {} }
-                end
-                mappingMap[cat].items[m.name:lower()] = m
-            end
-
-            -- Only apply the target category
-            for cat, data in pairs(mappingMap) do
-                if cat ~= targetCategory:lower() then continue end
-
-                local categoryFolder = animate:FindFirstChild(data.folderName)
-                if not categoryFolder then continue end
-
-                local items = data.items
-
-                local sourceByName = {}
-                for name, m in pairs(items) do
-                    sourceByName[name] = m
-                end
-
-                for _, animObj in ipairs(categoryFolder:GetChildren()) do
-                    if animObj:IsA("Animation") then
-                        local lowerName = animObj.Name:lower()
-                        local m = sourceByName[lowerName]
-                        if m then
-                            sourceByName[lowerName] = nil
-                            applyAnimationToObject(animObj, m.animationId, m.weights)
-                            if animObj.Name ~= m.name then
-                                animObj.Name = m.name
-                            end
-                        else
-                            animObj:Destroy()
-                        end
-                    end
-                end
-
-                for name, m in pairs(sourceByName) do
-                    local animObj = Instance.new("Animation")
-                    animObj.Name = m.name
-                    applyAnimationToObject(animObj, m.animationId, m.weights)
-                    animObj.Parent = categoryFolder
-                end
-            end
-
-            if humanoid.MoveDirection.Magnitude == 0 then
-                animate.Disabled = true
-                animate.Disabled = false
-            end
-        end
-
         -- Create animation row
         local function createAnimationRow(animPack, index)
             local row = Instance.new("Frame")
@@ -4208,7 +4111,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
             local nameBtn = Instance.new("TextButton")
             nameBtn.Name = "NameBtn"
-            nameBtn.Size = UDim2.new(1, -4, 1, 0)
+            nameBtn.Size = UDim2.new(1, -40, 1, 0)
             nameBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             nameBtn.BackgroundTransparency = 0.5
             nameBtn.BorderSizePixel = 0
@@ -4223,6 +4126,18 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             nameCorner.CornerRadius = UDim.new(0, 6)
             nameCorner.Parent = nameBtn
 
+            local favBtn = Instance.new("TextButton")
+            favBtn.Name = "Fav"
+            favBtn.Size = UDim2.new(0, 32, 1, 0)
+            favBtn.Position = UDim2.new(1, -32, 0, 0)
+            favBtn.BackgroundTransparency = 1
+            local animIsFav = isAnimationFavorite(animPack.id)
+            favBtn.Text = animIsFav and "★" or "☆"
+            favBtn.TextColor3 = animIsFav and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 120, 120)
+            favBtn.TextSize = 16
+            favBtn.Font = Enum.Font.GothamBold
+            favBtn.Parent = row
+
             nameBtn.MouseEnter:Connect(function()
                 nameBtn.BackgroundTransparency = 0.3
             end)
@@ -4231,11 +4146,13 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             end)
 
             nameBtn.MouseButton1Click:Connect(function()
-                if currentTab == "all" then
-                    applyAnimation(animPack)
-                else
-                    applySingleAnimation(animPack, currentTab)
-                end
+                applyAnimation(animPack)
+            end)
+
+            favBtn.MouseButton1Click:Connect(function()
+                local nowFav = toggleAnimationFavorite(animPack.id)
+                favBtn.Text = nowFav and "★" or "☆"
+                favBtn.TextColor3 = nowFav and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 120, 120)
             end)
 
             return row
@@ -4255,16 +4172,13 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             for i, animPack in ipairs(animationData) do
                 local matchesSearch = searchTerm == "" or animPack.name:lower():find(searchTerm, 1, true)
 
-                if currentTab == "all" then
+                if currentTab == "All" then
                     if matchesSearch then
                         table.insert(visibleAnimations, {animPack = animPack, index = i})
                     end
-                else
-                    local key = TabToKey[currentTab]
-                    if key and animPack.bundledItems and animPack.bundledItems[key] then
-                        if matchesSearch then
-                            table.insert(visibleAnimations, {animPack = animPack, index = i})
-                        end
+                elseif currentTab == "Favorites" then
+                    if isAnimationFavorite(animPack.id) and matchesSearch then
+                        table.insert(visibleAnimations, {animPack = animPack, index = i})
                     end
                 end
             end
