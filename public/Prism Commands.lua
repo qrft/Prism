@@ -3573,6 +3573,49 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
     loadAnimationCache()
 
+    -- Animation favorites
+    local ANIMATION_FAVORITES_FILE = "prism/prism_animation_favorites.json"
+    local animationFavorites = {}
+
+    local function loadAnimationFavorites()
+        if isfile and isfile(ANIMATION_FAVORITES_FILE) then
+            local success, decoded = pcall(function()
+                return HttpService:JSONDecode(readfile(ANIMATION_FAVORITES_FILE))
+            end)
+            if success and type(decoded) == "table" then
+                animationFavorites = decoded
+            end
+        end
+    end
+
+    local function saveAnimationFavorites()
+        if writefile then
+            pcall(function()
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(ANIMATION_FAVORITES_FILE, HttpService:JSONEncode(animationFavorites))
+            end)
+        end
+    end
+
+    local function isAnimationFavorite(animId)
+        return animationFavorites[tostring(animId)] == true
+    end
+
+    local function toggleAnimationFavorite(animId)
+        local id = tostring(animId)
+        if animationFavorites[id] then
+            animationFavorites[id] = nil
+            saveAnimationFavorites()
+            return false
+        else
+            animationFavorites[id] = true
+            saveAnimationFavorites()
+            return true
+        end
+    end
+
+    loadAnimationFavorites()
+
     -- Resolve animation mappings by downloading assets
     local function resolveAnimationMappings(bundledItems)
         local mappings = {}
@@ -3983,7 +4026,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         TabList.SortOrder = Enum.SortOrder.LayoutOrder
         TabList.Parent = TabContainer
 
-        local Tabs = {"all", "idle", "walk", "run", "jump", "fall", "climb", "swim idle", "swim"}
+        local Tabs = {"all", "favorites", "idle", "walk", "run", "jump", "fall", "climb", "swim idle", "swim"}
         local TabButtons = {}
         local currentTab = "all"
 
@@ -3997,7 +4040,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             tabBtn.BorderSizePixel = 0
             tabBtn.Text = "  " .. tabName .. "  "
             tabBtn.TextColor3 = (tabName == "all") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-            tabBtn.TextSize = 10
+            tabBtn.TextSize = 9
             tabBtn.Font = Enum.Font.GothamMedium
             tabBtn.LayoutOrder = i
             tabBtn.ZIndex = 10
@@ -4040,6 +4083,11 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         ListContainer.BackgroundTransparency = 1
         ListContainer.ClipsDescendants = true
         ListContainer.Parent = ContentFrame
+
+        local ListPadding = Instance.new("UIPadding")
+        ListPadding.PaddingLeft = UDim.new(0, 4)
+        ListPadding.PaddingRight = UDim.new(0, 4)
+        ListPadding.Parent = ListContainer
 
         local ScrollFrame = Instance.new("ScrollingFrame")
         ScrollFrame.Name = "ScrollFrame"
@@ -4157,13 +4205,13 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         local function createAnimationRow(animPack, index)
             local row = Instance.new("Frame")
             row.Name = tostring(animPack.id)
-            row.Size = UDim2.new(1, 0, 0, 24)
+            row.Size = UDim2.new(1, 0, 0, 32)
             row.BackgroundTransparency = 1
             row.LayoutOrder = index
 
             local nameBtn = Instance.new("TextButton")
             nameBtn.Name = "NameBtn"
-            nameBtn.Size = UDim2.new(1, 0, 1, 0)
+            nameBtn.Size = UDim2.new(1, -40, 1, 0)
             nameBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             nameBtn.BackgroundTransparency = 0.5
             nameBtn.BorderSizePixel = 0
@@ -4177,6 +4225,18 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
             local nameCorner = Instance.new("UICorner")
             nameCorner.CornerRadius = UDim.new(0, 6)
             nameCorner.Parent = nameBtn
+
+            local favBtn = Instance.new("TextButton")
+            favBtn.Name = "Fav"
+            favBtn.Size = UDim2.new(0, 32, 1, 0)
+            favBtn.Position = UDim2.new(1, -32, 0, 0)
+            favBtn.BackgroundTransparency = 1
+            local animIsFav = isAnimationFavorite(animPack.id)
+            favBtn.Text = animIsFav and "★" or "☆"
+            favBtn.TextColor3 = animIsFav and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 120, 120)
+            favBtn.TextSize = 16
+            favBtn.Font = Enum.Font.GothamBold
+            favBtn.Parent = row
 
             nameBtn.MouseEnter:Connect(function()
                 nameBtn.BackgroundTransparency = 0.3
@@ -4193,6 +4253,12 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
                 end
             end)
 
+            favBtn.MouseButton1Click:Connect(function()
+                local nowFav = toggleAnimationFavorite(animPack.id)
+                favBtn.Text = nowFav and "★" or "☆"
+                favBtn.TextColor3 = nowFav and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 120, 120)
+            end)
+
             return row
         end
 
@@ -4200,7 +4266,7 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
         local visibleAnimations = {}
         local loadedRows = {}
         local BATCH_SIZE = 20
-        local ROW_HEIGHT = 28
+        local ROW_HEIGHT = 36
         local isLoading = false
 
         local function updateVisibleAnimations(searchTerm)
@@ -4212,6 +4278,10 @@ registerCommand("animation", "Animation Replacer", {}, function(args)
 
                 if currentTab == "all" then
                     if matchesSearch then
+                        table.insert(visibleAnimations, {animPack = animPack, index = i})
+                    end
+                elseif currentTab == "favorites" then
+                    if isAnimationFavorite(animPack.id) and matchesSearch then
                         table.insert(visibleAnimations, {animPack = animPack, index = i})
                     end
                 else
