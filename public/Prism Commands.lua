@@ -8425,7 +8425,7 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
     TitleLabel.Size = UDim2.new(1, -80, 1, 0)
     TitleLabel.Position = UDim2.new(0, 14, 0, 0)
     TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = "Prism  •  Invisibility (Clone)"
+    TitleLabel.Text = "Prism  •  Invisibility"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     TitleLabel.TextSize = 13
     TitleLabel.Font = Enum.Font.GothamBold
@@ -8668,6 +8668,15 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
             end
         end
         
+        -- Enable collision on fake character parts
+        for _, part in ipairs(fakeChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+                -- Make fake character fully invisible
+                part.Transparency = 1
+            end
+        end
+        
         -- Parent fake character to workspace
         fakeChar.Parent = workspace
         
@@ -8799,6 +8808,14 @@ if PM.Invisibility.active then
                 end
             end
             
+            -- Enable collision on fake character parts
+            for _, part in ipairs(fakeChar:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                    part.Transparency = 1
+                end
+            end
+            
             fakeChar.Parent = workspace
             fakeChar.HumanoidRootPart.CFrame = root.CFrame
             
@@ -8850,6 +8867,14 @@ if not PM.Invisibility.charAddedConn then
                 for _, child in ipairs(fakeChar:GetDescendants()) do
                     if child:IsA("LocalScript") then
                         child:Destroy()
+                    end
+                end
+                
+                -- Enable collision on fake character parts
+                for _, part in ipairs(fakeChar:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                        part.Transparency = 1
                     end
                 end
                 
