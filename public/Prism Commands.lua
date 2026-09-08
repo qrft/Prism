@@ -577,10 +577,6 @@ local function cleanupPrism()
     if PM.Invis.EndInvis then
         PM.Invis.EndInvis()
     end
-    if PM.Invis.keyConnection then
-        pcall(function() PM.Invis.keyConnection:Disconnect() end)
-        PM.Invis.keyConnection = nil
-    end
 end
 
 local function FindPrismGUI(name)
@@ -1734,37 +1730,8 @@ PM.Invis = {
     platform = nil,
     holdConn = nil,
     EndInvis = nil,
-    BeginInvis = nil,
-    key = nil,
-    keyConnection = nil
+    BeginInvis = nil
 }
-
--- Load saved invisibility key and state
-local INVIS_SAVE_FILE = "prism/prism_invis_settings.json"
-local savedInvisSettings = {}
-pcall(function()
-    if readfile and isfile(INVIS_SAVE_FILE) then
-        savedInvisSettings = game:GetService("HttpService"):JSONDecode(readfile(INVIS_SAVE_FILE))
-    end
-end)
-if savedInvisSettings.key then
-    pcall(function()
-        PM.Invis.key = Enum.KeyCode[savedInvisSettings.key]
-    end)
-end
-PM.Invis.active = savedInvisSettings.enabled or false
-
-local function SaveInvisSettings()
-    pcall(function()
-        if writefile then
-            if makefolder and not isfolder("prism") then makefolder("prism") end
-            writefile(INVIS_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
-                key = PM.Invis.key and PM.Invis.key.Name or nil,
-                enabled = PM.Invis.active
-            }))
-        end
-    end)
-end
 
 registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, function(args)
     local Players = game:GetService("Players")
@@ -1810,31 +1777,22 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
     end)
     local savedPos = savedInvisGUI.position or {X = {Scale = 0, Offset = 500}, Y = {Scale = 0, Offset = 400}}
     local savedMinimized = savedInvisGUI.minimized or false
-    local savedKey = savedInvisGUI.key or nil
-    if savedKey then
-        pcall(function()
-            invisKey = Enum.KeyCode[savedKey]
-            PM.Invis.key = invisKey
-        end)
-    end
 
     local currentInvisSettings = {
         position = savedPos,
-        minimized = savedMinimized,
-        key = savedKey
+        minimized = savedMinimized
     }
 
     local function SaveInvisGUISettings()
         pcall(function()
             if writefile then
                 if makefolder and not isfolder("prism") then makefolder("prism") end
-                currentInvisSettings.key = invisKey and invisKey.Name or nil
                 writefile(INVIS_GUI_FILE, game:GetService("HttpService"):JSONEncode(currentInvisSettings))
             end
         end)
-    end)
+    end
 
-    local MW, MH = 220, 130
+    local MW, MH = 220, 88
 
     local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -1940,16 +1898,13 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         if PM.Invis.active and PM.Invis.EndInvis then
             PM.Invis.EndInvis()
         end
-        invisCapturing = false
-        if invisCaptureConn then invisCaptureConn:Disconnect(); invisCaptureConn = nil end
-        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
         ScreenGui:Destroy()
     end)
 
     local ContentFrame = Instance.new("Frame")
     ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 1, -36)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 36)
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
     ContentFrame.BackgroundTransparency = 1
     ContentFrame.ClipsDescendants = true
     ContentFrame.Parent = MainFrame
@@ -1984,182 +1939,28 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         ContentFrame.Visible = false
     end
 
-    -- Invisibility logic
-    local invisOn = PM.Invis.active or false
-    local invisKey = PM.Invis.key
-    local invisCapturing = false
-    local invisCaptureConn = nil
-    local invisKeyConn = nil
+    -- Toggle button
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(1, 0, 0, 36)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    ToggleBtn.BackgroundTransparency = 0.4
+    ToggleBtn.BorderSizePixel = 0
+    ToggleBtn.Text = "Toggle Invisibility"
+    ToggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    ToggleBtn.TextSize = 12
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.Parent = ContentFrame
 
-    -- Action Buttons
-    local BtnSection = Instance.new("Frame")
-    BtnSection.Name = "BtnSection"
-    BtnSection.Size = UDim2.new(1, 0, 0, 36)
-    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    BtnSection.BackgroundTransparency = 0.4
-    BtnSection.BorderSizePixel = 0
-    BtnSection.Parent = ContentFrame
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 10)
+    ToggleCorner.Parent = ToggleBtn
 
-    local BtnSectionCorner = Instance.new("UICorner")
-    BtnSectionCorner.CornerRadius = UDim.new(0, 10)
-    BtnSectionCorner.Parent = BtnSection
-
-    local InvisBtn = Instance.new("TextButton")
-    InvisBtn.Name = "InvisBtn"
-    InvisBtn.Size = UDim2.new(0, 130, 0, 24)
-    InvisBtn.Position = UDim2.new(0, 6, 0.5, -12)
-    InvisBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    InvisBtn.BackgroundTransparency = 0.4
-    InvisBtn.BorderSizePixel = 0
-    InvisBtn.Text = "Invisibility"
-    InvisBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    InvisBtn.TextSize = 11
-    InvisBtn.Font = Enum.Font.GothamBold
-    InvisBtn.Parent = BtnSection
-
-    local InvisBtnCorner = Instance.new("UICorner")
-    InvisBtnCorner.CornerRadius = UDim.new(0, 6)
-    InvisBtnCorner.Parent = InvisBtn
-
-    local BindBtn = Instance.new("TextButton")
-    BindBtn.Name = "BindBtn"
-    BindBtn.Size = UDim2.new(0, 52, 0, 24)
-    BindBtn.Position = UDim2.new(1, -58, 0.5, -12)
-    BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    BindBtn.BackgroundTransparency = 0.4
-    BindBtn.BorderSizePixel = 0
-    BindBtn.Text = "Bind"
-    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    BindBtn.TextSize = 11
-    BindBtn.Font = Enum.Font.GothamBold
-    BindBtn.Parent = BtnSection
-
-    local BindBtnCorner = Instance.new("UICorner")
-    BindBtnCorner.CornerRadius = UDim.new(0, 6)
-    BindBtnCorner.Parent = BindBtn
-
-    -- Set initial button text based on saved state
-    if invisOn then
-        InvisBtn.Text = "Stop"
-    else
-        InvisBtn.Text = "Invisibility"
-    end
-
-    -- Hover effects
-    InvisBtn.MouseEnter:Connect(function()
-        TweenService:Create(InvisBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
-    end)
-    InvisBtn.MouseLeave:Connect(function()
-        TweenService:Create(InvisBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
-    end)
-
-    BindBtn.MouseEnter:Connect(function()
-        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
-    end)
-    BindBtn.MouseLeave:Connect(function()
-        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
-    end)
-
-    -- Load saved key
-    local function UpdateBindDisplay()
-        if invisKey then
-            BindBtn.Text = invisKey.Name
-        else
-            BindBtn.Text = "Bind"
-        end
-    end
-    UpdateBindDisplay()
-
-    local function SaveInvisKey()
-        PM.Invis.key = invisKey
-        SaveInvisSettings()
-        SaveInvisGUISettings()
-    end
-
-    local function CancelCapture()
-        invisCapturing = false
-        invisKey = nil
-        if invisCaptureConn then invisCaptureConn:Disconnect(); invisCaptureConn = nil end
-        UpdateBindDisplay()
-        SaveInvisKey()
-        EnableGlobalInvis()
-    end
-
-    BindBtn.MouseButton1Click:Connect(function()
-        invisCapturing = true
-        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
-        BindBtn.Text = "..."
-        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-
-        if invisCaptureConn then invisCaptureConn:Disconnect() end
-        invisCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe then return end
-            if not invisCapturing then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                if input.KeyCode == Enum.KeyCode.Backspace then
-                    invisKey = nil
-                    invisCapturing = false
-                    invisCaptureConn:Disconnect(); invisCaptureConn = nil
-                    UpdateBindDisplay()
-                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-                    SaveInvisKey()
-                    EnableGlobalInvis()
-                else
-                    invisKey = input.KeyCode
-                    invisCapturing = false
-                    invisCaptureConn:Disconnect(); invisCaptureConn = nil
-                    UpdateBindDisplay()
-                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-                    SaveInvisKey()
-                    EnableGlobalInvis()
-                end
-            elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
-                   input.UserInputType == Enum.UserInputType.MouseButton2 or
-                   input.UserInputType == Enum.UserInputType.MouseButton3 then
-                CancelCapture()
-                BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-                EnableGlobalInvis()
-            end
-        end)
-    end)
-
-    local function SetInvis(val)
-        if val == invisOn then return end
-        invisOn = val
-        if val then
-            if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
-        else
+    ToggleBtn.MouseButton1Click:Connect(function()
+        if PM.Invis.active then
             if PM.Invis.EndInvis then PM.Invis.EndInvis() end
+        else
+            if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
         end
-        PM.Invis.active = invisOn
-        SaveInvisSettings()
-    end
-
-    InvisBtn.MouseButton1Click:Connect(function()
-        SetInvis(not invisOn)
-    end)
-
-    local function EnableGlobalInvis()
-        if PM.Invis.keyConnection then return end
-        PM.Invis.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe or invisCapturing then return end
-            if UserInputService:GetFocusedTextBox() then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard and invisKey and input.KeyCode == invisKey then
-                SetInvis(not invisOn)
-            end
-        end)
-    end
-
-    EnableGlobalInvis()
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        if PM.Invis.active and PM.Invis.EndInvis then
-            PM.Invis.EndInvis()
-        end
-        invisCapturing = false
-        if invisCaptureConn then invisCaptureConn:Disconnect(); invisCaptureConn = nil end
-        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
-        ScreenGui:Destroy()
     end)
 
     -- Invisibility logic
@@ -2338,21 +2139,38 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         end
     end
 
-    -- Hook into BeginInvis to update button
-    local originalBeginInvis = BeginInvis
-    PM.Invis.BeginInvis = function()
-        originalBeginInvis()
-        if InvisBtn and InvisBtn.Parent then
-            InvisBtn.Text = "Stop"
+    PM.Invis.BeginInvis = BeginInvis
+
+    -- Set initial button text
+    if PM.Invis.active then
+        ToggleBtn.Text = "Disable Invisibility"
+    else
+        ToggleBtn.Text = "Enable Invisibility"
+    end
+
+    -- Update button text on toggle
+    local function UpdateButton()
+        if PM.Invis.active then
+            ToggleBtn.Text = "Disable Invisibility"
+        else
+            ToggleBtn.Text = "Enable Invisibility"
         end
     end
 
-    -- Hook into EndInvis to update button
+    -- Hook into EndInvis and BeginInvis to update button
     local originalEndInvis = EndInvis
     PM.Invis.EndInvis = function()
         originalEndInvis()
-        if InvisBtn and InvisBtn.Parent then
-            InvisBtn.Text = "Invisibility"
+        if ToggleBtn and ToggleBtn.Parent then
+            UpdateButton()
+        end
+    end
+
+    local originalBeginInvis = BeginInvis
+    PM.Invis.BeginInvis = function()
+        originalBeginInvis()
+        if ToggleBtn and ToggleBtn.Parent then
+            UpdateButton()
         end
     end
 end)
@@ -10363,7 +10181,6 @@ local function OnCharacterAdded(char)
     if _respawnEnabled and _respawnLastCFrame then
         task.wait(0.1)
         root.CFrame = _respawnLastCFrame
-        PM.Respawn.lastCFrame = _respawnLastCFrame
     end
 
     if respawnDiedConn then respawnDiedConn:Disconnect(); respawnDiedConn = nil end
@@ -10373,17 +10190,13 @@ local function OnCharacterAdded(char)
             local fakeHRP = PM.Invis.fakeModel:FindFirstChild("HumanoidRootPart")
             if fakeHRP and fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
                 _respawnLastCFrame = fakeHRP.CFrame
-                PM.Respawn.lastCFrame = fakeHRP.CFrame
             else
                 _respawnLastCFrame = nil
-                PM.Respawn.lastCFrame = nil
             end
         elseif root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
             _respawnLastCFrame = root.CFrame
-            PM.Respawn.lastCFrame = root.CFrame
         else
             _respawnLastCFrame = nil
-            PM.Respawn.lastCFrame = nil
         end
     end)
 end
