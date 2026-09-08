@@ -463,6 +463,30 @@ local function cleanupPrism()
         PM.Noclip.snapshot = {}
     end
     
+    -- Cleanup Invisibility
+    if PM.Invisibility then
+        PM.Invisibility.active = false
+        if PM.Invisibility.connection then pcall(function() PM.Invisibility.connection:Disconnect() end) end
+        if PM.Invisibility.keyConnection then pcall(function() PM.Invisibility.keyConnection:Disconnect() end) end
+        if PM.Invisibility.charAddedConn then pcall(function() PM.Invisibility.charAddedConn:Disconnect() end) end
+        PM._intentionalBelowVoid = false
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = PM.Invisibility.originalWalkSpeed or 16
+            end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root and PM.Invisibility.originalCFrame then
+                root.CFrame = PM.Invisibility.originalCFrame
+            end
+        end
+        local camera = workspace.CurrentCamera
+        camera.CameraType = PM.Invisibility.originalCameraType or Enum.CameraType.Custom
+        local UserInputService = game:GetService("UserInputService")
+        UserInputService.MouseBehavior = PM.Invisibility.originalMouseBehavior or Enum.MouseBehavior.Default
+    end
+    
     -- Cleanup Move While Emoting
     if PM.Emotes then
         if PM.Emotes.mwePriConn then PM.Emotes.mwePriConn:Disconnect(); PM.Emotes.mwePriConn = nil end
@@ -8231,6 +8255,573 @@ if not PM.Noclip.charAddedConn then
 end
 
 
+
+-- Invisibility state management
+PM.Invisibility = {
+    active = false,
+    key = nil,
+    connection = nil,
+    keyConnection = nil,
+    charAddedConn = nil,
+    originalWalkSpeed = 16,
+    originalCameraType = Enum.CameraType.Custom,
+    originalMouseBehavior = Enum.MouseBehavior.Default,
+    originalCFrame = nil
+}
+
+-- Load saved invisibility key and state
+local INV_SAVE_FILE = "prism/prism_inv_settings.json"
+local savedINVSettings = {}
+pcall(function()
+    if readfile and isfile(INV_SAVE_FILE) then
+        savedINVSettings = game:GetService("HttpService"):JSONDecode(readfile(INV_SAVE_FILE))
+    end
+end)
+if savedINVSettings.key then
+    pcall(function()
+        PM.Invisibility.key = Enum.KeyCode[savedINVSettings.key]
+    end)
+end
+PM.Invisibility.active = savedINVSettings.enabled or false
+
+local function SaveINVSettings()
+    pcall(function()
+        if writefile then
+            if makefolder and not isfolder("prism") then makefolder("prism") end
+            writefile(INV_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
+                key = PM.Invisibility.key and PM.Invisibility.key.Name or nil,
+                enabled = PM.Invisibility.active
+            }))
+        end
+    end)
+end
+
+registerCommand("invisibility", "Invisibility with keybind (void teleport)", {}, function(args)
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local CoreGui = game:GetService("CoreGui")
+    local LocalPlayer = Players.LocalPlayer
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_InvisibilityGUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Prism_InvisibilityGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+    ScreenGui.DisplayOrder = 999
+
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+
+    -- Load saved GUI settings
+    local INV_GUI_FILE = "prism/prism_inv_gui_settings.json"
+    local savedInvGUI = {}
+    pcall(function()
+        if readfile and isfile(INV_GUI_FILE) then
+            savedInvGUI = game:GetService("HttpService"):JSONDecode(readfile(INV_GUI_FILE))
+        end
+    end)
+    local savedPos = savedInvGUI.position or {X = {Scale = 0, Offset = 500}, Y = {Scale = 0, Offset = 400}}
+    local savedMinimized = savedInvGUI.minimized or false
+
+    local currentInvSettings = {
+        position = savedPos,
+        minimized = savedMinimized
+    }
+
+    local function SaveInvGUISettings()
+        pcall(function()
+            if writefile then
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(INV_GUI_FILE, game:GetService("HttpService"):JSONEncode(currentInvSettings))
+            end
+        end)
+    end
+
+    local MW, MH = 220, 88
+
+    local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, MW, 0, MH)
+    MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            currentInvSettings.position = {
+                X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+            }
+            SaveInvGUISettings()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "Prism  •  Invisibility"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local MinBtn = Instance.new("TextButton")
+    MinBtn.Size = UDim2.new(0, 24, 0, 24)
+    MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MinBtn.BackgroundTransparency = 0.4
+    MinBtn.BorderSizePixel = 0
+    MinBtn.Text = "—"
+    MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    MinBtn.TextSize = 11
+    MinBtn.Font = Enum.Font.GothamBold
+    MinBtn.Parent = TitleBar
+
+    local MinCorner = Instance.new("UICorner")
+    MinCorner.CornerRadius = UDim.new(0, 6)
+    MinCorner.Parent = MinBtn
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.ClipsDescendants = true
+    ContentFrame.Parent = MainFrame
+
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 4)
+    Padding.PaddingBottom = UDim.new(0, 4)
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 8)
+    Padding.Parent = ContentFrame
+
+    local isMinimized = savedMinimized
+    local minimizedSize = UDim2.new(0, MW, 0, 36)
+    MinBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        currentInvSettings.minimized = isMinimized
+        SaveInvGUISettings()
+        if isMinimized then
+            MinBtn.Text = "+"
+            TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize}):Play()
+            ContentFrame.Visible = false
+        else
+            MinBtn.Text = "—"
+            ContentFrame.Visible = true
+            TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, MW, 0, MH)}):Play()
+        end
+    end)
+
+    if isMinimized then
+        MinBtn.Text = "+"
+        MainFrame.Size = minimizedSize
+        ContentFrame.Visible = false
+    end
+
+    -- Invisibility logic
+    local invOn = PM.Invisibility.active or false
+    local invKey = PM.Invisibility.key
+    local invCapturing = false
+    local invCaptureConn = nil
+    local invKeyConn = nil
+
+    -- Action Buttons
+    local BtnSection = Instance.new("Frame")
+    BtnSection.Name = "BtnSection"
+    BtnSection.Size = UDim2.new(1, 0, 0, 36)
+    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BtnSection.BackgroundTransparency = 0.4
+    BtnSection.BorderSizePixel = 0
+    BtnSection.Parent = ContentFrame
+
+    local BtnSectionCorner = Instance.new("UICorner")
+    BtnSectionCorner.CornerRadius = UDim.new(0, 10)
+    BtnSectionCorner.Parent = BtnSection
+
+    local InvBtn = Instance.new("TextButton")
+    InvBtn.Name = "InvBtn"
+    InvBtn.Size = UDim2.new(0, 130, 0, 24)
+    InvBtn.Position = UDim2.new(0, 6, 0.5, -12)
+    InvBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    InvBtn.BackgroundTransparency = 0.4
+    InvBtn.BorderSizePixel = 0
+    InvBtn.Text = "Invisibility"
+    InvBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    InvBtn.TextSize = 11
+    InvBtn.Font = Enum.Font.GothamBold
+    InvBtn.Parent = BtnSection
+
+    local InvBtnCorner = Instance.new("UICorner")
+    InvBtnCorner.CornerRadius = UDim.new(0, 6)
+    InvBtnCorner.Parent = InvBtn
+
+    local BindBtn = Instance.new("TextButton")
+    BindBtn.Name = "BindBtn"
+    BindBtn.Size = UDim2.new(0, 52, 0, 24)
+    BindBtn.Position = UDim2.new(1, -58, 0.5, -12)
+    BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    BindBtn.BackgroundTransparency = 0.4
+    BindBtn.BorderSizePixel = 0
+    BindBtn.Text = "Bind"
+    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    BindBtn.TextSize = 11
+    BindBtn.Font = Enum.Font.GothamBold
+    BindBtn.Parent = BtnSection
+
+    local BindBtnCorner = Instance.new("UICorner")
+    BindBtnCorner.CornerRadius = UDim.new(0, 6)
+    BindBtnCorner.Parent = BindBtn
+
+    -- Set initial button text based on saved state
+    if invOn then
+        InvBtn.Text = "Visible"
+    else
+        InvBtn.Text = "Invisibility"
+    end
+
+    -- Hover effects
+    InvBtn.MouseEnter:Connect(function()
+        TweenService:Create(InvBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    InvBtn.MouseLeave:Connect(function()
+        TweenService:Create(InvBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    BindBtn.MouseEnter:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    BindBtn.MouseLeave:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    -- Load saved key
+    local function UpdateBindDisplay()
+        if invKey then
+            BindBtn.Text = invKey.Name
+        else
+            BindBtn.Text = "Bind"
+        end
+    end
+    UpdateBindDisplay()
+
+    local function SaveINVKey()
+        PM.Invisibility.key = invKey
+        SaveINVSettings()
+    end
+
+    local function CancelCapture()
+        invCapturing = false
+        invKey = nil
+        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
+        UpdateBindDisplay()
+        SaveINVKey()
+        EnableGlobalINV()
+    end
+
+    BindBtn.MouseButton1Click:Connect(function()
+        invCapturing = true
+        if PM.Invisibility.keyConnection then PM.Invisibility.keyConnection:Disconnect(); PM.Invisibility.keyConnection = nil end
+        BindBtn.Text = "..."
+        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+        if invCaptureConn then invCaptureConn:Disconnect() end
+        invCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if not invCapturing then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                if input.KeyCode == Enum.KeyCode.Backspace then
+                    invKey = nil
+                    invCapturing = false
+                    invCaptureConn:Disconnect(); invCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveINVKey()
+                    EnableGlobalINV()
+                else
+                    invKey = input.KeyCode
+                    invCapturing = false
+                    invCaptureConn:Disconnect(); invCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveINVKey()
+                    EnableGlobalINV()
+                end
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
+                   input.UserInputType == Enum.UserInputType.MouseButton2 or
+                   input.UserInputType == Enum.UserInputType.MouseButton3 then
+                CancelCapture()
+                BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                EnableGlobalINV()
+            end
+        end)
+    end)
+
+    -- Invisibility functions
+    local function StartINV()
+        if PM.Invisibility.connection then return end
+        
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not hum or not root then return end
+        
+        -- Save original values
+        PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
+        PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
+        PM.Invisibility.originalMouseBehavior = UserInputService.MouseBehavior
+        PM.Invisibility.originalCFrame = root.CFrame
+        
+        -- Set intentional void flag for anti-void compatibility
+        PM._intentionalBelowVoid = true
+        
+        -- Teleport character to void
+        root.CFrame = CFrame.new(0, -500, 0)
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        
+        -- Stop movement
+        hum.WalkSpeed = 0
+        
+        -- Set camera to scriptable
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+        workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        
+        -- Camera control loop
+        PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
+            if not PM.Invisibility.active then return end
+            
+            local char = LocalPlayer.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            -- Keep character in void
+            root.CFrame = CFrame.new(0, -500, 0)
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 0 end
+        end)
+    end
+
+    local function StopINV()
+        if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect(); PM.Invisibility.connection = nil end
+        
+        PM._intentionalBelowVoid = false
+        
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            
+            if hum then
+                hum.WalkSpeed = PM.Invisibility.originalWalkSpeed or 16
+            end
+            
+            if root and PM.Invisibility.originalCFrame then
+                root.CFrame = PM.Invisibility.originalCFrame
+            end
+        end
+        
+        workspace.CurrentCamera.CameraType = PM.Invisibility.originalCameraType or Enum.CameraType.Custom
+        UserInputService.MouseBehavior = PM.Invisibility.originalMouseBehavior or Enum.MouseBehavior.Default
+    end
+
+    local function SetINV(val)
+        if val == invOn then return end
+        invOn = val
+        if val then
+            InvBtn.Text = "Visible"
+            StartINV()
+        else
+            InvBtn.Text = "Invisibility"
+            StopINV()
+        end
+        PM.Invisibility.active = invOn
+        SaveINVSettings()
+    end
+
+    InvBtn.MouseButton1Click:Connect(function()
+        SetINV(not invOn)
+    end)
+
+    local function EnableGlobalINV()
+        if PM.Invisibility.keyConnection then return end
+        PM.Invisibility.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or invCapturing then return end
+            if UserInputService:GetFocusedTextBox() then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard and invKey and input.KeyCode == invKey then
+                SetINV(not invOn)
+            end
+        end)
+    end
+
+    EnableGlobalINV()
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        invCapturing = false
+        StopINV()
+        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
+        if PM.Invisibility.keyConnection then PM.Invisibility.keyConnection:Disconnect(); PM.Invisibility.keyConnection = nil end
+        PM.Invisibility.active = false
+        SaveINVSettings()
+        ScreenGui:Destroy()
+    end)
+end)
+
+-- Auto-start invisibility if saved as enabled
+if PM.Invisibility.active then
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if hum and root then
+            PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
+            PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
+            PM.Invisibility.originalMouseBehavior = game:GetService("UserInputService").MouseBehavior
+            PM.Invisibility.originalCFrame = root.CFrame
+            
+            PM._intentionalBelowVoid = true
+            root.CFrame = CFrame.new(0, -500, 0)
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            hum.WalkSpeed = 0
+            
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+            workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
+            game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+            
+            local RunService = game:GetService("RunService")
+            PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
+                local c = LP.Character
+                if not c then return end
+                local r = c:FindFirstChild("HumanoidRootPart")
+                if not r then return end
+                r.CFrame = CFrame.new(0, -500, 0)
+                r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                local h = c:FindFirstChildOfClass("Humanoid")
+                if h then h.WalkSpeed = 0 end
+            end)
+        end
+    end
+end
+
+-- Re-enable invisibility on respawn if saved as enabled
+if not PM.Invisibility.charAddedConn then
+    PM.Invisibility.charAddedConn = LP.CharacterAdded:Connect(function(char)
+        if PM.Invisibility.active then
+            task.wait(0.5)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
+                PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
+                PM.Invisibility.originalMouseBehavior = game:GetService("UserInputService").MouseBehavior
+                PM.Invisibility.originalCFrame = root.CFrame
+                
+                PM._intentionalBelowVoid = true
+                root.CFrame = CFrame.new(0, -500, 0)
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                hum.WalkSpeed = 0
+                
+                workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+                workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
+                game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+                
+                local RunService = game:GetService("RunService")
+                if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect() end
+                PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
+                    local c = LP.Character
+                    if not c then return end
+                    local r = c:FindFirstChild("HumanoidRootPart")
+                    if not r then return end
+                    r.CFrame = CFrame.new(0, -500, 0)
+                    r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    local h = c:FindFirstChildOfClass("Humanoid")
+                    if h then h.WalkSpeed = 0 end
+                end)
+            end
+        end
+    end)
+end
 
 -- Speed state management
 PM.Speed = {
