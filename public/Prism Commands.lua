@@ -1,9 +1,6 @@
 --[[ missing
 
     rewind
-    anti fling
-    invisibility
-    remove loop ws and fly etc
     headsit player
     backpack player
     face bang player
@@ -418,6 +415,7 @@ local function cleanupPrism()
         PM.Anti.ragdoll = false
         PM.Anti.void = false
         PM.Anti.paused = false
+        PM.Anti.fling = false
         if PM.Anti.origVoidY ~= nil then
             pcall(function() workspace.FallenPartsDestroyHeight = PM.Anti.origVoidY end)
             PM.Anti.origVoidY = nil
@@ -562,6 +560,50 @@ local function cleanupPrism()
                 pcall(function() obj:Destroy() end)
             end
         end
+    end
+
+    -- Cleanup Invisibility
+    if PM.Invis.active then
+        if PM.Invis.holdConn then
+            pcall(function() PM.Invis.holdConn:Disconnect() end)
+            PM.Invis.holdConn = nil
+        end
+        pcall(function()
+            if PM.Invis.realChar and PM.Invis.realChar.Parent then
+                local hrp = PM.Invis.realChar:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local fakeHRP = PM.Invis.fakeModel and PM.Invis.fakeModel:FindFirstChild("HumanoidRootPart")
+                    if fakeHRP then
+                        hrp.CFrame = fakeHRP.CFrame
+                    elseif PM.Invis.savedCF then
+                        hrp.CFrame = PM.Invis.savedCF
+                    end
+                end
+                LP.Character = PM.Invis.realChar
+            end
+        end)
+        pcall(function()
+            if PM.Invis.savedSubject then
+                workspace.CurrentCamera.CameraSubject = PM.Invis.savedSubject
+            end
+        end)
+        if PM.Invis.fakeModel then
+            pcall(function() PM.Invis.fakeModel:Destroy() end)
+            PM.Invis.fakeModel = nil
+        end
+        if PM.Invis.platform then
+            pcall(function() PM.Invis.platform:Destroy() end)
+            PM.Invis.platform = nil
+        end
+        if PM.Invis.savedVoid then
+            pcall(function() workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid end)
+            PM.Invis.savedVoid = nil
+        end
+        PM.Invis.active = false
+        PM.Invis.savedCF = nil
+        PM.Invis.realChar = nil
+        PM.Invis.savedSubject = nil
+        PM._intentionalBelowVoid = false
     end
 end
 
@@ -1704,6 +1746,184 @@ registerCommand("unmuteall", "Unmute all players", {}, function(args)
     end
     PM.MutedPlayers = {}
 end, true)
+
+-- Invisibility state
+PM.Invis = {
+    active = false,
+    fakeModel = nil,
+    realChar = nil,
+    savedCF = nil,
+    savedVoid = nil,
+    savedSubject = nil,
+    platform = nil,
+    holdConn = nil
+}
+
+registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
+    local RunService = game:GetService("RunService")
+
+    local function EndInvis()
+        if not PM.Invis.active then return end
+        PM.Invis.active = false
+
+        if PM.Invis.holdConn then
+            PM.Invis.holdConn:Disconnect()
+            PM.Invis.holdConn = nil
+        end
+
+        pcall(function()
+            local realChar = PM.Invis.realChar
+            if realChar and realChar.Parent then
+                local hrp = realChar:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local fakeChar = PM.Invis.fakeModel
+                    local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
+                    if fakeHRP then
+                        hrp.CFrame = fakeHRP.CFrame
+                    elseif PM.Invis.savedCF then
+                        hrp.CFrame = PM.Invis.savedCF
+                    end
+                end
+                local fakeChar = PM.Invis.fakeModel
+                if fakeChar then
+                    local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
+                    if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
+                end
+                LP.Character = realChar
+            end
+        end)
+
+        pcall(function()
+            if PM.Invis.savedSubject then
+                workspace.CurrentCamera.CameraSubject = PM.Invis.savedSubject
+            end
+        end)
+        PM.Invis.savedSubject = nil
+
+        if PM.Invis.fakeModel then
+            pcall(function() PM.Invis.fakeModel:Destroy() end)
+            PM.Invis.fakeModel = nil
+        end
+        if PM.Invis.platform then
+            pcall(function() PM.Invis.platform:Destroy() end)
+            PM.Invis.platform = nil
+        end
+
+        PM.Invis.savedCF = nil
+        PM.Invis.realChar = nil
+
+        if PM.Invis.savedVoid then
+            task.wait(0.05)
+            workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid
+            PM.Invis.savedVoid = nil
+        end
+        PM._intentionalBelowVoid = false
+    end
+
+    local function BeginInvis()
+        if PM.Invis.active then return end
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root or not char then return end
+
+        local savedCF = root.CFrame
+
+        char.Archivable = true
+        local fakeChar = char:Clone()
+        if not fakeChar then return end
+        fakeChar.Name = "PrismInvisClone"
+
+        for _, obj in ipairs(fakeChar:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("LocalScript") and obj.Name ~= "Animate" then
+                    obj.Disabled = true
+                end
+            end)
+        end
+
+        for _, obj in ipairs(fakeChar:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                    obj.Transparency = math.max(obj.Transparency, 0.6)
+                end
+            end)
+        end
+
+        local platform = Instance.new("Part")
+        platform.Name = "PrismInvisPlatform"
+        platform.Anchored = true
+        platform.CanCollide = true
+        platform.Size = Vector3.new(3, 5, 3)
+        platform.Transparency = 1
+        platform.CFrame = CFrame.new(root.Position.X, -653, root.Position.Z)
+        platform.Parent = workspace
+        PM.Invis.platform = platform
+
+        fakeChar.Parent = workspace
+        local fakeHRP = fakeChar:FindFirstChild("HumanoidRootPart")
+        if fakeHRP then
+            fakeHRP.CFrame = savedCF
+        end
+
+        PM.Invis.active = true
+        PM.Invis.savedCF = savedCF
+        PM.Invis.savedVoid = workspace.FallenPartsDestroyHeight
+        PM.Invis.realChar = char
+        PM.Invis.fakeModel = fakeChar
+        PM.Invis.savedSubject = workspace.CurrentCamera.CameraSubject
+
+        workspace.FallenPartsDestroyHeight = -99999
+        PM._intentionalBelowVoid = true
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        root.CFrame = CFrame.new(root.Position.X, -648, root.Position.Z)
+
+        task.wait()
+
+        local realAnimScript = char:FindFirstChild("Animate")
+        if realAnimScript then realAnimScript.Disabled = true end
+        local realHum = char:FindFirstChildOfClass("Humanoid")
+        if realHum then
+            for _, tr in ipairs(realHum:GetPlayingAnimationTracks()) do tr:Stop(0) end
+        end
+        task.wait()
+        for _, m in ipairs(char:GetDescendants()) do
+            if m:IsA("Motor6D") then m.Transform = CFrame.new() end
+        end
+        if realAnimScript then realAnimScript.Disabled = false end
+
+        LP.Character = fakeChar
+        workspace.CurrentCamera.CameraSubject = fakeChar:FindFirstChildOfClass("Humanoid") or fakeHRP
+
+        task.defer(function()
+            local animate = fakeChar:FindFirstChild("Animate")
+            if animate and animate:IsA("LocalScript") then
+                animate.Disabled = true
+                task.wait()
+                animate.Disabled = false
+            end
+        end)
+
+        PM.Invis.holdConn = RunService.RenderStepped:Connect(function()
+            if not fakeHRP or not fakeHRP.Parent then return end
+            if not platform or not platform.Parent then return end
+            platform.CFrame = CFrame.new(fakeHRP.Position.X, -653, fakeHRP.Position.Z)
+        end)
+
+        local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
+        if fakeHum then
+            fakeHum.Died:Connect(function()
+                if PM.Invis.active then EndInvis() end
+            end)
+        end
+    end
+
+    if PM.Invis.active then
+        EndInvis()
+    else
+        BeginInvis()
+    end
+end)
 
 registerCommand("to", "Teleport to player", {}, function(args)
     local targetName = table.concat(args, " ")
@@ -3015,6 +3235,7 @@ PM.Anti = {
     ragdoll = false,
     void = false,
     paused = false,
+    fling = false,
     connections = {},
     origVoidY = nil
 }
@@ -3030,6 +3251,7 @@ pcall(function()
             PM.Anti.ragdoll = data.ragdoll or false
             PM.Anti.void = data.void or false
             PM.Anti.paused = data.paused or false
+            PM.Anti.fling = data.fling or false
         end
     end
 end)
@@ -3043,7 +3265,8 @@ local function SaveAntiToggles()
                 sit = PM.Anti.sit,
                 ragdoll = PM.Anti.ragdoll,
                 void = PM.Anti.void,
-                paused = PM.Anti.paused
+                paused = PM.Anti.paused,
+                fling = PM.Anti.fling
             }))
         end
     end)
@@ -3458,6 +3681,26 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                         if obj.Name == "CoreScripts/NetworkPause" then obj:Destroy() end
                     end)
                 end
+            end
+        end)
+
+        -- Anti Fling: disables player collisions to prevent being flung
+        CreateToggle("fling", "Anti Fling", 6, PM.Anti.fling, function(on)
+            PM.Anti.fling = on
+            SaveAntiToggles()
+            DisconnectAnti("fling")
+            if on then
+                PM.Anti.connections.fling = RunService.Stepped:Connect(function()
+                    for _, player in pairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character then
+                            for _, v in pairs(player.Character:GetDescendants()) do
+                                if v:IsA("BasePart") then
+                                    v.CanCollide = false
+                                end
+                            end
+                        end
+                    end
+                end)
             end
         end)
 
