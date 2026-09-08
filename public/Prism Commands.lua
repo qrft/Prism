@@ -10,7 +10,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
-
+    
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
 repeat task.wait() until getgenv().PrismMain
@@ -1981,8 +1981,13 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
                 if hrp then
                     local fakeChar = PM.Invis.fakeModel
                     local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
-                    if fakeHRP then
+                    if fakeHRP and fakeHRP.Parent then
                         hrp.CFrame = fakeHRP.CFrame
+                        -- Update respawn last location to where the fake character was
+                        if fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
+                            _respawnLastCFrame = fakeHRP.CFrame
+                            PM.Respawn.lastCFrame = fakeHRP.CFrame
+                        end
                     elseif PM.Invis.savedCF then
                         hrp.CFrame = PM.Invis.savedCF
                     end
@@ -2122,7 +2127,14 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
         if fakeHum then
             fakeHum.Died:Connect(function()
-                if PM.Invis.active then EndInvis() end
+                if PM.Invis.active then
+                    -- Save the fake character's last position for respawn
+                    if fakeHRP and fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
+                        _respawnLastCFrame = fakeHRP.CFrame
+                        PM.Respawn.lastCFrame = fakeHRP.CFrame
+                    end
+                    EndInvis()
+                end
             end)
         end
     end
@@ -10173,7 +10185,15 @@ local function OnCharacterAdded(char)
 
     if respawnDiedConn then respawnDiedConn:Disconnect(); respawnDiedConn = nil end
     respawnDiedConn = hum.Died:Connect(function()
-        if root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
+        -- If invisibility is active, save the fake character's position instead
+        if PM.Invis and PM.Invis.active and PM.Invis.fakeModel then
+            local fakeHRP = PM.Invis.fakeModel:FindFirstChild("HumanoidRootPart")
+            if fakeHRP and fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
+                _respawnLastCFrame = fakeHRP.CFrame
+            else
+                _respawnLastCFrame = nil
+            end
+        elseif root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
             _respawnLastCFrame = root.CFrame
         else
             _respawnLastCFrame = nil
