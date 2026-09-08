@@ -486,6 +486,12 @@ local function cleanupPrism()
             pcall(function() existingFake:Destroy() end)
         end
         
+        -- Clean up collision group
+        local PhysicsService = game:GetService("PhysicsService")
+        pcall(function()
+            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
+        end)
+        
         -- Reset camera to real character
         local char = LP.Character
         if char then
@@ -8273,7 +8279,8 @@ PM.Invisibility = {
     keyConnection = nil,
     charAddedConn = nil,
     fakeCharacter = nil,
-    undergroundOffset = 600
+    undergroundOffset = 600,
+    collisionGroup = "Prism_InvisClone"
 }
 
 -- Load saved invisibility key and state
@@ -8668,14 +8675,27 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
             end
         end
         
-        -- Enable collision on fake character parts
+        -- Create collision group for fake character
+        local PhysicsService = game:GetService("PhysicsService")
+        local groupName = PM.Invisibility.collisionGroup
+        
+        -- Create collision group if it doesn't exist
+        pcall(function()
+            PhysicsService:CreateCollisionGroup(groupName)
+        end)
+        
+        -- Set fake character parts to collision group
         for _, part in ipairs(fakeChar:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CanCollide = true
-                -- Make fake character fully invisible
+                part.CollisionGroup = groupName
                 part.Transparency = 1
             end
         end
+        
+        -- Configure collision group to collide with everything except itself
+        PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
+        PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
+        PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
         
         -- Parent fake character to workspace
         fakeChar.Parent = workspace
@@ -8740,6 +8760,12 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
             pcall(function() fake:Destroy() end)
             PM.Invisibility.fakeCharacter = nil
         end
+        
+        -- Clean up collision group
+        local PhysicsService = game:GetService("PhysicsService")
+        pcall(function()
+            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
+        end)
         
         -- Reset camera to real character
         local realHum = real and real:FindFirstChildOfClass("Humanoid")
@@ -8808,13 +8834,24 @@ if PM.Invisibility.active then
                 end
             end
             
-            -- Enable collision on fake character parts
+            -- Create collision group for fake character
+            local PhysicsService = game:GetService("PhysicsService")
+            local groupName = PM.Invisibility.collisionGroup
+            
+            pcall(function()
+                PhysicsService:CreateCollisionGroup(groupName)
+            end)
+            
             for _, part in ipairs(fakeChar:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CanCollide = true
+                    part.CollisionGroup = groupName
                     part.Transparency = 1
                 end
             end
+            
+            PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
+            PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
+            PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
             
             fakeChar.Parent = workspace
             fakeChar.HumanoidRootPart.CFrame = root.CFrame
@@ -8854,6 +8891,12 @@ if not PM.Invisibility.charAddedConn then
             pcall(function() existingFake:Destroy() end)
         end
         
+        -- Clean up collision group
+        local PhysicsService = game:GetService("PhysicsService")
+        pcall(function()
+            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
+        end)
+        
         if PM.Invisibility.active then
             PM._intentionalBelowVoid = true
             task.wait(0.5)
@@ -8870,13 +8913,23 @@ if not PM.Invisibility.charAddedConn then
                     end
                 end
                 
-                -- Enable collision on fake character parts
+                -- Create collision group for fake character
+                local groupName = PM.Invisibility.collisionGroup
+                
+                pcall(function()
+                    PhysicsService:CreateCollisionGroup(groupName)
+                end)
+                
                 for _, part in ipairs(fakeChar:GetDescendants()) do
                     if part:IsA("BasePart") then
-                        part.CanCollide = true
+                        part.CollisionGroup = groupName
                         part.Transparency = 1
                     end
                 end
+                
+                PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
+                PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
+                PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
                 
                 fakeChar.Parent = workspace
                 fakeChar.HumanoidRootPart.CFrame = root.CFrame
