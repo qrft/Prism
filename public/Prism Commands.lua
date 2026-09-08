@@ -11,6 +11,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
+    remove loop walkspeed etc
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -469,22 +470,33 @@ local function cleanupPrism()
         if PM.Invisibility.connection then pcall(function() PM.Invisibility.connection:Disconnect() end) end
         if PM.Invisibility.keyConnection then pcall(function() PM.Invisibility.keyConnection:Disconnect() end) end
         if PM.Invisibility.charAddedConn then pcall(function() PM.Invisibility.charAddedConn:Disconnect() end) end
-        PM._intentionalBelowVoid = false
+        
+        -- Remove seat
+        if PM.Invisibility.seat then
+            pcall(function() PM.Invisibility.seat:Destroy() end)
+            PM.Invisibility.seat = nil
+        end
+        
+        -- Fallback: remove any existing invis seat
+        local existingSeat = workspace:FindFirstChild('Prism_InvisSeat')
+        if existingSeat then
+            pcall(function() existingSeat:Destroy() end)
+        end
+        
+        -- Restore transparency
         local char = LP.Character
         if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = PM.Invisibility.originalWalkSpeed or 16
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.LocalTransparencyModifier = 0
+                end
             end
+            
             local root = char:FindFirstChild("HumanoidRootPart")
             if root and PM.Invisibility.originalCFrame then
                 root.CFrame = PM.Invisibility.originalCFrame
             end
         end
-        local camera = workspace.CurrentCamera
-        camera.CameraType = PM.Invisibility.originalCameraType or Enum.CameraType.Custom
-        local UserInputService = game:GetService("UserInputService")
-        UserInputService.MouseBehavior = PM.Invisibility.originalMouseBehavior or Enum.MouseBehavior.Default
     end
     
     -- Cleanup Move While Emoting
@@ -8263,10 +8275,8 @@ PM.Invisibility = {
     connection = nil,
     keyConnection = nil,
     charAddedConn = nil,
-    originalWalkSpeed = 16,
-    originalCameraType = Enum.CameraType.Custom,
-    originalMouseBehavior = Enum.MouseBehavior.Default,
-    originalCFrame = nil
+    originalCFrame = nil,
+    seat = nil
 }
 
 -- Load saved invisibility key and state
@@ -8634,77 +8644,93 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
     end)
 
     -- Invisibility functions
+    local function makeTransparent(character, transparent)
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.LocalTransparencyModifier = transparent and 0.5 or 0
+            end
+        end
+    end
+
     local function StartINV()
         if PM.Invisibility.connection then return end
         
         local char = LocalPlayer.Character
         if not char then return end
         
-        local hum = char:FindFirstChildOfClass("Humanoid")
         local root = char:FindFirstChild("HumanoidRootPart")
-        if not hum or not root then return end
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if not root or not torso then return end
         
-        -- Save original values
-        PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
-        PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
-        PM.Invisibility.originalMouseBehavior = UserInputService.MouseBehavior
+        -- Save original position
         PM.Invisibility.originalCFrame = root.CFrame
         
-        -- Set intentional void flag for anti-void compatibility
-        PM._intentionalBelowVoid = true
+        -- Teleport character away temporarily
+        root.CFrame = CFrame.new(-25.95, 84, 3537.55)
+        task.wait()
         
-        -- Teleport character to void
-        root.CFrame = CFrame.new(0, -500, 0)
-        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        -- Create invisible seat
+        local Seat = Instance.new('Seat', workspace)
+        Seat.Anchored = false
+        Seat.CanCollide = false
+        Seat.Name = 'Prism_InvisSeat'
+        Seat.Transparency = 1
+        Seat.Position = Vector3.new(-25.95, 84, 3537.55)
         
-        -- Stop movement
-        hum.WalkSpeed = 0
+        -- Weld seat to torso
+        local Weld = Instance.new("Weld", Seat)
+        Weld.Part0 = Seat
+        Weld.Part1 = torso
         
-        -- Set camera to scriptable
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
-        workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
-        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        task.wait()
         
-        -- Camera control loop
+        -- Move seat back to original position
+        Seat.CFrame = PM.Invisibility.originalCFrame
+        
+        -- Make character transparent
+        makeTransparent(char, true)
+        
+        -- Store seat reference
+        PM.Invisibility.seat = Seat
+        
+        -- Heartbeat loop to maintain transparency
         PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
             if not PM.Invisibility.active then return end
-            
-            local char = LocalPlayer.Character
-            if not char then return end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            
-            -- Keep character in void
-            root.CFrame = CFrame.new(0, -500, 0)
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = 0 end
+            local c = LocalPlayer.Character
+            if c then makeTransparent(c, true) end
         end)
     end
 
     local function StopINV()
         if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect(); PM.Invisibility.connection = nil end
         
-        PM._intentionalBelowVoid = false
+        -- Remove seat
+        if PM.Invisibility.seat then
+            pcall(function() PM.Invisibility.seat:Destroy() end)
+            PM.Invisibility.seat = nil
+        end
         
+        -- Fallback: remove any existing invis seat
+        local existingSeat = workspace:FindFirstChild('Prism_InvisSeat')
+        if existingSeat then
+            pcall(function() existingSeat:Destroy() end)
+        end
+        
+        -- Restore transparency
         local char = LocalPlayer.Character
         if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
+            makeTransparent(char, false)
+            
+            -- Restore position if needed
             local root = char:FindFirstChild("HumanoidRootPart")
-            
-            if hum then
-                hum.WalkSpeed = PM.Invisibility.originalWalkSpeed or 16
-            end
-            
             if root and PM.Invisibility.originalCFrame then
                 root.CFrame = PM.Invisibility.originalCFrame
             end
         end
-        
-        workspace.CurrentCamera.CameraType = PM.Invisibility.originalCameraType or Enum.CameraType.Custom
-        UserInputService.MouseBehavior = PM.Invisibility.originalMouseBehavior or Enum.MouseBehavior.Default
     end
+    
+    -- Expose makeTransparent for external use (respawn handler)
+    PM.Invisibility.makeTransparent = makeTransparent
 
     local function SetINV(val)
         if val == invOn then return end
@@ -8748,37 +8774,38 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
     end)
 end)
 
--- Auto-start invisibility if saved as enabled
+-- Auto-start invisibility if saved as enabled (after command registration so makeTransparent is available)
 if PM.Invisibility.active then
     local char = LP.Character
     if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
         local root = char:FindFirstChild("HumanoidRootPart")
-        if hum and root then
-            PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
-            PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
-            PM.Invisibility.originalMouseBehavior = game:GetService("UserInputService").MouseBehavior
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if root and torso then
             PM.Invisibility.originalCFrame = root.CFrame
+            root.CFrame = CFrame.new(-25.95, 84, 3537.55)
+            task.wait()
             
-            PM._intentionalBelowVoid = true
-            root.CFrame = CFrame.new(0, -500, 0)
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            hum.WalkSpeed = 0
+            local Seat = Instance.new('Seat', workspace)
+            Seat.Anchored = false
+            Seat.CanCollide = false
+            Seat.Name = 'Prism_InvisSeat'
+            Seat.Transparency = 1
+            Seat.Position = Vector3.new(-25.95, 84, 3537.55)
             
-            workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
-            workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
-            game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+            local Weld = Instance.new("Weld", Seat)
+            Weld.Part0 = Seat
+            Weld.Part1 = torso
+            
+            task.wait()
+            Seat.CFrame = PM.Invisibility.originalCFrame
+            
+            PM.Invisibility.makeTransparent(char, true)
+            PM.Invisibility.seat = Seat
             
             local RunService = game:GetService("RunService")
             PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
                 local c = LP.Character
-                if not c then return end
-                local r = c:FindFirstChild("HumanoidRootPart")
-                if not r then return end
-                r.CFrame = CFrame.new(0, -500, 0)
-                r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                local h = c:FindFirstChildOfClass("Humanoid")
-                if h then h.WalkSpeed = 0 end
+                if c then PM.Invisibility.makeTransparent(c, true) end
             end)
         end
     end
@@ -8787,36 +8814,44 @@ end
 -- Re-enable invisibility on respawn if saved as enabled
 if not PM.Invisibility.charAddedConn then
     PM.Invisibility.charAddedConn = LP.CharacterAdded:Connect(function(char)
+        -- Reset transparency on any character spawn to ensure clean state
+        task.wait(0.5)
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.LocalTransparencyModifier = 0
+            end
+        end
+        
         if PM.Invisibility.active then
-            task.wait(0.5)
-            local hum = char:FindFirstChildOfClass("Humanoid")
             local root = char:FindFirstChild("HumanoidRootPart")
-            if hum and root then
-                PM.Invisibility.originalWalkSpeed = hum.WalkSpeed
-                PM.Invisibility.originalCameraType = workspace.CurrentCamera.CameraType
-                PM.Invisibility.originalMouseBehavior = game:GetService("UserInputService").MouseBehavior
+            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            if root and torso then
                 PM.Invisibility.originalCFrame = root.CFrame
+                root.CFrame = CFrame.new(-25.95, 84, 3537.55)
+                task.wait()
                 
-                PM._intentionalBelowVoid = true
-                root.CFrame = CFrame.new(0, -500, 0)
-                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                hum.WalkSpeed = 0
+                local Seat = Instance.new('Seat', workspace)
+                Seat.Anchored = false
+                Seat.CanCollide = false
+                Seat.Name = 'Prism_InvisSeat'
+                Seat.Transparency = 1
+                Seat.Position = Vector3.new(-25.95, 84, 3537.55)
                 
-                workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
-                workspace.CurrentCamera.CFrame = PM.Invisibility.originalCFrame
-                game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+                local Weld = Instance.new("Weld", Seat)
+                Weld.Part0 = Seat
+                Weld.Part1 = torso
+                
+                task.wait()
+                Seat.CFrame = PM.Invisibility.originalCFrame
+                
+                PM.Invisibility.makeTransparent(char, true)
+                PM.Invisibility.seat = Seat
                 
                 local RunService = game:GetService("RunService")
                 if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect() end
                 PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
                     local c = LP.Character
-                    if not c then return end
-                    local r = c:FindFirstChild("HumanoidRootPart")
-                    if not r then return end
-                    r.CFrame = CFrame.new(0, -500, 0)
-                    r.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    local h = c:FindFirstChildOfClass("Humanoid")
-                    if h then h.WalkSpeed = 0 end
+                    if c then PM.Invisibility.makeTransparent(c, true) end
                 end)
             end
         end
