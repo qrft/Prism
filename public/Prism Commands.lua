@@ -463,7 +463,15 @@ local function cleanupPrism()
         end
         PM.Noclip.snapshot = {}
     end
-    
+
+    -- Cleanup Invisibility
+    if PM.Invis then
+        PM.Invis.active = false
+        if PM.Invis.keyConnection then pcall(function() PM.Invis.keyConnection:Disconnect() end) end
+        if PM.Invis.charAddedConn then pcall(function() PM.Invis.charAddedConn:Disconnect() end) end
+        if PM.Invis.EndInvis then pcall(function() PM.Invis.EndInvis() end) end
+    end
+
     -- Cleanup Move While Emoting
     if PM.Emotes then
         if PM.Emotes.mwePriConn then PM.Emotes.mwePriConn:Disconnect(); PM.Emotes.mwePriConn = nil end
@@ -1764,7 +1772,7 @@ local function SaveInvisSettings()
     end)
 end
 
-registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, function(args)
+registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
     local Players = game:GetService("Players")
     local TweenService = game:GetService("TweenService")
     local UserInputService = game:GetService("UserInputService")
@@ -2112,16 +2120,17 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
     local function StartInvis()
         if PM.Invis.active then return end
         BeginInvis()
+        invOn = true
     end
 
     local function StopInvis()
         if not PM.Invis.active then return end
         EndInvis()
+        invOn = false
     end
 
     local function SetInvis(val)
         if val == invOn then return end
-        invOn = val
         if val then
             InvBtn.Text = "Stop"
             StartInvis()
@@ -2152,6 +2161,7 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
 
     CloseBtn.MouseButton1Click:Connect(function()
         invCapturing = false
+        invOn = false
         StopInvis()
         if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
         if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
@@ -8772,6 +8782,7 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
                 if part:IsA("BasePart") then part.CanCollide = false end
             end
         end)
+        ncOn = true
     end
 
     local function StopNC()
@@ -8790,11 +8801,11 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
             end
         end
         PM.Noclip.snapshot = {}
+        ncOn = false
     end
 
     local function SetNC(val)
         if val == ncOn then return end
-        ncOn = val
         if val then
             NCBtn.Text = "Stop"
             StartNC()
@@ -8825,6 +8836,7 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
 
     CloseBtn.MouseButton1Click:Connect(function()
         ncCapturing = false
+        ncOn = false
         StopNC()
         if ncCaptureConn then ncCaptureConn:Disconnect(); ncCaptureConn = nil end
         if PM.Noclip.keyConnection then PM.Noclip.keyConnection:Disconnect(); PM.Noclip.keyConnection = nil end
