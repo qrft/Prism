@@ -474,23 +474,35 @@ local function cleanupPrism()
         -- Clear intentional void flag
         PM._intentionalBelowVoid = false
         
-        -- Remove fake character
+        -- Remove fake character and platform
         if PM.Invisibility.fakeCharacter then
             pcall(function() PM.Invisibility.fakeCharacter:Destroy() end)
             PM.Invisibility.fakeCharacter = nil
         end
+        if PM.Invisibility.platform then
+            pcall(function() PM.Invisibility.platform:Destroy() end)
+            PM.Invisibility.platform = nil
+        end
         
-        -- Fallback: remove any existing fake character
+        -- Fallback: remove any existing fake character/platform
         local existingFake = workspace:FindFirstChild("Prism_FakeCharacter")
         if existingFake then
             pcall(function() existingFake:Destroy() end)
         end
+        local existingPlatform = workspace:FindFirstChild("Prism_InvisPlatform")
+        if existingPlatform then
+            pcall(function() existingPlatform:Destroy() end)
+        end
         
-        -- Clean up collision group
-        local PhysicsService = game:GetService("PhysicsService")
-        pcall(function()
-            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
-        end)
+        -- Restore real character if swapped
+        if PM.Invisibility.realCharacter and PM.Invisibility.realCharacter.Parent then
+            LP.Character = PM.Invisibility.realCharacter
+        end
+        
+        -- Restore void height
+        if PM.Invisibility.savedVoid then
+            workspace.FallenPartsDestroyHeight = PM.Invisibility.savedVoid
+        end
         
         -- Reset camera to real character
         local char = LP.Character
@@ -500,6 +512,12 @@ local function cleanupPrism()
                 workspace.CurrentCamera.CameraSubject = hum
             end
         end
+        
+        -- Clear saved state
+        PM.Invisibility.savedCF = nil
+        PM.Invisibility.savedVoid = nil
+        PM.Invisibility.savedSubject = nil
+        PM.Invisibility.realCharacter = nil
     end
     
     -- Cleanup Move While Emoting
@@ -8279,8 +8297,11 @@ PM.Invisibility = {
     keyConnection = nil,
     charAddedConn = nil,
     fakeCharacter = nil,
-    undergroundOffset = 600,
-    collisionGroup = "Prism_InvisClone"
+    realCharacter = nil,
+    platform = nil,
+    savedCF = nil,
+    savedVoid = nil,
+    savedSubject = nil
 }
 
 -- Load saved invisibility key and state
@@ -8509,7 +8530,7 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
         ContentFrame.Visible = false
     end
 
-    -- Invisibility logic
+    -- Invisibility logic (Axon method)
     local invOn = PM.Invisibility.active or false
     local invKey = PM.Invisibility.key
     local invCapturing = false
@@ -8647,145 +8668,195 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
         end)
     end)
 
-    -- Invisibility functions
-    local function StartINV()
-        if PM.Invisibility.connection then return end
+    -- Invisibility functions (Axon method)
+    local function EndInvis()
+        if not invOn then return end
+        invOn = false
         
+        if PM.Invisibility.connection then
+            PM.Invisibility.connection:Disconnect()
+            PM.Invisibility.connection = nil
+        end
+        
+        local player = LocalPlayer
+        
+        -- Restore Player.Character to the real character
+        pcall(function()
+            local realChar = PM.Invisibility.realCharacter
+            if realChar and realChar.Parent then
+                local hrp = realChar:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    -- Teleport real char to wherever the fake character ended up
+                    local fakeChar = PM.Invisibility.fakeCharacter
+                    local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
+                    if fakeHRP then
+                        hrp.CFrame = fakeHRP.CFrame
+                    elseif PM.Invisibility.savedCF then
+                        hrp.CFrame = PM.Invisibility.savedCF
+                    end
+                end
+                -- Unequip tools from fake before swapping back
+                local fakeChar = PM.Invisibility.fakeCharacter
+                if fakeChar then
+                    local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
+                    if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
+                end
+                LocalPlayer.Character = realChar
+            end
+        end)
+        
+        -- Restore camera
+        pcall(function()
+            if PM.Invisibility.savedSubject then
+                workspace.CurrentCamera.CameraSubject = PM.Invisibility.savedSubject
+            end
+        end)
+        PM.Invisibility.savedSubject = nil
+        
+        -- Destroy fake clone and platform
+        if PM.Invisibility.fakeCharacter then
+            pcall(function() PM.Invisibility.fakeCharacter:Destroy() end)
+            PM.Invisibility.fakeCharacter = nil
+        end
+        if PM.Invisibility.platform then
+            pcall(function() PM.Invisibility.platform:Destroy() end)
+            PM.Invisibility.platform = nil
+        end
+        
+        PM.Invisibility.savedCF = nil
+        PM.Invisibility.realCharacter = nil
+        
+        -- Restore void height
+        if PM.Invisibility.savedVoid then
+            task.wait(0.05)
+            workspace.FallenPartsDestroyHeight = PM.Invisibility.savedVoid
+            PM.Invisibility.savedVoid = nil
+        end
+        PM._intentionalBelowVoid = false
+        
+        PM.Invisibility.active = false
+        SaveINVSettings()
+        InvBtn.Text = "Invisibility"
+    end
+
+    local function BeginInvis()
+        if invOn then return end
         local char = LocalPlayer.Character
         if not char then return end
         
         local root = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not root or not hum then return end
+        if not root then return end
         
-        -- Set intentional void flag for anti-void compatibility
-        PM._intentionalBelowVoid = true
+        -- Save real position FIRST
+        local savedCF = root.CFrame
         
-        -- Make character archivable for cloning
+        -- Clone real character
         char.Archivable = true
-        
-        -- Clone character
         local fakeChar = char:Clone()
+        if not fakeChar then return end
         fakeChar.Name = "Prism_FakeCharacter"
         
-        -- Disable scripts in fake character
-        for _, child in ipairs(fakeChar:GetDescendants()) do
-            if child:IsA("LocalScript") then
-                child:Destroy()
-            end
-        end
-        
-        -- Create collision group for fake character
-        local PhysicsService = game:GetService("PhysicsService")
-        local groupName = PM.Invisibility.collisionGroup
-        
-        -- Create collision group if it doesn't exist
-        pcall(function()
-            PhysicsService:CreateCollisionGroup(groupName)
-        end)
-        
-        -- Set fake character parts to collision group
-        for _, part in ipairs(fakeChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CollisionGroup = groupName
-                part.Transparency = 1
-            end
-        end
-        
-        -- Configure collision group to collide with everything except itself
-        PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
-        PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
-        PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
-        
-        -- Parent fake character to workspace
-        fakeChar.Parent = workspace
-        
-        -- Set fake character to current position
-        fakeChar.HumanoidRootPart.CFrame = root.CFrame
-        
-        -- Teleport real character underground
-        local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-        root.CFrame = undergroundPos
-        
-        -- Set camera to follow fake character
-        workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
-        
-        -- Store fake character reference
-        PM.Invisibility.fakeCharacter = fakeChar
-        
-        -- Heartbeat loop to sync fake character with real character
-        PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
-            if not PM.Invisibility.active then return end
-            
-            local fake = PM.Invisibility.fakeCharacter
-            local real = LocalPlayer.Character
-            
-            if fake and real then
-                local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
-                local realRoot = real:FindFirstChild("HumanoidRootPart")
-                local fakeHum = fake:FindFirstChildOfClass("Humanoid")
-                
-                if fakeRoot and realRoot and fakeHum then
-                    -- Move fake character to match real character's position (offset up)
-                    fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-                    
-                    -- Sync camera to fake character
-                    workspace.CurrentCamera.CameraSubject = fakeHum
+        -- Disable LocalScripts inside the clone EXCEPT "Animate"
+        for _, obj in ipairs(fakeChar:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("LocalScript") and obj.Name ~= "Animate" then
+                    obj.Disabled = true
                 end
+            end)
+        end
+        
+        -- Make all visible parts fully invisible
+        for _, obj in ipairs(fakeChar:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                    obj.Transparency = 1
+                end
+            end)
+        end
+        
+        -- Create platform under map for real char
+        local platform = Instance.new("Part")
+        platform.Name = "Prism_InvisPlatform"
+        platform.Anchored = true
+        platform.CanCollide = true
+        platform.Size = Vector3.new(3, 5, 3)
+        platform.Transparency = 1
+        platform.CFrame = CFrame.new(root.Position.X, -653, root.Position.Z)
+        platform.Parent = workspace
+        PM.Invisibility.platform = platform
+        
+        -- Parent fake, position it at the ORIGINAL surface position
+        fakeChar.Parent = workspace
+        local fakeHRP = fakeChar:FindFirstChild("HumanoidRootPart")
+        if fakeHRP then
+            fakeHRP.CFrame = savedCF
+        end
+        
+        -- Save state
+        PM.Invisibility.savedCF = savedCF
+        PM.Invisibility.savedVoid = workspace.FallenPartsDestroyHeight
+        PM.Invisibility.realCharacter = char
+        PM.Invisibility.fakeCharacter = fakeChar
+        PM.Invisibility.savedSubject = workspace.CurrentCamera.CameraSubject
+        
+        -- Move real char under the map
+        workspace.FallenPartsDestroyHeight = -99999
+        PM._intentionalBelowVoid = true
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        root.CFrame = CFrame.new(root.Position.X, -648, root.Position.Z)
+        
+        -- Wait a frame so the teleport replicates before the character swap
+        task.wait()
+        
+        -- Freeze real char animations
+        local realAnimScript = char:FindFirstChild("Animate")
+        if realAnimScript then realAnimScript.Disabled = true end
+        local realHumForAnim = char:FindFirstChildOfClass("Humanoid")
+        if realHumForAnim then
+            for _, tr in ipairs(realHumForAnim:GetPlayingAnimationTracks()) do tr:Stop(0) end
+        end
+        task.wait()
+        for _, m in ipairs(char:GetDescendants()) do
+            if m:IsA("Motor6D") then m.Transform = CFrame.new() end
+        end
+        if realAnimScript then realAnimScript.Disabled = false end
+        
+        -- Swap: game now thinks fake IS the character
+        LocalPlayer.Character = fakeChar
+        workspace.CurrentCamera.CameraSubject = fakeChar:FindFirstChildOfClass("Humanoid") or fakeHRP
+        
+        -- Restart the Animate script so it re-binds to the fake humanoid
+        task.defer(function()
+            local animate = fakeChar:FindFirstChild("Animate")
+            if animate and animate:IsA("LocalScript") then
+                animate.Disabled = true
+                task.wait()
+                animate.Disabled = false
             end
         end)
-    end
-
-    local function StopINV()
-        if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect(); PM.Invisibility.connection = nil end
         
-        -- Clear intentional void flag
-        PM._intentionalBelowVoid = false
-        
-        -- Teleport real character to fake character's position
-        local fake = PM.Invisibility.fakeCharacter
-        local real = LocalPlayer.Character
-        
-        if fake and real then
-            local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
-            local realRoot = real:FindFirstChild("HumanoidRootPart")
-            
-            if fakeRoot and realRoot then
-                realRoot.CFrame = fakeRoot.CFrame
+        -- Move platform every frame to follow fake's X/Z
+        PM.Invisibility.connection = RunService.RenderStepped:Connect(function()
+            if not fakeHRP or not fakeHRP.Parent then return end
+            if platform and platform.Parent then
+                platform.CFrame = CFrame.new(fakeHRP.Position.X, -653, fakeHRP.Position.Z)
             end
-        end
-        
-        -- Destroy fake character
-        if fake then
-            pcall(function() fake:Destroy() end)
-            PM.Invisibility.fakeCharacter = nil
-        end
-        
-        -- Clean up collision group
-        local PhysicsService = game:GetService("PhysicsService")
-        pcall(function()
-            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
         end)
         
-        -- Reset camera to real character
-        local realHum = real and real:FindFirstChildOfClass("Humanoid")
-        if realHum then
-            workspace.CurrentCamera.CameraSubject = realHum
-        end
+        invOn = true
+        PM.Invisibility.active = true
+        SaveINVSettings()
+        InvBtn.Text = "Visible"
     end
 
     local function SetINV(val)
         if val == invOn then return end
-        invOn = val
         if val then
-            InvBtn.Text = "Visible"
-            StartINV()
+            BeginInvis()
         else
-            InvBtn.Text = "Invisibility"
-            StopINV()
+            EndInvis()
         end
-        PM.Invisibility.active = invOn
-        SaveINVSettings()
     end
 
     InvBtn.MouseButton1Click:Connect(function()
@@ -8807,7 +8878,7 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
 
     CloseBtn.MouseButton1Click:Connect(function()
         invCapturing = false
-        StopINV()
+        EndInvis()
         if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
         if PM.Invisibility.keyConnection then PM.Invisibility.keyConnection:Disconnect(); PM.Invisibility.keyConnection = nil end
         PM.Invisibility.active = false
@@ -8816,148 +8887,109 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
     end)
 end)
 
--- Auto-start invisibility if saved as enabled
-if PM.Invisibility.active then
-    local char = LP.Character
-    if char then
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if root and hum then
-            PM._intentionalBelowVoid = true
-            char.Archivable = true
-            local fakeChar = char:Clone()
-            fakeChar.Name = "Prism_FakeCharacter"
-            
-            for _, child in ipairs(fakeChar:GetDescendants()) do
-                if child:IsA("LocalScript") then
-                    child:Destroy()
-                end
-            end
-            
-            -- Create collision group for fake character
-            local PhysicsService = game:GetService("PhysicsService")
-            local groupName = PM.Invisibility.collisionGroup
-            
-            pcall(function()
-                PhysicsService:CreateCollisionGroup(groupName)
-            end)
-            
-            for _, part in ipairs(fakeChar:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CollisionGroup = groupName
-                    part.Transparency = 1
-                end
-            end
-            
-            PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
-            PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
-            PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
-            
-            fakeChar.Parent = workspace
-            fakeChar.HumanoidRootPart.CFrame = root.CFrame
-            
-            local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-            root.CFrame = undergroundPos
-            
-            workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
-            PM.Invisibility.fakeCharacter = fakeChar
-            
-            local RunService = game:GetService("RunService")
-            PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
-                local fake = PM.Invisibility.fakeCharacter
-                local real = LP.Character
-                
-                if fake and real then
-                    local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
-                    local realRoot = real:FindFirstChild("HumanoidRootPart")
-                    local fakeHum = fake:FindFirstChildOfClass("Humanoid")
-                    
-                    if fakeRoot and realRoot and fakeHum then
-                        fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-                        workspace.CurrentCamera.CameraSubject = fakeHum
-                    end
-                end
-            end)
-        end
-    end
-end
-
 -- Re-enable invisibility on respawn if saved as enabled
 if not PM.Invisibility.charAddedConn then
     PM.Invisibility.charAddedConn = LP.CharacterAdded:Connect(function(char)
-        -- Clean up any existing fake character
+        -- Clean up any existing fake character and platform
         local existingFake = workspace:FindFirstChild("Prism_FakeCharacter")
         if existingFake then
             pcall(function() existingFake:Destroy() end)
         end
-        
-        -- Clean up collision group
-        local PhysicsService = game:GetService("PhysicsService")
-        pcall(function()
-            PhysicsService:RemoveCollisionGroup(PM.Invisibility.collisionGroup)
-        end)
+        local existingPlatform = workspace:FindFirstChild("Prism_InvisPlatform")
+        if existingPlatform then
+            pcall(function() existingPlatform:Destroy() end)
+        end
         
         if PM.Invisibility.active then
-            PM._intentionalBelowVoid = true
             task.wait(0.5)
             local root = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if root and hum then
-                char.Archivable = true
-                local fakeChar = char:Clone()
-                fakeChar.Name = "Prism_FakeCharacter"
-                
-                for _, child in ipairs(fakeChar:GetDescendants()) do
-                    if child:IsA("LocalScript") then
-                        child:Destroy()
-                    end
-                end
-                
-                -- Create collision group for fake character
-                local groupName = PM.Invisibility.collisionGroup
-                
+            if not root then return end
+            
+            local savedCF = root.CFrame
+            
+            char.Archivable = true
+            local fakeChar = char:Clone()
+            if not fakeChar then return end
+            fakeChar.Name = "Prism_FakeCharacter"
+            
+            for _, obj in ipairs(fakeChar:GetDescendants()) do
                 pcall(function()
-                    PhysicsService:CreateCollisionGroup(groupName)
-                end)
-                
-                for _, part in ipairs(fakeChar:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CollisionGroup = groupName
-                        part.Transparency = 1
-                    end
-                end
-                
-                PhysicsService:CollisionGroupSetCollidable(groupName, "Default", true)
-                PhysicsService:CollisionGroupSetCollidable("Default", groupName, true)
-                PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
-                
-                fakeChar.Parent = workspace
-                fakeChar.HumanoidRootPart.CFrame = root.CFrame
-                
-                local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-                root.CFrame = undergroundPos
-                
-                workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
-                PM.Invisibility.fakeCharacter = fakeChar
-                
-                local RunService = game:GetService("RunService")
-                if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect() end
-                PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
-                    local fake = PM.Invisibility.fakeCharacter
-                    local real = LP.Character
-                    
-                    if fake and real then
-                        local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
-                        local realRoot = real:FindFirstChild("HumanoidRootPart")
-                        local fakeHum = fake:FindFirstChildOfClass("Humanoid")
-                        
-                        if fakeRoot and realRoot and fakeHum then
-                            fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
-                            workspace.CurrentCamera.CameraSubject = fakeHum
-                        end
+                    if obj:IsA("LocalScript") and obj.Name ~= "Animate" then
+                        obj.Disabled = true
                     end
                 end)
             end
+            
+            for _, obj in ipairs(fakeChar:GetDescendants()) do
+                pcall(function()
+                    if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                        obj.Transparency = 1
+                    end
+                end)
+            end
+            
+            local platform = Instance.new("Part")
+            platform.Name = "Prism_InvisPlatform"
+            platform.Anchored = true
+            platform.CanCollide = true
+            platform.Size = Vector3.new(3, 5, 3)
+            platform.Transparency = 1
+            platform.CFrame = CFrame.new(root.Position.X, -653, root.Position.Z)
+            platform.Parent = workspace
+            PM.Invisibility.platform = platform
+            
+            fakeChar.Parent = workspace
+            local fakeHRP = fakeChar:FindFirstChild("HumanoidRootPart")
+            if fakeHRP then
+                fakeHRP.CFrame = savedCF
+            end
+            
+            PM.Invisibility.savedCF = savedCF
+            PM.Invisibility.savedVoid = workspace.FallenPartsDestroyHeight
+            PM.Invisibility.realCharacter = char
+            PM.Invisibility.fakeCharacter = fakeChar
+            PM.Invisibility.savedSubject = workspace.CurrentCamera.CameraSubject
+            
+            workspace.FallenPartsDestroyHeight = -99999
+            PM._intentionalBelowVoid = true
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+            root.CFrame = CFrame.new(root.Position.X, -648, root.Position.Z)
+            
+            task.wait()
+            
+            local realAnimScript = char:FindFirstChild("Animate")
+            if realAnimScript then realAnimScript.Disabled = true end
+            local realHumForAnim = char:FindFirstChildOfClass("Humanoid")
+            if realHumForAnim then
+                for _, tr in ipairs(realHumForAnim:GetPlayingAnimationTracks()) do tr:Stop(0) end
+            end
+            task.wait()
+            for _, m in ipairs(char:GetDescendants()) do
+                if m:IsA("Motor6D") then m.Transform = CFrame.new() end
+            end
+            if realAnimScript then realAnimScript.Disabled = false end
+            
+            LP.Character = fakeChar
+            workspace.CurrentCamera.CameraSubject = fakeChar:FindFirstChildOfClass("Humanoid") or fakeHRP
+            
+            task.defer(function()
+                local animate = fakeChar:FindFirstChild("Animate")
+                if animate and animate:IsA("LocalScript") then
+                    animate.Disabled = true
+                    task.wait()
+                    animate.Disabled = false
+                end
+            end)
+            
+            local RunService = game:GetService("RunService")
+            if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect() end
+            PM.Invisibility.connection = RunService.RenderStepped:Connect(function()
+                if not fakeHRP or not fakeHRP.Parent then return end
+                if platform and platform.Parent then
+                    platform.CFrame = CFrame.new(fakeHRP.Position.X, -653, fakeHRP.Position.Z)
+                end
+            end)
         end
     end)
 end
