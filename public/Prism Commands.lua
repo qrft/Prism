@@ -3334,7 +3334,7 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
 
         local MainFrame = Instance.new("Frame")
         MainFrame.Name = "MainFrame"
-        MainFrame.Size = UDim2.new(0, 260, 0, 250)
+        MainFrame.Size = UDim2.new(0, 260, 0, 290)
         MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
         MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
         MainFrame.BackgroundTransparency = 0.3
@@ -3355,6 +3355,7 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
         TitleBar.Name = "TitleBar"
         TitleBar.Size = UDim2.new(1, 0, 0, 36)
         TitleBar.BackgroundTransparency = 1
+        TitleBar.Position = UDim2.new(0, 0, 0, 0)
         TitleBar.Parent = MainFrame
 
         local dragging = false
@@ -3441,13 +3442,13 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
         local ContentFrame = Instance.new("Frame")
         ContentFrame.Name = "Content"
         ContentFrame.Size = UDim2.new(1, 0, 1, -40)
-        ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+        ContentFrame.Position = UDim2.new(0, 0, 0, 36)
         ContentFrame.BackgroundTransparency = 1
         ContentFrame.ClipsDescendants = true
         ContentFrame.Parent = MainFrame
 
         local isMinimized = savedMinimized
-        local originalSize = UDim2.new(0, 260, 0, 260)
+        local originalSize = UDim2.new(0, 260, 0, 290)
         local minimizedSize = UDim2.new(0, 260, 0, 36)
         local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
