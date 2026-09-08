@@ -519,6 +519,17 @@ local function cleanupPrism()
             pcall(function() obj:Destroy() end)
         end
     end
+
+    -- Cleanup Invisibility GUI specifically
+    if gethui then
+        local hiddenGui = gethui()
+        if hiddenGui:FindFirstChild("Prism_InvisGUI") then
+            pcall(function() hiddenGui.Prism_InvisGUI:Destroy() end)
+        end
+    end
+    if CoreGui:FindFirstChild("Prism_InvisGUI") then
+        pcall(function() CoreGui.Prism_InvisGUI:Destroy() end)
+    end
     
     -- Cleanup PlayerGui GUIs
     for _, obj in ipairs(LP.PlayerGui:GetChildren()) do
@@ -563,47 +574,8 @@ local function cleanupPrism()
     end
 
     -- Cleanup Invisibility
-    if PM.Invis.active then
-        if PM.Invis.holdConn then
-            pcall(function() PM.Invis.holdConn:Disconnect() end)
-            PM.Invis.holdConn = nil
-        end
-        pcall(function()
-            if PM.Invis.realChar and PM.Invis.realChar.Parent then
-                local hrp = PM.Invis.realChar:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local fakeHRP = PM.Invis.fakeModel and PM.Invis.fakeModel:FindFirstChild("HumanoidRootPart")
-                    if fakeHRP then
-                        hrp.CFrame = fakeHRP.CFrame
-                    elseif PM.Invis.savedCF then
-                        hrp.CFrame = PM.Invis.savedCF
-                    end
-                end
-                LP.Character = PM.Invis.realChar
-            end
-        end)
-        pcall(function()
-            if PM.Invis.savedSubject then
-                workspace.CurrentCamera.CameraSubject = PM.Invis.savedSubject
-            end
-        end)
-        if PM.Invis.fakeModel then
-            pcall(function() PM.Invis.fakeModel:Destroy() end)
-            PM.Invis.fakeModel = nil
-        end
-        if PM.Invis.platform then
-            pcall(function() PM.Invis.platform:Destroy() end)
-            PM.Invis.platform = nil
-        end
-        if PM.Invis.savedVoid then
-            pcall(function() workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid end)
-            PM.Invis.savedVoid = nil
-        end
-        PM.Invis.active = false
-        PM.Invis.savedCF = nil
-        PM.Invis.realChar = nil
-        PM.Invis.savedSubject = nil
-        PM._intentionalBelowVoid = false
+    if PM.Invis.EndInvis then
+        PM.Invis.EndInvis()
     end
 end
 
@@ -1756,11 +1728,242 @@ PM.Invis = {
     savedVoid = nil,
     savedSubject = nil,
     platform = nil,
-    holdConn = nil
+    holdConn = nil,
+    EndInvis = nil,
+    BeginInvis = nil
 }
 
-registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
+registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, function(args)
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
     local RunService = game:GetService("RunService")
+    local CoreGui = game:GetService("CoreGui")
+    local LocalPlayer = Players.LocalPlayer
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_InvisGUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Prism_InvisGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+    ScreenGui.DisplayOrder = 999
+
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+
+    -- Load saved GUI settings
+    local INVIS_GUI_FILE = "prism/prism_invis_gui_settings.json"
+    local savedInvisGUI = {}
+    pcall(function()
+        if readfile and isfile(INVIS_GUI_FILE) then
+            savedInvisGUI = game:GetService("HttpService"):JSONDecode(readfile(INVIS_GUI_FILE))
+        end
+    end)
+    local savedPos = savedInvisGUI.position or {X = {Scale = 0, Offset = 500}, Y = {Scale = 0, Offset = 400}}
+    local savedMinimized = savedInvisGUI.minimized or false
+
+    local currentInvisSettings = {
+        position = savedPos,
+        minimized = savedMinimized
+    }
+
+    local function SaveInvisGUISettings()
+        pcall(function()
+            if writefile then
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(INVIS_GUI_FILE, game:GetService("HttpService"):JSONEncode(currentInvisSettings))
+            end
+        end)
+    end
+
+    local MW, MH = 220, 88
+
+    local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, MW, 0, MH)
+    MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            currentInvisSettings.position = {
+                X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+            }
+            SaveInvisGUISettings()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "Prism  •  Invisibility"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local MinBtn = Instance.new("TextButton")
+    MinBtn.Size = UDim2.new(0, 24, 0, 24)
+    MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MinBtn.BackgroundTransparency = 0.4
+    MinBtn.BorderSizePixel = 0
+    MinBtn.Text = "—"
+    MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    MinBtn.TextSize = 11
+    MinBtn.Font = Enum.Font.GothamBold
+    MinBtn.Parent = TitleBar
+
+    local MinCorner = Instance.new("UICorner")
+    MinCorner.CornerRadius = UDim.new(0, 6)
+    MinCorner.Parent = MinBtn
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        if PM.Invis.active and PM.Invis.EndInvis then
+            PM.Invis.EndInvis()
+        end
+        ScreenGui:Destroy()
+    end)
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.ClipsDescendants = true
+    ContentFrame.Parent = MainFrame
+
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 4)
+    Padding.PaddingBottom = UDim.new(0, 4)
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 8)
+    Padding.Parent = ContentFrame
+
+    local isMinimized = savedMinimized
+    local minimizedSize = UDim2.new(0, MW, 0, 36)
+    MinBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        currentInvisSettings.minimized = isMinimized
+        SaveInvisGUISettings()
+        if isMinimized then
+            MinBtn.Text = "+"
+            TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize}):Play()
+            ContentFrame.Visible = false
+        else
+            MinBtn.Text = "—"
+            ContentFrame.Visible = true
+            TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, MW, 0, MH)}):Play()
+        end
+    end)
+
+    if isMinimized then
+        MinBtn.Text = "+"
+        MainFrame.Size = minimizedSize
+        ContentFrame.Visible = false
+    end
+
+    -- Toggle button
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(1, 0, 0, 36)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    ToggleBtn.BackgroundTransparency = 0.4
+    ToggleBtn.BorderSizePixel = 0
+    ToggleBtn.Text = "Toggle Invisibility"
+    ToggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    ToggleBtn.TextSize = 12
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.Parent = ContentFrame
+
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 10)
+    ToggleCorner.Parent = ToggleBtn
+
+    ToggleBtn.MouseButton1Click:Connect(function()
+        if PM.Invis.active then
+            if PM.Invis.EndInvis then PM.Invis.EndInvis() end
+        else
+            if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
+        end
+    end)
+
+    -- Invisibility logic
 
     local function EndInvis()
         if not PM.Invis.active then return end
@@ -1789,7 +1992,7 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
                     local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
                     if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
                 end
-                LP.Character = realChar
+                LocalPlayer.Character = realChar
             end
         end)
 
@@ -1812,7 +2015,8 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
         PM.Invis.savedCF = nil
         PM.Invis.realChar = nil
 
-        if PM.Invis.savedVoid then
+        -- Restore void height if anti void wasn't handling it
+        if PM.Invis.savedVoid and not (PM.Anti and PM.Anti.void) then
             task.wait(0.05)
             workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid
             PM.Invis.savedVoid = nil
@@ -1820,9 +2024,11 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
         PM._intentionalBelowVoid = false
     end
 
+    PM.Invis.EndInvis = EndInvis
+
     local function BeginInvis()
         if PM.Invis.active then return end
-        local char = LP.Character
+        local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root or not char then return end
 
@@ -1872,7 +2078,10 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
         PM.Invis.fakeModel = fakeChar
         PM.Invis.savedSubject = workspace.CurrentCamera.CameraSubject
 
-        workspace.FallenPartsDestroyHeight = -99999
+        -- If anti void is active, it will handle void height
+        if not (PM.Anti and PM.Anti.void) then
+            workspace.FallenPartsDestroyHeight = -99999
+        end
         PM._intentionalBelowVoid = true
         root.AssemblyLinearVelocity = Vector3.zero
         root.AssemblyAngularVelocity = Vector3.zero
@@ -1892,7 +2101,7 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
         end
         if realAnimScript then realAnimScript.Disabled = false end
 
-        LP.Character = fakeChar
+        LocalPlayer.Character = fakeChar
         workspace.CurrentCamera.CameraSubject = fakeChar:FindFirstChildOfClass("Humanoid") or fakeHRP
 
         task.defer(function()
@@ -1918,10 +2127,39 @@ registerCommand("invis", "Toggle invisibility (ghost clone)", {}, function(args)
         end
     end
 
+    PM.Invis.BeginInvis = BeginInvis
+
+    -- Set initial button text
     if PM.Invis.active then
-        EndInvis()
+        ToggleBtn.Text = "Disable Invisibility"
     else
-        BeginInvis()
+        ToggleBtn.Text = "Enable Invisibility"
+    end
+
+    -- Update button text on toggle
+    local function UpdateButton()
+        if PM.Invis.active then
+            ToggleBtn.Text = "Disable Invisibility"
+        else
+            ToggleBtn.Text = "Enable Invisibility"
+        end
+    end
+
+    -- Hook into EndInvis and BeginInvis to update button
+    local originalEndInvis = EndInvis
+    PM.Invis.EndInvis = function()
+        originalEndInvis()
+        if ToggleBtn and ToggleBtn.Parent then
+            UpdateButton()
+        end
+    end
+
+    local originalBeginInvis = BeginInvis
+    PM.Invis.BeginInvis = function()
+        originalBeginInvis()
+        if ToggleBtn and ToggleBtn.Parent then
+            UpdateButton()
+        end
     end
 end)
 
@@ -3648,7 +3886,7 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                     -- Lower void so you can never die to it
                     workspace.FallenPartsDestroyHeight = -99999
 
-                    -- Save you from falling in void (unless fakeout is active)
+                    -- Save you from falling in void (unless fakeout is active or invisibility is handling it)
                     if not PM._intentionalBelowVoid then
                         local char = LocalPlayer.Character
                         local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -3656,6 +3894,16 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                             local refY = PM.Anti.origVoidY or workspace.FallenPartsDestroyHeight
                             if root.Position.Y < refY + 50 then
                                 root.AssemblyLinearVelocity = Vector3.new(0, 500, 0)
+                            end
+                        end
+                    elseif PM.Invis and PM.Invis.active and PM.Invis.fakeModel then
+                        -- When invisibility is active, protect the fake character instead
+                        local fakeChar = PM.Invis.fakeModel
+                        local fakeRoot = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
+                        if fakeRoot and fakeRoot:IsA("BasePart") then
+                            local refY = PM.Anti.origVoidY or workspace.FallenPartsDestroyHeight
+                            if fakeRoot.Position.Y < refY + 50 then
+                                fakeRoot.AssemblyLinearVelocity = Vector3.new(0, 500, 0)
                             end
                         end
                     end
