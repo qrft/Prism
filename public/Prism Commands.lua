@@ -471,30 +471,27 @@ local function cleanupPrism()
         if PM.Invisibility.keyConnection then pcall(function() PM.Invisibility.keyConnection:Disconnect() end) end
         if PM.Invisibility.charAddedConn then pcall(function() PM.Invisibility.charAddedConn:Disconnect() end) end
         
-        -- Remove seat
-        if PM.Invisibility.seat then
-            pcall(function() PM.Invisibility.seat:Destroy() end)
-            PM.Invisibility.seat = nil
+        -- Clear intentional void flag
+        PM._intentionalBelowVoid = false
+        
+        -- Remove fake character
+        if PM.Invisibility.fakeCharacter then
+            pcall(function() PM.Invisibility.fakeCharacter:Destroy() end)
+            PM.Invisibility.fakeCharacter = nil
         end
         
-        -- Fallback: remove any existing invis seat
-        local existingSeat = workspace:FindFirstChild('Prism_InvisSeat')
-        if existingSeat then
-            pcall(function() existingSeat:Destroy() end)
+        -- Fallback: remove any existing fake character
+        local existingFake = workspace:FindFirstChild("Prism_FakeCharacter")
+        if existingFake then
+            pcall(function() existingFake:Destroy() end)
         end
         
-        -- Restore transparency
+        -- Reset camera to real character
         local char = LP.Character
         if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.LocalTransparencyModifier = 0
-                end
-            end
-            
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root and PM.Invisibility.originalCFrame then
-                root.CFrame = PM.Invisibility.originalCFrame
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                workspace.CurrentCamera.CameraSubject = hum
             end
         end
     end
@@ -8275,8 +8272,8 @@ PM.Invisibility = {
     connection = nil,
     keyConnection = nil,
     charAddedConn = nil,
-    originalCFrame = nil,
-    seat = nil
+    fakeCharacter = nil,
+    undergroundOffset = 600
 }
 
 -- Load saved invisibility key and state
@@ -8306,7 +8303,7 @@ local function SaveINVSettings()
     end)
 end
 
-registerCommand("invisibility", "Invisibility with keybind (void teleport)", {}, function(args)
+registerCommand("invisibility", "Invisibility with keybind (fake clone method)", {}, function(args)
     local Players = game:GetService("Players")
     local TweenService = game:GetService("TweenService")
     local UserInputService = game:GetService("UserInputService")
@@ -8428,7 +8425,7 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
     TitleLabel.Size = UDim2.new(1, -80, 1, 0)
     TitleLabel.Position = UDim2.new(0, 14, 0, 0)
     TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = "Prism  •  Invisibility"
+    TitleLabel.Text = "Prism  •  Invisibility (Clone)"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     TitleLabel.TextSize = 13
     TitleLabel.Font = Enum.Font.GothamBold
@@ -8644,14 +8641,6 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
     end)
 
     -- Invisibility functions
-    local function makeTransparent(character, transparent)
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.LocalTransparencyModifier = transparent and 0.5 or 0
-            end
-        end
-    end
-
     local function StartINV()
         if PM.Invisibility.connection then return end
         
@@ -8659,78 +8648,96 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
         if not char then return end
         
         local root = char:FindFirstChild("HumanoidRootPart")
-        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-        if not root or not torso then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not root or not hum then return end
         
-        -- Save original position
-        PM.Invisibility.originalCFrame = root.CFrame
+        -- Set intentional void flag for anti-void compatibility
+        PM._intentionalBelowVoid = true
         
-        -- Teleport character away temporarily
-        root.CFrame = CFrame.new(-25.95, 84, 3537.55)
-        task.wait()
+        -- Make character archivable for cloning
+        char.Archivable = true
         
-        -- Create invisible seat
-        local Seat = Instance.new('Seat', workspace)
-        Seat.Anchored = false
-        Seat.CanCollide = false
-        Seat.Name = 'Prism_InvisSeat'
-        Seat.Transparency = 1
-        Seat.Position = Vector3.new(-25.95, 84, 3537.55)
+        -- Clone character
+        local fakeChar = char:Clone()
+        fakeChar.Name = "Prism_FakeCharacter"
         
-        -- Weld seat to torso
-        local Weld = Instance.new("Weld", Seat)
-        Weld.Part0 = Seat
-        Weld.Part1 = torso
+        -- Disable scripts in fake character
+        for _, child in ipairs(fakeChar:GetDescendants()) do
+            if child:IsA("LocalScript") then
+                child:Destroy()
+            end
+        end
         
-        task.wait()
+        -- Parent fake character to workspace
+        fakeChar.Parent = workspace
         
-        -- Move seat back to original position
-        Seat.CFrame = PM.Invisibility.originalCFrame
+        -- Set fake character to current position
+        fakeChar.HumanoidRootPart.CFrame = root.CFrame
         
-        -- Make character transparent
-        makeTransparent(char, true)
+        -- Teleport real character underground
+        local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+        root.CFrame = undergroundPos
         
-        -- Store seat reference
-        PM.Invisibility.seat = Seat
+        -- Set camera to follow fake character
+        workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
         
-        -- Heartbeat loop to maintain transparency
+        -- Store fake character reference
+        PM.Invisibility.fakeCharacter = fakeChar
+        
+        -- Heartbeat loop to sync fake character with real character
         PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
             if not PM.Invisibility.active then return end
-            local c = LocalPlayer.Character
-            if c then makeTransparent(c, true) end
+            
+            local fake = PM.Invisibility.fakeCharacter
+            local real = LocalPlayer.Character
+            
+            if fake and real then
+                local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
+                local realRoot = real:FindFirstChild("HumanoidRootPart")
+                local fakeHum = fake:FindFirstChildOfClass("Humanoid")
+                
+                if fakeRoot and realRoot and fakeHum then
+                    -- Move fake character to match real character's position (offset up)
+                    fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+                    
+                    -- Sync camera to fake character
+                    workspace.CurrentCamera.CameraSubject = fakeHum
+                end
+            end
         end)
     end
 
     local function StopINV()
         if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect(); PM.Invisibility.connection = nil end
         
-        -- Remove seat
-        if PM.Invisibility.seat then
-            pcall(function() PM.Invisibility.seat:Destroy() end)
-            PM.Invisibility.seat = nil
-        end
+        -- Clear intentional void flag
+        PM._intentionalBelowVoid = false
         
-        -- Fallback: remove any existing invis seat
-        local existingSeat = workspace:FindFirstChild('Prism_InvisSeat')
-        if existingSeat then
-            pcall(function() existingSeat:Destroy() end)
-        end
+        -- Teleport real character to fake character's position
+        local fake = PM.Invisibility.fakeCharacter
+        local real = LocalPlayer.Character
         
-        -- Restore transparency
-        local char = LocalPlayer.Character
-        if char then
-            makeTransparent(char, false)
+        if fake and real then
+            local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
+            local realRoot = real:FindFirstChild("HumanoidRootPart")
             
-            -- Restore position if needed
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root and PM.Invisibility.originalCFrame then
-                root.CFrame = PM.Invisibility.originalCFrame
+            if fakeRoot and realRoot then
+                realRoot.CFrame = fakeRoot.CFrame
             end
         end
+        
+        -- Destroy fake character
+        if fake then
+            pcall(function() fake:Destroy() end)
+            PM.Invisibility.fakeCharacter = nil
+        end
+        
+        -- Reset camera to real character
+        local realHum = real and real:FindFirstChildOfClass("Humanoid")
+        if realHum then
+            workspace.CurrentCamera.CameraSubject = realHum
+        end
     end
-    
-    -- Expose makeTransparent for external use (respawn handler)
-    PM.Invisibility.makeTransparent = makeTransparent
 
     local function SetINV(val)
         if val == invOn then return end
@@ -8774,38 +8781,48 @@ registerCommand("invisibility", "Invisibility with keybind (void teleport)", {},
     end)
 end)
 
--- Auto-start invisibility if saved as enabled (after command registration so makeTransparent is available)
+-- Auto-start invisibility if saved as enabled
 if PM.Invisibility.active then
     local char = LP.Character
     if char then
         local root = char:FindFirstChild("HumanoidRootPart")
-        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-        if root and torso then
-            PM.Invisibility.originalCFrame = root.CFrame
-            root.CFrame = CFrame.new(-25.95, 84, 3537.55)
-            task.wait()
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if root and hum then
+            PM._intentionalBelowVoid = true
+            char.Archivable = true
+            local fakeChar = char:Clone()
+            fakeChar.Name = "Prism_FakeCharacter"
             
-            local Seat = Instance.new('Seat', workspace)
-            Seat.Anchored = false
-            Seat.CanCollide = false
-            Seat.Name = 'Prism_InvisSeat'
-            Seat.Transparency = 1
-            Seat.Position = Vector3.new(-25.95, 84, 3537.55)
+            for _, child in ipairs(fakeChar:GetDescendants()) do
+                if child:IsA("LocalScript") then
+                    child:Destroy()
+                end
+            end
             
-            local Weld = Instance.new("Weld", Seat)
-            Weld.Part0 = Seat
-            Weld.Part1 = torso
+            fakeChar.Parent = workspace
+            fakeChar.HumanoidRootPart.CFrame = root.CFrame
             
-            task.wait()
-            Seat.CFrame = PM.Invisibility.originalCFrame
+            local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+            root.CFrame = undergroundPos
             
-            PM.Invisibility.makeTransparent(char, true)
-            PM.Invisibility.seat = Seat
+            workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
+            PM.Invisibility.fakeCharacter = fakeChar
             
             local RunService = game:GetService("RunService")
             PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
-                local c = LP.Character
-                if c then PM.Invisibility.makeTransparent(c, true) end
+                local fake = PM.Invisibility.fakeCharacter
+                local real = LP.Character
+                
+                if fake and real then
+                    local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
+                    local realRoot = real:FindFirstChild("HumanoidRootPart")
+                    local fakeHum = fake:FindFirstChildOfClass("Humanoid")
+                    
+                    if fakeRoot and realRoot and fakeHum then
+                        fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+                        workspace.CurrentCamera.CameraSubject = fakeHum
+                    end
+                end
             end)
         end
     end
@@ -8814,44 +8831,53 @@ end
 -- Re-enable invisibility on respawn if saved as enabled
 if not PM.Invisibility.charAddedConn then
     PM.Invisibility.charAddedConn = LP.CharacterAdded:Connect(function(char)
-        -- Reset transparency on any character spawn to ensure clean state
-        task.wait(0.5)
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.LocalTransparencyModifier = 0
-            end
+        -- Clean up any existing fake character
+        local existingFake = workspace:FindFirstChild("Prism_FakeCharacter")
+        if existingFake then
+            pcall(function() existingFake:Destroy() end)
         end
         
         if PM.Invisibility.active then
+            PM._intentionalBelowVoid = true
+            task.wait(0.5)
             local root = char:FindFirstChild("HumanoidRootPart")
-            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-            if root and torso then
-                PM.Invisibility.originalCFrame = root.CFrame
-                root.CFrame = CFrame.new(-25.95, 84, 3537.55)
-                task.wait()
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if root and hum then
+                char.Archivable = true
+                local fakeChar = char:Clone()
+                fakeChar.Name = "Prism_FakeCharacter"
                 
-                local Seat = Instance.new('Seat', workspace)
-                Seat.Anchored = false
-                Seat.CanCollide = false
-                Seat.Name = 'Prism_InvisSeat'
-                Seat.Transparency = 1
-                Seat.Position = Vector3.new(-25.95, 84, 3537.55)
+                for _, child in ipairs(fakeChar:GetDescendants()) do
+                    if child:IsA("LocalScript") then
+                        child:Destroy()
+                    end
+                end
                 
-                local Weld = Instance.new("Weld", Seat)
-                Weld.Part0 = Seat
-                Weld.Part1 = torso
+                fakeChar.Parent = workspace
+                fakeChar.HumanoidRootPart.CFrame = root.CFrame
                 
-                task.wait()
-                Seat.CFrame = PM.Invisibility.originalCFrame
+                local undergroundPos = root.CFrame - Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+                root.CFrame = undergroundPos
                 
-                PM.Invisibility.makeTransparent(char, true)
-                PM.Invisibility.seat = Seat
+                workspace.CurrentCamera.CameraSubject = fakeChar.Humanoid
+                PM.Invisibility.fakeCharacter = fakeChar
                 
                 local RunService = game:GetService("RunService")
                 if PM.Invisibility.connection then PM.Invisibility.connection:Disconnect() end
                 PM.Invisibility.connection = RunService.Heartbeat:Connect(function()
-                    local c = LP.Character
-                    if c then PM.Invisibility.makeTransparent(c, true) end
+                    local fake = PM.Invisibility.fakeCharacter
+                    local real = LP.Character
+                    
+                    if fake and real then
+                        local fakeRoot = fake:FindFirstChild("HumanoidRootPart")
+                        local realRoot = real:FindFirstChild("HumanoidRootPart")
+                        local fakeHum = fake:FindFirstChildOfClass("Humanoid")
+                        
+                        if fakeRoot and realRoot and fakeHum then
+                            fakeRoot.CFrame = realRoot.CFrame + Vector3.new(0, PM.Invisibility.undergroundOffset, 0)
+                            workspace.CurrentCamera.CameraSubject = fakeHum
+                        end
+                    end
                 end)
             end
         end
