@@ -10,6 +10,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
+    fix invis
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -1729,9 +1730,39 @@ PM.Invis = {
     savedSubject = nil,
     platform = nil,
     holdConn = nil,
+    key = nil,
+    keyConnection = nil,
+    charAddedConn = nil,
     EndInvis = nil,
     BeginInvis = nil
 }
+
+-- Load saved invisibility key and state
+local INVIS_SAVE_FILE = "prism/prism_invis_settings.json"
+local savedInvisSettings = {}
+pcall(function()
+    if readfile and isfile(INVIS_SAVE_FILE) then
+        savedInvisSettings = game:GetService("HttpService"):JSONDecode(readfile(INVIS_SAVE_FILE))
+    end
+end)
+if savedInvisSettings.key then
+    pcall(function()
+        PM.Invis.key = Enum.KeyCode[savedInvisSettings.key]
+    end)
+end
+PM.Invis.active = savedInvisSettings.enabled or false
+
+local function SaveInvisSettings()
+    pcall(function()
+        if writefile then
+            if makefolder and not isfolder("prism") then makefolder("prism") end
+            writefile(INVIS_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
+                key = PM.Invis.key and PM.Invis.key.Name or nil,
+                enabled = PM.Invis.active
+            }))
+        end
+    end)
+end
 
 registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, function(args)
     local Players = game:GetService("Players")
@@ -1939,32 +1970,197 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         ContentFrame.Visible = false
     end
 
-    -- Toggle button
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(1, 0, 0, 36)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    ToggleBtn.BackgroundTransparency = 0.4
-    ToggleBtn.BorderSizePixel = 0
-    ToggleBtn.Text = "Toggle Invisibility"
-    ToggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    ToggleBtn.TextSize = 12
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.Parent = ContentFrame
+    -- Invisibility logic
+    local invOn = PM.Invis.active or false
+    local invKey = PM.Invis.key
+    local invCapturing = false
+    local invCaptureConn = nil
+    local invKeyConn = nil
 
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 10)
-    ToggleCorner.Parent = ToggleBtn
+    -- Action Buttons
+    local BtnSection = Instance.new("Frame")
+    BtnSection.Name = "BtnSection"
+    BtnSection.Size = UDim2.new(1, 0, 0, 36)
+    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BtnSection.BackgroundTransparency = 0.4
+    BtnSection.BorderSizePixel = 0
+    BtnSection.Parent = ContentFrame
 
-    ToggleBtn.MouseButton1Click:Connect(function()
-        if PM.Invis.active then
-            if PM.Invis.EndInvis then PM.Invis.EndInvis() end
-        else
-            if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
-        end
+    local BtnSectionCorner = Instance.new("UICorner")
+    BtnSectionCorner.CornerRadius = UDim.new(0, 10)
+    BtnSectionCorner.Parent = BtnSection
+
+    local InvBtn = Instance.new("TextButton")
+    InvBtn.Name = "InvBtn"
+    InvBtn.Size = UDim2.new(0, 130, 0, 24)
+    InvBtn.Position = UDim2.new(0, 6, 0.5, -12)
+    InvBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    InvBtn.BackgroundTransparency = 0.4
+    InvBtn.BorderSizePixel = 0
+    InvBtn.Text = "Invisibility"
+    InvBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    InvBtn.TextSize = 11
+    InvBtn.Font = Enum.Font.GothamBold
+    InvBtn.Parent = BtnSection
+
+    local InvBtnCorner = Instance.new("UICorner")
+    InvBtnCorner.CornerRadius = UDim.new(0, 6)
+    InvBtnCorner.Parent = InvBtn
+
+    local BindBtn = Instance.new("TextButton")
+    BindBtn.Name = "BindBtn"
+    BindBtn.Size = UDim2.new(0, 52, 0, 24)
+    BindBtn.Position = UDim2.new(1, -58, 0.5, -12)
+    BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    BindBtn.BackgroundTransparency = 0.4
+    BindBtn.BorderSizePixel = 0
+    BindBtn.Text = "Bind"
+    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    BindBtn.TextSize = 11
+    BindBtn.Font = Enum.Font.GothamBold
+    BindBtn.Parent = BtnSection
+
+    local BindBtnCorner = Instance.new("UICorner")
+    BindBtnCorner.CornerRadius = UDim.new(0, 6)
+    BindBtnCorner.Parent = BindBtn
+
+    -- Set initial button text based on saved state
+    if invOn then
+        InvBtn.Text = "Stop"
+    else
+        InvBtn.Text = "Invisibility"
+    end
+
+    -- Hover effects
+    InvBtn.MouseEnter:Connect(function()
+        TweenService:Create(InvBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    InvBtn.MouseLeave:Connect(function()
+        TweenService:Create(InvBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
     end)
 
-    -- Invisibility logic
+    BindBtn.MouseEnter:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    BindBtn.MouseLeave:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
 
+    -- Load saved key
+    local function UpdateBindDisplay()
+        if invKey then
+            BindBtn.Text = invKey.Name
+        else
+            BindBtn.Text = "Bind"
+        end
+    end
+    UpdateBindDisplay()
+
+    local function SaveInvisKey()
+        PM.Invis.key = invKey
+        SaveInvisSettings()
+    end
+
+    local function CancelCapture()
+        invCapturing = false
+        invKey = nil
+        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
+        UpdateBindDisplay()
+        SaveInvisKey()
+        EnableGlobalInvis()
+    end
+
+    BindBtn.MouseButton1Click:Connect(function()
+        invCapturing = true
+        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
+        BindBtn.Text = "..."
+        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+        if invCaptureConn then invCaptureConn:Disconnect() end
+        invCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if not invCapturing then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                if input.KeyCode == Enum.KeyCode.Backspace then
+                    invKey = nil
+                    invCapturing = false
+                    invCaptureConn:Disconnect(); invCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveInvisKey()
+                    EnableGlobalInvis()
+                else
+                    invKey = input.KeyCode
+                    invCapturing = false
+                    invCaptureConn:Disconnect(); invCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveInvisKey()
+                    EnableGlobalInvis()
+                end
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
+                   input.UserInputType == Enum.UserInputType.MouseButton2 or
+                   input.UserInputType == Enum.UserInputType.MouseButton3 then
+                CancelCapture()
+                BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                EnableGlobalInvis()
+            end
+        end)
+    end)
+
+    -- Invisibility functions
+    local function StartInvis()
+        if PM.Invis.active then return end
+        BeginInvis()
+    end
+
+    local function StopInvis()
+        if not PM.Invis.active then return end
+        EndInvis()
+    end
+
+    local function SetInvis(val)
+        if val == invOn then return end
+        invOn = val
+        if val then
+            InvBtn.Text = "Stop"
+            StartInvis()
+        else
+            InvBtn.Text = "Invisibility"
+            StopInvis()
+        end
+        PM.Invis.active = invOn
+        SaveInvisSettings()
+    end
+
+    InvBtn.MouseButton1Click:Connect(function()
+        SetInvis(not invOn)
+    end)
+
+    local function EnableGlobalInvis()
+        if PM.Invis.keyConnection then return end
+        PM.Invis.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or invCapturing then return end
+            if UserInputService:GetFocusedTextBox() then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard and invKey and input.KeyCode == invKey then
+                SetInvis(not invOn)
+            end
+        end)
+    end
+
+    EnableGlobalInvis()
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        invCapturing = false
+        StopInvis()
+        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
+        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
+        PM.Invis.active = false
+        SaveInvisSettings()
+        ScreenGui:Destroy()
+    end)
+
+    -- Invisibility implementation
     local function EndInvis()
         if not PM.Invis.active then return end
         PM.Invis.active = false
@@ -1981,13 +2177,8 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
                 if hrp then
                     local fakeChar = PM.Invis.fakeModel
                     local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
-                    if fakeHRP and fakeHRP.Parent then
+                    if fakeHRP then
                         hrp.CFrame = fakeHRP.CFrame
-                        -- Update respawn last location to where the fake character was
-                        if fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
-                            _respawnLastCFrame = fakeHRP.CFrame
-                            PM.Respawn.lastCFrame = fakeHRP.CFrame
-                        end
                     elseif PM.Invis.savedCF then
                         hrp.CFrame = PM.Invis.savedCF
                     end
@@ -2127,53 +2318,37 @@ registerCommand("invisibility", "Toggle invisibility (ghost clone)", {}, functio
         local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
         if fakeHum then
             fakeHum.Died:Connect(function()
-                if PM.Invis.active then
-                    -- Save the fake character's last position for respawn
-                    if fakeHRP and fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
-                        _respawnLastCFrame = fakeHRP.CFrame
-                        PM.Respawn.lastCFrame = fakeHRP.CFrame
-                    end
-                    EndInvis()
-                end
+                if PM.Invis.active then EndInvis() end
             end)
         end
     end
 
     PM.Invis.BeginInvis = BeginInvis
-
-    -- Set initial button text
-    if PM.Invis.active then
-        ToggleBtn.Text = "Disable Invisibility"
-    else
-        ToggleBtn.Text = "Enable Invisibility"
-    end
-
-    -- Update button text on toggle
-    local function UpdateButton()
-        if PM.Invis.active then
-            ToggleBtn.Text = "Disable Invisibility"
-        else
-            ToggleBtn.Text = "Enable Invisibility"
-        end
-    end
-
-    -- Hook into EndInvis and BeginInvis to update button
-    local originalEndInvis = EndInvis
-    PM.Invis.EndInvis = function()
-        originalEndInvis()
-        if ToggleBtn and ToggleBtn.Parent then
-            UpdateButton()
-        end
-    end
-
-    local originalBeginInvis = BeginInvis
-    PM.Invis.BeginInvis = function()
-        originalBeginInvis()
-        if ToggleBtn and ToggleBtn.Parent then
-            UpdateButton()
-        end
-    end
 end)
+
+-- Auto-start invisibility if saved as enabled
+if PM.Invis.active then
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        task.defer(function()
+            if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
+        end)
+    end
+end
+
+-- Re-enable invisibility on respawn if saved as enabled
+if not PM.Invis.charAddedConn then
+    PM.Invis.charAddedConn = LP.CharacterAdded:Connect(function(char)
+        if PM.Invis.active then
+            task.wait(0.5)
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                if PM.Invis.BeginInvis then PM.Invis.BeginInvis() end
+            end
+        end
+    end)
+end
 
 registerCommand("to", "Teleport to player", {}, function(args)
     local targetName = table.concat(args, " ")
@@ -10185,15 +10360,7 @@ local function OnCharacterAdded(char)
 
     if respawnDiedConn then respawnDiedConn:Disconnect(); respawnDiedConn = nil end
     respawnDiedConn = hum.Died:Connect(function()
-        -- If invisibility is active, save the fake character's position instead
-        if PM.Invis and PM.Invis.active and PM.Invis.fakeModel then
-            local fakeHRP = PM.Invis.fakeModel:FindFirstChild("HumanoidRootPart")
-            if fakeHRP and fakeHRP.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
-                _respawnLastCFrame = fakeHRP.CFrame
-            else
-                _respawnLastCFrame = nil
-            end
-        elseif root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
+        if root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
             _respawnLastCFrame = root.CFrame
         else
             _respawnLastCFrame = nil
