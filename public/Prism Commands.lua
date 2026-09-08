@@ -1,7 +1,9 @@
 --[[ missing
 
     rewind
+    anti fling
     invisibility
+    remove loop ws and fly etc
     headsit player
     backpack player
     face bang player
@@ -2752,18 +2754,6 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
     ContentPadding.PaddingRight = UDim.new(0, 8)
     ContentPadding.Parent = ContentFrame
 
-    -- Jump Power loop
-    local jpLoopConn = nil
-    local function startJPLoop(value)
-        if jpLoopConn then jpLoopConn:Disconnect(); jpLoopConn = nil end
-        if value <= 0 then return end
-        jpLoopConn = RunService.Heartbeat:Connect(function()
-            local c = LP.Character
-            local h = c and c:FindFirstChildOfClass("Humanoid")
-            if h then h.UseJumpPower = true; if h.JumpPower ~= value then h.JumpPower = value end end
-        end)
-    end
-
     -- Jump Power slider
     local Section = Instance.new("Frame")
     Section.Name = "Section"
@@ -2877,7 +2867,6 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
         local c = LP.Character
         local h = c and c:FindFirstChildOfClass("Humanoid")
         if h then h.UseJumpPower = true; h.JumpPower = currentJP end
-        startJPLoop(currentJP)
         PM.Jump.jumpPower = currentJP
         SaveJumpState()
     end
@@ -2913,8 +2902,6 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
             lastClickJP = now
         end
     end)
-
-    startJPLoop(currentJP)
 
     -- Infinite Jump toggle
     local ijOn = PM.Jump.infinite or false
@@ -3003,7 +2990,6 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
         local c = LP.Character
         local h = c and c:FindFirstChildOfClass("Humanoid")
         if h then h.UseJumpPower = true; h.JumpPower = currentJP end
-        startJPLoop(currentJP)
         if ijOn then
             if ijConn then ijConn:Disconnect() end
             ijConn = UserInputService.JumpRequest:Connect(function()
@@ -3015,7 +3001,6 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
     end)
 
     ScreenGui.Destroying:Connect(function()
-        if jpLoopConn then jpLoopConn:Disconnect(); jpLoopConn = nil end
         if ijConn then ijConn:Disconnect(); ijConn = nil end
         local c = LP.Character
         local h = c and c:FindFirstChildOfClass("Humanoid")
@@ -7095,17 +7080,6 @@ registerCommand("gravity", "Control gravity", {}, function(args)
             end
         end)
 
-        -- Gravity loop (fights scripts overwriting)
-        local gravLoopConn = nil
-        local function startGravityLoop(value)
-            if gravLoopConn then gravLoopConn:Disconnect(); gravLoopConn = nil end
-            gravLoopConn = RunService.Heartbeat:Connect(function()
-                if workspace.Gravity ~= value then
-                    workspace.Gravity = value
-                end
-            end)
-        end
-
         local ListLayout = Instance.new("UIListLayout")
         ListLayout.Padding = UDim.new(0, 6)
         ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -7229,7 +7203,6 @@ registerCommand("gravity", "Control gravity", {}, function(args)
             SliderKnob.Position = UDim2.new(scale, 0, 0.5, 0)
             ValLbl.Text = tostring(currentGravity)
             workspace.Gravity = currentGravity
-            startGravityLoop(currentGravity)
             currentGravSettings.value = currentGravity
             SaveGravGUISettings()
         end
@@ -7269,10 +7242,7 @@ registerCommand("gravity", "Control gravity", {}, function(args)
             end
         end)
 
-        startGravityLoop(currentGravity)
-
         CloseBtn.MouseButton1Click:Connect(function()
-            if gravLoopConn then gravLoopConn:Disconnect(); gravLoopConn = nil end
             workspace.Gravity = defaultGravity
             ScreenGui:Destroy()
         end)
@@ -8637,17 +8607,6 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
         local gameDefaultWalkSpeed = getDefaultWalkSpeed()
 
         -- WalkSpeed Slider (0-500)
-        local wsLoopConn = nil
-        local function startWSLoop(value)
-            if wsLoopConn then wsLoopConn:Disconnect(); wsLoopConn = nil end
-            if value <= 0 then return end
-            wsLoopConn = RunService.Heartbeat:Connect(function()
-                local c = LocalPlayer.Character
-                local h = c and c:FindFirstChildOfClass("Humanoid")
-                if h and h.WalkSpeed ~= value then h.WalkSpeed = value end
-            end)
-        end
-
         local defaultWalkSpeed = PM.Speed.walkSpeed or gameDefaultWalkSpeed
         local walkSpeedSlider = CreateSliderSection("Walkspeed", defaultWalkSpeed, 0, 500, 1, function(value)
             local char = LocalPlayer.Character
@@ -8655,11 +8614,9 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                 if humanoid then humanoid.WalkSpeed = value end
             end
-            startWSLoop(value)
             PM.Speed.walkSpeed = math.floor(value + 0.5)
             SaveSpeedState()
         end, gameDefaultWalkSpeed)
-        startWSLoop(defaultWalkSpeed)
 
         -- CFrame Speed Slider (0-100)
         local cframeSpeed = PM.Speed.cframeSpeed or 0
@@ -8703,7 +8660,6 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                 if humanoid then humanoid.WalkSpeed = walkSpeedSlider.GetValue() end
             end
-            startWSLoop(walkSpeedSlider.GetValue())
             StartCFrameMovement()
         end)
 
@@ -8714,7 +8670,6 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
 
         -- Cleanup on destroy
         ScreenGui.Destroying:Connect(function()
-            if wsLoopConn then wsLoopConn:Disconnect(); wsLoopConn = nil end
             if cframeConnection then cframeConnection:Disconnect(); cframeConnection = nil end
             -- Reset walkspeed to game default
             local char = LocalPlayer.Character
