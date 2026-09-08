@@ -8765,11 +8765,12 @@ registerCommand("invisibility", "Invisibility with keybind (fake clone method)",
             end)
         end
         
-        -- Make all visible parts fully invisible
+        -- Make all visible parts semi-transparent (0.6) so the fake looks ghost-like.
+        -- HumanoidRootPart stays fully invisible (it's never shown anyway).
         for _, obj in ipairs(fakeChar:GetDescendants()) do
             pcall(function()
                 if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
-                    obj.Transparency = 1
+                    obj.Transparency = math.max(obj.Transparency, 0.6)
                 end
             end)
         end
@@ -8923,7 +8924,7 @@ if not PM.Invisibility.charAddedConn then
             for _, obj in ipairs(fakeChar:GetDescendants()) do
                 pcall(function()
                     if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
-                        obj.Transparency = 1
+                        obj.Transparency = math.max(obj.Transparency, 0.6)
                     end
                 end)
             end
