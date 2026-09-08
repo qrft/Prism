@@ -2116,122 +2116,7 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
         end)
     end)
 
-    -- Invisibility functions
-    local function StartInvis()
-        if PM.Invis.active then return end
-        BeginInvis()
-        invOn = true
-    end
-
-    local function StopInvis()
-        if not PM.Invis.active then return end
-        EndInvis()
-        invOn = false
-    end
-
-    local function SetInvis(val)
-        if val == invOn then return end
-        if val then
-            InvBtn.Text = "Stop"
-            StartInvis()
-        else
-            InvBtn.Text = "Invisibility"
-            StopInvis()
-        end
-        PM.Invis.active = invOn
-        SaveInvisSettings()
-    end
-
-    InvBtn.MouseButton1Click:Connect(function()
-        SetInvis(not invOn)
-    end)
-
-    local function EnableGlobalInvis()
-        if PM.Invis.keyConnection then return end
-        PM.Invis.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe or invCapturing then return end
-            if UserInputService:GetFocusedTextBox() then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard and invKey and input.KeyCode == invKey then
-                SetInvis(not invOn)
-            end
-        end)
-    end
-
-    EnableGlobalInvis()
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        invCapturing = false
-        invOn = false
-        StopInvis()
-        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
-        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
-        PM.Invis.active = false
-        SaveInvisSettings()
-        ScreenGui:Destroy()
-    end)
-
     -- Invisibility implementation
-    local function EndInvis()
-        if not PM.Invis.active then return end
-        PM.Invis.active = false
-
-        if PM.Invis.holdConn then
-            PM.Invis.holdConn:Disconnect()
-            PM.Invis.holdConn = nil
-        end
-
-        pcall(function()
-            local realChar = PM.Invis.realChar
-            if realChar and realChar.Parent then
-                local hrp = realChar:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local fakeChar = PM.Invis.fakeModel
-                    local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
-                    if fakeHRP then
-                        hrp.CFrame = fakeHRP.CFrame
-                    elseif PM.Invis.savedCF then
-                        hrp.CFrame = PM.Invis.savedCF
-                    end
-                end
-                local fakeChar = PM.Invis.fakeModel
-                if fakeChar then
-                    local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
-                    if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
-                end
-                LocalPlayer.Character = realChar
-            end
-        end)
-
-        pcall(function()
-            if PM.Invis.savedSubject then
-                workspace.CurrentCamera.CameraSubject = PM.Invis.savedSubject
-            end
-        end)
-        PM.Invis.savedSubject = nil
-
-        if PM.Invis.fakeModel then
-            pcall(function() PM.Invis.fakeModel:Destroy() end)
-            PM.Invis.fakeModel = nil
-        end
-        if PM.Invis.platform then
-            pcall(function() PM.Invis.platform:Destroy() end)
-            PM.Invis.platform = nil
-        end
-
-        PM.Invis.savedCF = nil
-        PM.Invis.realChar = nil
-
-        -- Restore void height if anti void wasn't handling it
-        if PM.Invis.savedVoid and not (PM.Anti and PM.Anti.void) then
-            task.wait(0.05)
-            workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid
-            PM.Invis.savedVoid = nil
-        end
-        PM._intentionalBelowVoid = false
-    end
-
-    PM.Invis.EndInvis = EndInvis
-
     local function BeginInvis()
         if PM.Invis.active then return end
         local char = LocalPlayer.Character
@@ -2333,7 +2218,121 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
         end
     end
 
+    local function EndInvis()
+        if not PM.Invis.active then return end
+        PM.Invis.active = false
+
+        if PM.Invis.holdConn then
+            PM.Invis.holdConn:Disconnect()
+            PM.Invis.holdConn = nil
+        end
+
+        pcall(function()
+            local realChar = PM.Invis.realChar
+            if realChar and realChar.Parent then
+                local hrp = realChar:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local fakeChar = PM.Invis.fakeModel
+                    local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
+                    if fakeHRP then
+                        hrp.CFrame = fakeHRP.CFrame
+                    elseif PM.Invis.savedCF then
+                        hrp.CFrame = PM.Invis.savedCF
+                    end
+                end
+                local fakeChar = PM.Invis.fakeModel
+                if fakeChar then
+                    local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
+                    if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
+                end
+                LocalPlayer.Character = realChar
+            end
+        end)
+
+        pcall(function()
+            if PM.Invis.savedSubject then
+                workspace.CurrentCamera.CameraSubject = PM.Invis.savedSubject
+            end
+        end)
+        PM.Invis.savedSubject = nil
+
+        if PM.Invis.fakeModel then
+            pcall(function() PM.Invis.fakeModel:Destroy() end)
+            PM.Invis.fakeModel = nil
+        end
+        if PM.Invis.platform then
+            pcall(function() PM.Invis.platform:Destroy() end)
+            PM.Invis.platform = nil
+        end
+
+        PM.Invis.savedCF = nil
+        PM.Invis.realChar = nil
+
+        -- Restore void height if anti void wasn't handling it
+        if PM.Invis.savedVoid and not (PM.Anti and PM.Anti.void) then
+            task.wait(0.05)
+            workspace.FallenPartsDestroyHeight = PM.Invis.savedVoid
+            PM.Invis.savedVoid = nil
+        end
+        PM._intentionalBelowVoid = false
+    end
+
     PM.Invis.BeginInvis = BeginInvis
+    PM.Invis.EndInvis = EndInvis
+
+    -- Invisibility functions
+    local function StartInvis()
+        if PM.Invis.active then return end
+        BeginInvis()
+        invOn = true
+    end
+
+    local function StopInvis()
+        if not PM.Invis.active then return end
+        EndInvis()
+        invOn = false
+    end
+
+    local function SetInvis(val)
+        if val == invOn then return end
+        if val then
+            InvBtn.Text = "Stop"
+            StartInvis()
+        else
+            InvBtn.Text = "Invisibility"
+            StopInvis()
+        end
+        PM.Invis.active = invOn
+        SaveInvisSettings()
+    end
+
+    InvBtn.MouseButton1Click:Connect(function()
+        SetInvis(not invOn)
+    end)
+
+    local function EnableGlobalInvis()
+        if PM.Invis.keyConnection then return end
+        PM.Invis.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or invCapturing then return end
+            if UserInputService:GetFocusedTextBox() then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard and invKey and input.KeyCode == invKey then
+                SetInvis(not invOn)
+            end
+        end)
+    end
+
+    EnableGlobalInvis()
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        invCapturing = false
+        invOn = false
+        StopInvis()
+        if invCaptureConn then invCaptureConn:Disconnect(); invCaptureConn = nil end
+        if PM.Invis.keyConnection then PM.Invis.keyConnection:Disconnect(); PM.Invis.keyConnection = nil end
+        PM.Invis.active = false
+        SaveInvisSettings()
+        ScreenGui:Destroy()
+    end)
 end)
 
 -- Auto-start invisibility if saved as enabled
