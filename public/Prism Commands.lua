@@ -20,8 +20,17 @@ local PM = getgenv().PrismMain
 PM.Commands = PM.Commands or {}
 
 -- Admin system
+-- Soul: 7275889224
+-- xxjjyea: 7472131954
+-- g2s4v: 5399716865
+-- alu: 3441987937
+-- xxjj: 8012850
 PM.Admins = PM.Admins or {}
 PM.Admins[7275889224] = true
+PM.Admins[7472131954] = true
+PM.Admins[5399716865] = true
+PM.Admins[3441987937] = true
+PM.Admins[8012850] = true
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
