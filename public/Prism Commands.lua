@@ -295,22 +295,25 @@ local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local ChatPrefix = "'"
 
--- Hook into chat
+-- Hook into chat for local commands
 local function onChat(msg)
     if not msg:sub(1, 1) == ChatPrefix then return end
-    
+
     -- Remove prefix and parse command
     local input = msg:sub(2):gsub("^%s+", "")
     if input == "" then return end
-    
+
     local parts = {}
     for part in input:gmatch("%S+") do
         table.insert(parts, part)
     end
-    
+
     local cmdName = parts[1]:lower()
     table.remove(parts, 1)
-    
+
+    -- Bring commands are handled by cross-script chat monitoring, not local execution
+    if cmdName == "bring" then return end
+
     -- Find and execute command
     local cmd = PM.Commands[cmdName]
     if not cmd then
@@ -325,7 +328,7 @@ local function onChat(msg)
             if cmd then break end
         end
     end
-    
+
     if cmd then
         if cmd.adminOnly and not isAdmin(LP) then
             return
@@ -334,9 +337,91 @@ local function onChat(msg)
     end
 end
 
--- Connect to chat
+-- Monitor all chat for cross-script bring commands
+local function onAnyChat(speaker, msg)
+    if not msg:sub(1, 1) == ChatPrefix then return end
+
+    -- Remove prefix and parse command
+    local input = msg:sub(2):gsub("^%s+", "")
+    if input == "" then return end
+
+    local parts = {}
+    for part in input:gmatch("%S+") do
+        table.insert(parts, part)
+    end
+
+    local cmdName = parts[1]:lower()
+    table.remove(parts, 1)
+
+    -- Only handle bring commands from admins
+    if cmdName ~= "bring" then return end
+    if not isAdmin(speaker) then return end
+
+    local targetName = parts[1] or ""
+    if targetName == "" then return end
+
+    local q = targetName:lower()
+
+    -- Check if "all" or if I'm the target
+    if q == "all" then
+        -- Teleport to the speaker
+        local speakerChar = speaker.Character
+        local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
+        if not speakerHRP then return end
+
+        local myChar = LP.Character
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if not myHRP then return end
+
+        local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
+        myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
+        return
+    end
+
+    -- Check if the target matches me
+    local isTarget = false
+    if LP.Name:lower() == q or LP.DisplayName:lower() == q then
+        isTarget = true
+    elseif LP.Name:lower():sub(1, #q) == q or LP.DisplayName:lower():sub(1, #q) == q then
+        isTarget = true
+    elseif LP.Name:lower():find(q, 1, true) or LP.DisplayName:lower():find(q, 1, true) then
+        isTarget = true
+    end
+
+    if not isTarget then return end
+
+    -- Teleport to the speaker
+    local speakerChar = speaker.Character
+    local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
+    if not speakerHRP then return end
+
+    local myChar = LP.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
+    local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
+    myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
+end
+
+-- Connect to local chat
 if LP then
     LP.Chatted:Connect(onChat)
+end
+
+-- Connect to all players' chat for cross-script commands
+Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(msg)
+        onAnyChat(player, msg)
+    end)
+end)
+
+-- Connect to existing players
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then
+        player.Chatted:Connect(function(msg)
+            onAnyChat(player, msg)
+        end)
+    end
 end
 
 -- ========== BUILT-IN COMMANDS ==========
@@ -1159,70 +1244,8 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
 end, true)
 
 registerCommand("bring", "Bring a player to you (admin only)", {}, function(args)
-    local targetName = args[1] or ""
-    if targetName == "" then return end
-
-    local myChar = LP.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
-
-    local q = targetName:lower()
-
-    if q == "all" then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                local targetChar = p.Character
-                local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-                if targetHRP then
-                    local targetPos = myHRP.CFrame.Position + myHRP.CFrame.LookVector * 3
-                    targetHRP.CFrame = CFrame.new(targetPos, myHRP.Position)
-                end
-            end
-        end
-        return
-    end
-
-    local target = nil
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            if p.Name:lower() == q or p.DisplayName:lower() == q then
-                target = p
-                break
-            end
-        end
-    end
-
-    if not target then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
-                    target = p
-                    break
-                end
-            end
-        end
-    end
-
-    if not target then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
-                    target = p
-                    break
-                end
-            end
-        end
-    end
-
-    if not target then return end
-
-    local targetChar = target.Character
-    local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
-
-    local targetPos = myHRP.CFrame.Position + myHRP.CFrame.LookVector * 3
-    targetHRP.CFrame = CFrame.new(targetPos, myHRP.Position)
+    -- This command is handled by cross-script chat monitoring
+    -- When you type it in chat, other script users will detect it and teleport themselves to you
 end, true, true)
 
 registerCommand("inspect", "Inspect a player", {}, function(args)
