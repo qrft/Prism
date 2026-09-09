@@ -1153,7 +1153,26 @@ registerCommand("bring", "Bring a player to you (admin only)", {}, function(args
     local targetName = args[1] or ""
     if targetName == "" then return end
 
+    local myChar = LP.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
     local q = targetName:lower()
+
+    if q == "all" then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                local targetChar = p.Character
+                local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+                if targetHRP then
+                    local targetPos = myHRP.CFrame.Position + myHRP.CFrame.LookVector * 3
+                    targetHRP.CFrame = CFrame.new(targetPos, myHRP.Position)
+                end
+            end
+        end
+        return
+    end
+
     local target = nil
 
     for _, p in ipairs(Players:GetPlayers()) do
@@ -1188,10 +1207,6 @@ registerCommand("bring", "Bring a player to you (admin only)", {}, function(args
     end
 
     if not target then return end
-
-    local myChar = LP.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
 
     local targetChar = target.Character
     local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
