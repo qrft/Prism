@@ -1243,7 +1243,7 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
     end
 end, true)
 
-registerCommand("bring", "Bring a player to you (admin only)", {}, function(args)
+registerCommand("bring", "Bring a player to you", {}, function(args)
     -- This command is handled by cross-script chat monitoring
     -- When you type it in chat, other script users will detect it and teleport themselves to you
 end, true, true)
