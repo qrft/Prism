@@ -1,5 +1,6 @@
 --[[ missing
 
+    fix invis with respawn to last location
     rewind
     headsit player
     backpack player
@@ -10,7 +11,6 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
-    fix invis
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -19,13 +19,22 @@ local PM = getgenv().PrismMain
 
 PM.Commands = PM.Commands or {}
 
-local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec)
+-- Admin system
+PM.Admins = PM.Admins or {}
+PM.Admins[7275889224] = true
+
+local function isAdmin(plr)
+    return PM.Admins[plr.UserId] == true
+end
+
+local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec, adminOnly)
     PM.Commands[name:lower()] = {
         name = name,
         desc = desc,
         aliases = aliases or {},
         execute = execute,
         excludeFromAutoExec = excludeFromAutoExec or false,
+        adminOnly = adminOnly or false,
     }
 end
 
@@ -309,6 +318,9 @@ local function onChat(msg)
     end
     
     if cmd then
+        if cmd.adminOnly and not isAdmin(LP) then
+            return
+        end
         pcall(function() cmd.execute(parts) end)
     end
 end
@@ -1120,7 +1132,7 @@ end, true)
 registerCommand("unview", "Stop viewing a player", {}, function(args)
     PM.View.viewing = false
     PM.View.target = nil
-    
+
     if PM.View.connection then
         PM.View.connection:Disconnect()
         PM.View.connection = nil
@@ -1129,13 +1141,65 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
         PM.View.leavingConnection:Disconnect()
         PM.View.leavingConnection = nil
     end
-    
+
     local camera = workspace.CurrentCamera
     local char = LP.Character
     if char and char:FindFirstChild("Humanoid") then
         camera.CameraSubject = char.Humanoid
     end
 end, true)
+
+registerCommand("bring", "Bring a player to you (admin only)", {}, function(args)
+    local targetName = args[1] or ""
+    if targetName == "" then return end
+
+    local q = targetName:lower()
+    local target = nil
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            if p.Name:lower() == q or p.DisplayName:lower() == q then
+                target = p
+                break
+            end
+        end
+    end
+
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+
+    if not target then return end
+
+    local myChar = LP.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
+    local targetChar = target.Character
+    local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+
+    local targetPos = myHRP.CFrame.Position + myHRP.CFrame.LookVector * 3
+    targetHRP.CFrame = CFrame.new(targetPos, myHRP.Position)
+end, true, true)
 
 registerCommand("inspect", "Inspect a player", {}, function(args)
     local targetName = args[1] or ""
