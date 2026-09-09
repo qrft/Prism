@@ -1304,6 +1304,13 @@ PM.createMainGUI = function()
             
             -- Find first matching command
             for cmdName, cmd in pairs(PM.Commands or {}) do
+                -- Skip admin-only commands for non-admins
+                if cmd.adminOnly then
+                    local LP = game:GetService("Players").LocalPlayer
+                    local isAdmin = PM.Admins and PM.Admins[LP.UserId]
+                    if not isAdmin then continue end
+                end
+
                 if cmdName:sub(1, #input) == input then
                     PM.UI.TerminalAutofill.Text = cmd.name
                     return

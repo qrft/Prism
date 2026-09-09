@@ -11578,6 +11578,8 @@ PM.populateCommandsPanel = function()
     table.sort(sorted, function(a, b) return a.name:lower() < b.name:lower() end)
 
     for _, cmd in ipairs(sorted) do
+        if cmd.adminOnly and not isAdmin(LP) then continue end
+
         local btn = PM.mk("TextButton", PM.UI.CommandsScroll, {
             Name = cmd.name,
             Size = UDim2.new(1, -6, 0, 36),
@@ -11727,7 +11729,9 @@ PM.populateAutoExecPanel = function()
     for i, cmd in ipairs(sorted) do
         -- Skip commands that should not be auto-executed
         if cmd.excludeFromAutoExec then continue end
-        
+        -- Skip admin-only commands for non-admins
+        if cmd.adminOnly and not isAdmin(LP) then continue end
+
         local isEnabled = PM.autoExecStates[cmd.name] or false
         local row, switch, circle, hitBtn = makeToggleRow(
             PM.UI.AutoExecScroll,
@@ -11786,6 +11790,10 @@ PM.executeCommand = function(input)
     end
 
     if cmd then
+        if cmd.adminOnly and not isAdmin(LP) then
+            PM.printTerminal("Access denied: Admin only command")
+            return
+        end
         pcall(function()
             cmd.execute(parts)
         end)
@@ -11824,6 +11832,9 @@ PM.saveAutoExecStates = function()
     local states = {}
     for name, cmd in pairs(PM.Commands) do
         if not cmd.excludeFromAutoExec then
+            -- Skip admin-only commands for non-admins
+            if cmd.adminOnly and not isAdmin(LP) then continue end
+
             states[name] = PM.autoExecStates[name] or false
         end
     end
@@ -11859,6 +11870,9 @@ PM.executeAutoExecCommands = function()
     for name, cmd in pairs(PM.Commands) do
         -- Skip excluded commands
         if not cmd.excludeFromAutoExec then
+            -- Skip admin-only commands for non-admins
+            if cmd.adminOnly and not isAdmin(LP) then continue end
+
             local isEnabled = PM.autoExecStates[name] or false
             if isEnabled then
                 pcall(function()
