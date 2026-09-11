@@ -1080,7 +1080,7 @@ registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(arg
         VoiceChatService:rejoinVoice()
     end)
 
-    task.wait(0.01)
+    task.wait(0.015)
 
     pcall(function()
         for _, connection in pairs(getconnections(VoiceChatInternal.StateChanged)) do
