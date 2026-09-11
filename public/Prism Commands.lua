@@ -5139,7 +5139,7 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
 
         local MainFrame = Instance.new("Frame")
         MainFrame.Name = "MainFrame"
-        MainFrame.Size = UDim2.new(0, 260, 0, 360)
+        MainFrame.Size = UDim2.new(0, 280, 0, 360)
         MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
         MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
         MainFrame.BackgroundTransparency = 0.3
