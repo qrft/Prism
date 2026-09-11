@@ -1,7 +1,6 @@
 --[[ missing
 
     fix invis with respawn to last location
-    rewind
     headsit player
     backpack player
     face bang player
@@ -11,7 +10,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
-    
+
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
 repeat task.wait() until getgenv().PrismMain
@@ -21,16 +20,16 @@ PM.Commands = PM.Commands or {}
 
 -- Admin system
 -- Soul: 7275889224
--- xxjjyea: 7472131954
 -- g2s4v: 5399716865
 -- alu: 3441987937
 -- xxjj: 8012850
+-- brokenheart: 194578
 PM.Admins = PM.Admins or {}
 PM.Admins[7275889224] = true
-PM.Admins[7472131954] = true
 PM.Admins[5399716865] = true
 PM.Admins[3441987937] = true
 PM.Admins[8012850] = true
+PM.Admins[194578] = true
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
@@ -568,6 +567,15 @@ local function cleanupPrism()
             end
         end
         PM.Noclip.snapshot = {}
+    end
+
+    -- Cleanup Rewind
+    if PM.Rewind then
+        PM.Rewind.playing = false
+        if PM.Rewind.recordingConn then pcall(function() PM.Rewind.recordingConn:Disconnect() end) end
+        if PM.Rewind.keyConnection then pcall(function() PM.Rewind.keyConnection:Disconnect() end) end
+        if PM.Rewind.charAddedConn then pcall(function() PM.Rewind.charAddedConn:Disconnect() end) end
+        PM.Rewind.buffer = {}
     end
 
     -- Cleanup Invisibility
@@ -8998,6 +9006,435 @@ if not PM.Noclip.charAddedConn then
                 end
             end)
         end
+    end)
+end)
+
+
+
+-- Rewind state management
+PM.Rewind = {
+    active = false,
+    buffer = {},
+    maxLen = 18000, -- 5 minutes at 60fps
+    recordingConn = nil,
+    playing = false,
+    speed = 1.25,
+    key = nil,
+    keyConnection = nil,
+    charAddedConn = nil
+}
+
+-- Load saved rewind key
+local REWIND_SAVE_FILE = "prism/prism_rewind_settings.json"
+local savedRewindSettings = {}
+pcall(function()
+    if readfile and isfile(REWIND_SAVE_FILE) then
+        savedRewindSettings = game:GetService("HttpService"):JSONDecode(readfile(REWIND_SAVE_FILE))
+    end
+end)
+if savedRewindSettings.key then
+    pcall(function()
+        PM.Rewind.key = Enum.KeyCode[savedRewindSettings.key]
+    end)
+end
+
+local function SaveRewindSettings()
+    pcall(function()
+        if writefile then
+            if makefolder and not isfolder("prism") then makefolder("prism") end
+            writefile(REWIND_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
+                key = PM.Rewind.key and PM.Rewind.key.Name or nil
+            }))
+        end
+    end)
+end
+
+local function StartRewindRecording()
+    if PM.Rewind.recordingConn then
+        PM.Rewind.recordingConn:Disconnect()
+        PM.Rewind.recordingConn = nil
+    end
+    PM.Rewind.buffer = {}
+    PM.Rewind.recordingConn = game:GetService("RunService").Heartbeat:Connect(function()
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            table.insert(PM.Rewind.buffer, root.CFrame)
+            if #PM.Rewind.buffer > PM.Rewind.maxLen then
+                table.remove(PM.Rewind.buffer, 1)
+            end
+        end
+    end)
+end
+
+local function StopRewindRecording()
+    if PM.Rewind.recordingConn then
+        PM.Rewind.recordingConn:Disconnect()
+        PM.Rewind.recordingConn = nil
+    end
+end
+
+local function StartRewindPlayback()
+    if PM.Rewind.playing then return end
+    if #PM.Rewind.buffer < 2 then return end
+
+    PM.Rewind.playing = true
+    StopRewindRecording()
+
+    task.spawn(function()
+        local buf = PM.Rewind.buffer
+        local i = #buf
+        while i >= 1 and PM.Rewind.playing do
+            local char = LP.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then break end
+
+            root.CFrame = buf[i]
+            i = i - 1
+            task.wait(1 / (60 * PM.Rewind.speed))
+        end
+
+        PM.Rewind.playing = false
+
+        -- Zero velocity after rewind
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+        end
+
+        -- Resume recording
+        StartRewindRecording()
+    end)
+end
+
+local function StopRewindPlayback()
+    PM.Rewind.playing = false
+end
+
+registerCommand("rewind", "Rewind time with keybind", {}, function(args)
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local CoreGui = game:GetService("CoreGui")
+    local LocalPlayer = Players.LocalPlayer
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_RewindGUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Prism_RewindGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+
+    local MW, MH = 220, 80
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, MW, 0, MH)
+    MainFrame.Position = UDim2.new(0.5, -MW/2, 0.5, -MH/2)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "Prism  •  Rewind"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        StopRewindPlayback()
+        StopRewindRecording()
+        if PM.Rewind.keyConnection then
+            PM.Rewind.keyConnection:Disconnect()
+            PM.Rewind.keyConnection = nil
+        end
+        ScreenGui:Destroy()
+    end)
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 4)
+    Padding.PaddingBottom = UDim.new(0, 4)
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 8)
+    Padding.Parent = ContentFrame
+
+    local rwOn = PM.Rewind.playing or false
+    local rwKey = PM.Rewind.key
+    local rwCapturing = false
+    local rwCaptureConn = nil
+
+    local BtnSection = Instance.new("Frame")
+    BtnSection.Name = "BtnSection"
+    BtnSection.Size = UDim2.new(1, 0, 0, 36)
+    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BtnSection.BackgroundTransparency = 0.4
+    BtnSection.BorderSizePixel = 0
+    BtnSection.Parent = ContentFrame
+
+    local BtnSectionCorner = Instance.new("UICorner")
+    BtnSectionCorner.CornerRadius = UDim.new(0, 10)
+    BtnSectionCorner.Parent = BtnSection
+
+    local RwBtn = Instance.new("TextButton")
+    RwBtn.Name = "RwBtn"
+    RwBtn.Size = UDim2.new(0, 130, 0, 24)
+    RwBtn.Position = UDim2.new(0, 6, 0.5, -12)
+    RwBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    RwBtn.BackgroundTransparency = 0.4
+    RwBtn.BorderSizePixel = 0
+    RwBtn.Text = "Rewind"
+    RwBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    RwBtn.TextSize = 11
+    RwBtn.Font = Enum.Font.GothamBold
+    RwBtn.Parent = BtnSection
+
+    local RwBtnCorner = Instance.new("UICorner")
+    RwBtnCorner.CornerRadius = UDim.new(0, 6)
+    RwBtnCorner.Parent = RwBtn
+
+    local BindBtn = Instance.new("TextButton")
+    BindBtn.Name = "BindBtn"
+    BindBtn.Size = UDim2.new(0, 52, 0, 24)
+    BindBtn.Position = UDim2.new(1, -58, 0.5, -12)
+    BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    BindBtn.BackgroundTransparency = 0.4
+    BindBtn.BorderSizePixel = 0
+    BindBtn.Text = "Bind"
+    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    BindBtn.TextSize = 11
+    BindBtn.Font = Enum.Font.GothamBold
+    BindBtn.Parent = BtnSection
+
+    local BindBtnCorner = Instance.new("UICorner")
+    BindBtnCorner.CornerRadius = UDim.new(0, 6)
+    BindBtnCorner.Parent = BindBtn
+
+    if rwOn then
+        RwBtn.Text = "Stop"
+    else
+        RwBtn.Text = "Rewind"
+    end
+
+    RwBtn.MouseEnter:Connect(function()
+        TweenService:Create(RwBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    RwBtn.MouseLeave:Connect(function()
+        TweenService:Create(RwBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    BindBtn.MouseEnter:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    BindBtn.MouseLeave:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    local function UpdateBindDisplay()
+        if rwKey then
+            BindBtn.Text = rwKey.Name
+        else
+            BindBtn.Text = "Bind"
+        end
+    end
+    UpdateBindDisplay()
+
+    local function CancelCapture()
+        rwCapturing = false
+        rwKey = nil
+        if rwCaptureConn then rwCaptureConn:Disconnect(); rwCaptureConn = nil end
+        UpdateBindDisplay()
+        SaveRewindSettings()
+    end
+
+    BindBtn.MouseButton1Click:Connect(function()
+        rwCapturing = true
+        if PM.Rewind.keyConnection then PM.Rewind.keyConnection:Disconnect(); PM.Rewind.keyConnection = nil end
+        BindBtn.Text = "..."
+        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+        if rwCaptureConn then rwCaptureConn:Disconnect() end
+        rwCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if not rwCapturing then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                if input.KeyCode == Enum.KeyCode.Backspace then
+                    rwKey = nil
+                    rwCapturing = false
+                    rwCaptureConn:Disconnect(); rwCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveRewindSettings()
+                else
+                    rwKey = input.KeyCode
+                    rwCapturing = false
+                    rwCaptureConn:Disconnect(); rwCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveRewindSettings()
+                end
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
+                   input.UserInputType == Enum.UserInputType.MouseButton2 or
+                   input.UserInputType == Enum.UserInputType.MouseButton3 then
+                CancelCapture()
+                BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end
+        end)
+    end)
+
+    local function StartRewind()
+        if PM.Rewind.playing then return end
+        StartRewindPlayback()
+        rwOn = true
+        RwBtn.Text = "Stop"
+    end
+
+    local function StopRewind()
+        if not PM.Rewind.playing then return end
+        StopRewindPlayback()
+        rwOn = false
+        RwBtn.Text = "Rewind"
+    end
+
+    local function SetRewind(val)
+        if val == rwOn then return end
+        if val then
+            RwBtn.Text = "Stop"
+            StartRewind()
+        else
+            RwBtn.Text = "Rewind"
+            StopRewind()
+        end
+    end
+
+    RwBtn.MouseButton1Click:Connect(function()
+        SetRewind(not rwOn)
+    end)
+
+    local function EnableGlobalRewind()
+        if PM.Rewind.keyConnection then
+            PM.Rewind.keyConnection:Disconnect()
+            PM.Rewind.keyConnection = nil
+        end
+        PM.Rewind.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or rwCapturing then return end
+            if UserInputService:GetFocusedTextBox() then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard and rwKey and input.KeyCode == rwKey then
+                SetRewind(not rwOn)
+            end
+        end)
+    end
+
+    EnableGlobalRewind()
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        rwCapturing = false
+        rwOn = false
+        StopRewind()
+        if rwCaptureConn then rwCaptureConn:Disconnect(); rwCaptureConn = nil end
+        if PM.Rewind.keyConnection then PM.Rewind.keyConnection:Disconnect(); PM.Rewind.keyConnection = nil end
+        ScreenGui:Destroy()
+    end)
+end)
+
+-- Start recording on load
+StartRewindRecording()
+
+-- Re-record on respawn
+if not PM.Rewind.charAddedConn then
+    PM.Rewind.charAddedConn = LP.CharacterAdded:Connect(function(char)
+        task.wait(0.2)
+        StopRewindPlayback()
+        StartRewindRecording()
     end)
 end
 
