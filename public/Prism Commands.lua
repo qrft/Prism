@@ -7688,6 +7688,1092 @@ registerCommand("fakeout", "Fake out below void", {}, function(args)
     end
 end)
 
+registerCommand("shaders", "Advanced shader effects with presets", {}, function(args)
+    local CoreGui = game:GetService("CoreGui")
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local HttpService = game:GetService("HttpService")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = LP
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_ShadersGUI") then return end
+
+    local success, err = pcall(function()
+        -- Shader state management
+        PM.Shaders = PM.Shaders or {
+            enabled = false,
+            currentPreset = "default",
+            bloom = {enabled = false, intensity = 0.5, size = 20, threshold = 0.9},
+            blur = {enabled = false, size = 0},
+            colorCorrection = {enabled = false, brightness = 0, contrast = 0, saturation = 0, tintColor = Color3.fromRGB(1,1,1)},
+            depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+            sunRays = {enabled = false, intensity = 0.5, spread = 0.5},
+            sunFlare = {enabled = false},
+            motionBlur = {enabled = false, size = 26},
+            atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), decay = 0, glare = 0, haze = 0},
+            clouds = {cover = 0, density = 0, color = Color3.fromRGB(1,1,1)},
+            skybox = {bk = "", dn = "", ft = "", lt = "", rt = "", up = ""},
+            lighting = {ambient = Color3.fromRGB(1,1,1), clockTime = 12, geographicLatitude = 0, brightness = 1, 
+                      colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                      environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                      outdoorAmbient = Color3.fromRGB(1,1,1), exposureCompensation = 0},
+            technology = "ShadowMap",
+            globalIllumination = {enabled = false, radius = 80, gridSize = 25}
+        }
+
+        -- Load saved GUI settings
+        local SHADERS_GUI_FILE = "prism/prism_shaders_gui_settings.json"
+        local savedShadersGUI = {}
+        pcall(function()
+            if readfile and isfile(SHADERS_GUI_FILE) then
+                savedShadersGUI = HttpService:JSONDecode(readfile(SHADERS_GUI_FILE))
+            end
+        end)
+        local savedPos = savedShadersGUI.position or {X = {Scale = 0, Offset = 1142}, Y = {Scale = 0, Offset = 160}}
+        local savedMinimized = savedShadersGUI.minimized or false
+
+        local currentShadersSettings = {
+            position = savedPos,
+            minimized = savedMinimized
+        }
+
+        local function SaveShadersGUISettings()
+            pcall(function()
+                if writefile then
+                    if makefolder and not isfolder("prism") then makefolder("prism") end
+                    writefile(SHADERS_GUI_FILE, HttpService:JSONEncode(currentShadersSettings))
+                end
+            end)
+        end
+
+        -- Shader presets
+        local shaderPresets = {
+            default = {
+                lighting = {ambient = Color3.fromRGB(1,1,1), clockTime = 12, geographicLatitude = 0, brightness = 1,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(1,1,1), exposureCompensation = 0},
+                bloom = {enabled = false, intensity = 0.5, size = 20, threshold = 0.9},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = false, brightness = 0, contrast = 0, saturation = 0, tintColor = Color3.fromRGB(1,1,1)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = false, intensity = 0.5, spread = 0.5},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), decay = 0, glare = 0, haze = 0},
+                clouds = {cover = 0, density = 0, color = Color3.fromRGB(1,1,1)}
+            },
+            morning = {
+                lighting = {ambient = Color3.fromRGB(0.8,0.8,0.7), clockTime = 8, geographicLatitude = 41, brightness = 2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.8,0.8,0.7), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.5, size = 24, threshold = 0.8},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.1, contrast = 0.1, saturation = 0.1, tintColor = Color3.fromRGB(1,0.95,0.9)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.5, spread = 0.4},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.9,0.85,0.8), decay = 0.3, glare = 0.2, haze = 0.1},
+                clouds = {cover = 0.3, density = 0.2, color = Color3.fromRGB(0.9,0.9,0.9)}
+            },
+            midday = {
+                lighting = {ambient = Color3.fromRGB(1,1,1), clockTime = 12, geographicLatitude = 41, brightness = 2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(1,1,1), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.6, size = 28, threshold = 0.7},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.15, contrast = 0.1, saturation = 0.2, tintColor = Color3.fromRGB(1,1,1)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.6, spread = 0.5},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.15, offset = 0.05, color = Color3.fromRGB(0.95,0.95,1), decay = 0.2, glare = 0.3, haze = 0.05},
+                clouds = {cover = 0.2, density = 0.15, color = Color3.fromRGB(1,1,1)}
+            },
+            afternoon = {
+                lighting = {ambient = Color3.fromRGB(0.9,0.85,0.7), clockTime = 16, geographicLatitude = 41, brightness = 2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.9,0.85,0.7), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.55, size = 26, threshold = 0.75},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.1, contrast = 0.15, saturation = 0.15, tintColor = Color3.fromRGB(1,0.95,0.85)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.55, spread = 0.45},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.25, offset = 0.15, color = Color3.fromRGB(0.9,0.8,0.7), decay = 0.35, glare = 0.25, haze = 0.15},
+                clouds = {cover = 0.35, density = 0.25, color = Color3.fromRGB(0.95,0.9,0.85)}
+            },
+            evening = {
+                lighting = {ambient = Color3.fromRGB(0.7,0.6,0.5), clockTime = 18, geographicLatitude = 41, brightness = 1.5,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.7,0.6,0.5), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.7, size = 32, threshold = 0.6},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.05, contrast = 0.2, saturation = 0.3, tintColor = Color3.fromRGB(1,0.8,0.6)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.7, spread = 0.6},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.35, offset = 0.2, color = Color3.fromRGB(0.8,0.6,0.4), decay = 0.4, glare = 0.4, haze = 0.25},
+                clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.9,0.7,0.5)}
+            },
+            night = {
+                lighting = {ambient = Color3.fromRGB(0.2,0.2,0.3), clockTime = 0, geographicLatitude = 41, brightness = 0.5,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.2,0.2,0.3), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.3, size = 16, threshold = 0.95},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = -0.2, contrast = 0.1, saturation = -0.3, tintColor = Color3.fromRGB(0.5,0.5,0.8)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.4, offset = 0.25, color = Color3.fromRGB(0.1,0.1,0.2), decay = 0.5, glare = 0.1, haze = 0.3},
+                clouds = {cover = 0.5, density = 0.4, color = Color3.fromRGB(0.2,0.2,0.3)}
+            },
+            midnight = {
+                lighting = {ambient = Color3.fromRGB(0.1,0.1,0.15), clockTime = 0, geographicLatitude = 41, brightness = 0.3,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.1,0.1,0.15), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.2, size = 12, threshold = 0.98},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = -0.3, contrast = 0.15, saturation = -0.4, tintColor = Color3.fromRGB(0.3,0.3,0.6)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = false, intensity = 0.2, spread = 0.2},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.5, offset = 0.3, color = Color3.fromRGB(0.05,0.05,0.1), decay = 0.6, glare = 0.05, haze = 0.4},
+                clouds = {cover = 0.6, density = 0.5, color = Color3.fromRGB(0.1,0.1,0.15)}
+            },
+            -- Color presets
+            black = {
+                lighting = {ambient = Color3.fromRGB(0.1,0.1,0.1), clockTime = 12, geographicLatitude = 41, brightness = 1,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.1,0.1,0.1), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.3, size = 18, threshold = 0.9},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = -0.3, contrast = 0.2, saturation = -0.5, tintColor = Color3.fromRGB(0.1,0.1,0.1)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.05,0.05,0.05), decay = 0.4, glare = 0.1, haze = 0.2},
+                clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.1,0.1,0.1)}
+            },
+            white = {
+                lighting = {ambient = Color3.fromRGB(1,1,1), clockTime = 12, geographicLatitude = 41, brightness = 2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(1,1,1), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.8, size = 30, threshold = 0.5},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.3, contrast = 0.1, saturation = 0.2, tintColor = Color3.fromRGB(1,1,1)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.8, spread = 0.6},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,1,1), decay = 0.2, glare = 0.5, haze = 0.05},
+                clouds = {cover = 0.2, density = 0.1, color = Color3.fromRGB(1,1,1)}
+            },
+            -- Weather presets
+            rain = {
+                lighting = {ambient = Color3.fromRGB(0.6,0.6,0.65), clockTime = 14, geographicLatitude = 41, brightness = 1.5,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.6,0.6,0.65), exposureCompensation = -0.3},
+                bloom = {enabled = true, intensity = 0.4, size = 22, threshold = 0.85},
+                blur = {enabled = true, size = 2},
+                colorCorrection = {enabled = true, brightness = -0.1, contrast = 0.2, saturation = -0.2, tintColor = Color3.fromRGB(0.8,0.85,0.9)},
+                depthOfField = {enabled = true, farIntensity = 0.3, focusDistance = 15, inFocusRadius = 8, nearIntensity = 0.15},
+                sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.6, offset = 0.3, color = Color3.fromRGB(0.7,0.75,0.8), decay = 0.5, glare = 0.2, haze = 0.5},
+                clouds = {cover = 0.8, density = 0.7, color = Color3.fromRGB(0.6,0.65,0.7)}
+            },
+            snow = {
+                lighting = {ambient = Color3.fromRGB(0.95,0.95,1), clockTime = 12, geographicLatitude = 41, brightness = 2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.95,0.95,1), exposureCompensation = 0.2},
+                bloom = {enabled = true, intensity = 0.7, size = 28, threshold = 0.7},
+                blur = {enabled = true, size = 3},
+                colorCorrection = {enabled = true, brightness = 0.2, contrast = 0.1, saturation = -0.1, tintColor = Color3.fromRGB(0.95,0.98,1)},
+                depthOfField = {enabled = true, farIntensity = 0.25, focusDistance = 18, inFocusRadius = 12, nearIntensity = 0.12},
+                sunRays = {enabled = true, intensity = 0.6, spread = 0.4},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.4, offset = 0.2, color = Color3.fromRGB(0.95,0.97,1), decay = 0.3, glare = 0.3, haze = 0.2},
+                clouds = {cover = 0.9, density = 0.8, color = Color3.fromRGB(1,1,1)}
+            },
+            fog = {
+                lighting = {ambient = Color3.fromRGB(0.7,0.7,0.75), clockTime = 10, geographicLatitude = 41, brightness = 1,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = false,
+                          outdoorAmbient = Color3.fromRGB(0.7,0.7,0.75), exposureCompensation = -0.5},
+                bloom = {enabled = true, intensity = 0.3, size = 20, threshold = 0.9},
+                blur = {enabled = true, size = 8},
+                colorCorrection = {enabled = true, brightness = -0.2, contrast = 0.1, saturation = -0.3, tintColor = Color3.fromRGB(0.85,0.85,0.9)},
+                depthOfField = {enabled = true, farIntensity = 0.4, focusDistance = 12, inFocusRadius = 6, nearIntensity = 0.2},
+                sunRays = {enabled = false, intensity = 0.2, spread = 0.2},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.8, offset = 0.4, color = Color3.fromRGB(0.8,0.82,0.85), decay = 0.6, glare = 0.1, haze = 0.7},
+                clouds = {cover = 0.7, density = 0.6, color = Color3.fromRGB(0.75,0.78,0.8)}
+            },
+            sunny = {
+                lighting = {ambient = Color3.fromRGB(1,1,0.95), clockTime = 12, geographicLatitude = 41, brightness = 2.5,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(1,1,0.95), exposureCompensation = 0.3},
+                bloom = {enabled = true, intensity = 0.8, size = 35, threshold = 0.6},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.2, contrast = 0.1, saturation = 0.25, tintColor = Color3.fromRGB(1,0.98,0.95)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.9, spread = 0.7},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,0.98,0.95), decay = 0.2, glare = 0.6, haze = 0.05},
+                clouds = {cover = 0.1, density = 0.1, color = Color3.fromRGB(1,1,0.95)}
+            },
+            storm = {
+                lighting = {ambient = Color3.fromRGB(0.4,0.4,0.45), clockTime = 16, geographicLatitude = 41, brightness = 0.8,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.4,0.4,0.45), exposureCompensation = -0.7},
+                bloom = {enabled = true, intensity = 0.35, size = 24, threshold = 0.88},
+                blur = {enabled = true, size = 4},
+                colorCorrection = {enabled = true, brightness = -0.25, contrast = 0.25, saturation = -0.35, tintColor = Color3.fromRGB(0.7,0.72,0.8)},
+                depthOfField = {enabled = true, farIntensity = 0.35, focusDistance = 14, inFocusRadius = 7, nearIntensity = 0.18},
+                sunRays = {enabled = false, intensity = 0.25, spread = 0.25},
+                sunFlare = {enabled = false},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.7, offset = 0.35, color = Color3.fromRGB(0.5,0.52,0.6), decay = 0.55, glare = 0.15, haze = 0.6},
+                clouds = {cover = 0.95, density = 0.85, color = Color3.fromRGB(0.45,0.48,0.55)}
+            },
+            -- Season presets
+            autumn = {
+                lighting = {ambient = Color3.fromRGB(0.85,0.75,0.6), clockTime = 14, geographicLatitude = 41, brightness = 1.8,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.85,0.75,0.6), exposureCompensation = 0},
+                bloom = {enabled = true, intensity = 0.6, size = 26, threshold = 0.72},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.1, contrast = 0.15, saturation = 0.2, tintColor = Color3.fromRGB(1,0.9,0.8)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.55, spread = 0.45},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.85,0.78,0.7), decay = 0.35, glare = 0.25, haze = 0.2},
+                clouds = {cover = 0.5, density = 0.4, color = Color3.fromRGB(0.9,0.8,0.7)}
+            },
+            spring = {
+                lighting = {ambient = Color3.fromRGB(0.95,1,0.95), clockTime = 10, geographicLatitude = 41, brightness = 2.2,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.95,1,0.95), exposureCompensation = 0.1},
+                bloom = {enabled = true, intensity = 0.65, size = 28, threshold = 0.68},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.15, contrast = 0.1, saturation = 0.15, tintColor = Color3.fromRGB(0.98,1,0.98)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.6, spread = 0.5},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.95,0.98,0.95), decay = 0.25, glare = 0.3, haze = 0.1},
+                clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.98,1,0.98)}
+            },
+            summer = {
+                lighting = {ambient = Color3.fromRGB(1,0.98,0.95), clockTime = 12, geographicLatitude = 41, brightness = 2.5,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(1,0.98,0.95), exposureCompensation = 0.2},
+                bloom = {enabled = true, intensity = 0.75, size = 32, threshold = 0.65},
+                blur = {enabled = false, size = 0},
+                colorCorrection = {enabled = true, brightness = 0.2, contrast = 0.1, saturation = 0.2, tintColor = Color3.fromRGB(1,0.98,0.95)},
+                depthOfField = {enabled = false, farIntensity = 0.2, focusDistance = 20, inFocusRadius = 10, nearIntensity = 0.1},
+                sunRays = {enabled = true, intensity = 0.8, spread = 0.6},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.15, offset = 0.08, color = Color3.fromRGB(1,0.98,0.95), decay = 0.2, glare = 0.4, haze = 0.08},
+                clouds = {cover = 0.25, density = 0.2, color = Color3.fromRGB(1,0.98,0.95)}
+            },
+            winter = {
+                lighting = {ambient = Color3.fromRGB(0.9,0.92,1), clockTime = 11, geographicLatitude = 41, brightness = 1.8,
+                          colorShiftBottom = Color3.fromRGB(0,0,0), colorShiftTop = Color3.fromRGB(0,0,0),
+                          environmentDiffuseScale = 1, environmentSpecularScale = 1, globalShadows = true,
+                          outdoorAmbient = Color3.fromRGB(0.9,0.92,1), exposureCompensation = 0.1},
+                bloom = {enabled = true, intensity = 0.55, size = 24, threshold = 0.75},
+                blur = {enabled = true, size = 2},
+                colorCorrection = {enabled = true, brightness = 0.1, contrast = 0.15, saturation = -0.1, tintColor = Color3.fromRGB(0.95,0.97,1)},
+                depthOfField = {enabled = true, farIntensity = 0.25, focusDistance = 16, inFocusRadius = 9, nearIntensity = 0.12},
+                sunRays = {enabled = true, intensity = 0.5, spread = 0.4},
+                sunFlare = {enabled = true},
+                motionBlur = {enabled = false, size = 26},
+                atmosphere = {density = 0.35, offset = 0.18, color = Color3.fromRGB(0.92,0.94,1), decay = 0.3, glare = 0.2, haze = 0.25},
+                clouds = {cover = 0.85, density = 0.75, color = Color3.fromRGB(0.95,0.97,1)}
+            }
+        }
+
+        -- Shader effect instances
+        local lighting = game:GetService("Lighting")
+        local bloomEffect = lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+        local blurEffect = lighting:FindFirstChildOfClass("BlurEffect") or Instance.new("BlurEffect")
+        local colorCorrection = lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+        local depthOfField = lighting:FindFirstChildOfClass("DepthOfFieldEffect") or Instance.new("DepthOfFieldEffect")
+        local sunRays = lighting:FindFirstChildOfClass("SunRaysEffect") or Instance.new("SunRaysEffect")
+        local atmosphere = lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+        local sky = lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        local clouds = terrain and terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+
+        -- Parent effects if not already parented
+        if not bloomEffect.Parent then bloomEffect.Parent = lighting end
+        if not blurEffect.Parent then blurEffect.Parent = lighting end
+        if not colorCorrection.Parent then colorCorrection.Parent = lighting end
+        if not depthOfField.Parent then depthOfField.Parent = lighting end
+        if not sunRays.Parent then sunRays.Parent = lighting end
+        if not atmosphere.Parent then atmosphere.Parent = lighting end
+        if not sky.Parent then sky.Parent = lighting end
+        if not clouds.Parent then clouds.Parent = terrain end
+
+        -- Global illumination system
+        local giFolder = Instance.new("Folder")
+        giFolder.Name = "Prism_Shaders_GI"
+        giFolder.Parent = workspace
+        local giLights = {}
+        local giUpdateConn = nil
+
+        local function createGILight(pos)
+            local part = Instance.new("Part")
+            part.Name = "GILight_" .. tostring(#giLights + 1)
+            part.Anchored = true
+            part.CanCollide = false
+            part.Transparency = 1
+            part.Size = Vector3.new(1, 1, 1)
+            part.Position = pos
+            part.Parent = giFolder
+
+            local light = Instance.new("PointLight")
+            light.Range = 24
+            light.Brightness = 0
+            light.Shadows = false
+            light.Color = PM.Shaders.lighting.ambient
+            light.Parent = part
+
+            table.insert(giLights, {part = part, light = light})
+            return part
+        end
+
+        local function updateGlobalIllumination()
+            if not PM.Shaders.globalIllumination.enabled then return end
+
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+
+            local camPos = root.Position
+            local radius = PM.Shaders.globalIllumination.radius
+            local gridSize = PM.Shaders.globalIllumination.gridSize
+
+            -- Simple grid-based light placement
+            local minX, maxX = camPos.X - radius, camPos.X + radius
+            local minZ, maxZ = camPos.Z - radius, camPos.Z + radius
+
+            for x = minX, maxX, gridSize do
+                for z = minZ, maxZ, gridSize do
+                    local pos = Vector3.new(x, root.Position.Y, z)
+                    local shouldCreate = true
+
+                    -- Check if light already exists nearby
+                    for _, gi in ipairs(giLights) do
+                        if gi.part and gi.part.Parent and (gi.part.Position - pos).Magnitude < gridSize then
+                            shouldCreate = false
+                            break
+                        end
+                    end
+
+                    if shouldCreate then
+                        createGILight(pos)
+                    end
+                end
+            end
+
+            -- Remove distant lights
+            for i = #giLights, 1, -1 do
+                local gi = giLights[i]
+                if gi.part and gi.part.Parent and (gi.part.Position - camPos).Magnitude > radius * 1.5 then
+                    pcall(function() gi.part:Destroy() end)
+                    table.remove(giLights, i)
+                end
+            end
+        end
+
+        local function applyPreset(presetName)
+            local preset = shaderPresets[presetName]
+            if not preset then return end
+
+            PM.Shaders.currentPreset = presetName
+
+            -- Apply lighting
+            local l = preset.lighting
+            lighting.Ambient = l.ambient
+            lighting.ClockTime = l.clockTime
+            lighting.GeographicLatitude = l.geographicLatitude
+            lighting.Brightness = l.brightness
+            lighting.ColorShift_Bottom = l.colorShiftBottom
+            lighting.ColorShift_Top = l.colorShiftTop
+            lighting.EnvironmentDiffuseScale = l.environmentDiffuseScale
+            lighting.EnvironmentSpecularScale = l.environmentSpecularScale
+            lighting.GlobalShadows = l.globalShadows
+            lighting.OutdoorAmbient = l.outdoorAmbient
+            lighting.ExposureCompensation = l.exposureCompensation
+
+            -- Apply bloom
+            local b = preset.bloom
+            bloomEffect.Enabled = PM.Shaders.enabled and b.enabled
+            bloomEffect.Intensity = b.intensity
+            bloomEffect.Size = b.size
+            bloomEffect.Threshold = b.threshold
+
+            -- Apply blur
+            local bl = preset.blur
+            blurEffect.Enabled = PM.Shaders.enabled and bl.enabled
+            blurEffect.Size = bl.size
+
+            -- Apply color correction
+            local cc = preset.colorCorrection
+            colorCorrection.Enabled = PM.Shaders.enabled and cc.enabled
+            colorCorrection.Brightness = cc.brightness
+            colorCorrection.Contrast = cc.contrast
+            colorCorrection.Saturation = cc.saturation
+            colorCorrection.TintColor = cc.tintColor
+
+            -- Apply depth of field
+            local dof = preset.depthOfField
+            depthOfField.Enabled = PM.Shaders.enabled and dof.enabled
+            depthOfField.FarIntensity = dof.farIntensity
+            depthOfField.FocusDistance = dof.focusDistance
+            depthOfField.InFocusRadius = dof.inFocusRadius
+            depthOfField.NearIntensity = dof.nearIntensity
+
+            -- Apply sun rays
+            local sr = preset.sunRays
+            sunRays.Enabled = PM.Shaders.enabled and sr.enabled
+            sunRays.Intensity = sr.intensity
+            sunRays.Spread = sr.spread
+
+            -- Apply atmosphere
+            local at = preset.atmosphere
+            atmosphere.Density = at.density
+            atmosphere.Offset = at.offset
+            atmosphere.Color = at.color
+            atmosphere.Decay = at.decay
+            atmosphere.Glare = at.glare
+            atmosphere.Haze = at.haze
+
+            -- Apply clouds
+            local c = preset.clouds
+            clouds.Cover = c.cover
+            clouds.Density = c.density
+            clouds.Color = c.color
+
+            -- Apply sun flare and motion blur
+            PM.Shaders.sunFlare.enabled = preset.sunFlare.enabled
+            PM.Shaders.motionBlur.enabled = preset.motionBlur.enabled
+            PM.Shaders.motionBlur.size = preset.motionBlur.size
+        end
+
+        local function resetShaders()
+            -- Reset to default
+            applyPreset("default")
+            PM.Shaders.enabled = false
+
+            -- Clear global illumination
+            for _, gi in ipairs(giLights) do
+                pcall(function() gi.part:Destroy() end)
+            end
+            giLights = {}
+            if giFolder then giFolder:Destroy() end
+        end
+
+        local function toggleShaders()
+            PM.Shaders.enabled = not PM.Shaders.enabled
+            if PM.Shaders.enabled then
+                applyPreset(PM.Shaders.currentPreset)
+            else
+                resetShaders()
+            end
+        end
+
+        -- Create GUI
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "Prism_ShadersGUI"
+        ScreenGui.ResetOnSpawn = false
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ScreenGui.DisplayOrder = 1000
+
+        if syn and syn.protect_gui then
+            syn.protect_gui(ScreenGui)
+            ScreenGui.Parent = CoreGui
+        elseif gethui then
+            ScreenGui.Parent = gethui()
+        else
+            ScreenGui.Parent = CoreGui
+        end
+
+        local MW, MH = 320, 400
+
+        local MainFrame = Instance.new("Frame")
+        MainFrame.Name = "MainFrame"
+        MainFrame.Size = UDim2.new(0, MW, 0, MH)
+        MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
+        MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+        MainFrame.BackgroundTransparency = 0.3
+        MainFrame.BorderSizePixel = 0
+        MainFrame.ClipsDescendants = true
+        MainFrame.Parent = ScreenGui
+
+        local MainCorner = Instance.new("UICorner")
+        MainCorner.CornerRadius = UDim.new(0, 14)
+        MainCorner.Parent = MainFrame
+
+        local MainStroke = Instance.new("UIStroke")
+        MainStroke.Color = Color3.fromRGB(60, 60, 60)
+        MainStroke.Thickness = 1
+        MainStroke.Parent = MainFrame
+
+        local TitleBar = Instance.new("Frame")
+        TitleBar.Name = "TitleBar"
+        TitleBar.Size = UDim2.new(1, 0, 0, 36)
+        TitleBar.BackgroundTransparency = 1
+        TitleBar.Parent = MainFrame
+
+        local dragging = false
+        local dragStart = nil
+        local startPos = nil
+
+        TitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+            end
+        end)
+
+        TitleBar.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+                currentShadersSettings.position = {
+                    X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                    Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+                }
+                SaveShadersGUISettings()
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = "Prism  •  Shaders"
+        TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TitleLabel.TextSize = 13
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.Parent = TitleBar
+
+        local MinBtn = Instance.new("TextButton")
+        MinBtn.Size = UDim2.new(0, 24, 0, 24)
+        MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
+        MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        MinBtn.BackgroundTransparency = 0.4
+        MinBtn.BorderSizePixel = 0
+        MinBtn.Text = "—"
+        MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        MinBtn.TextSize = 11
+        MinBtn.Font = Enum.Font.GothamBold
+        MinBtn.Parent = TitleBar
+
+        local MinCorner = Instance.new("UICorner")
+        MinCorner.CornerRadius = UDim.new(0, 6)
+        MinCorner.Parent = MinBtn
+
+        local CloseBtn = Instance.new("TextButton")
+        CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+        CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+        CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        CloseBtn.BackgroundTransparency = 0.4
+        CloseBtn.BorderSizePixel = 0
+        CloseBtn.Text = "X"
+        CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        CloseBtn.TextSize = 11
+        CloseBtn.Font = Enum.Font.GothamBold
+        CloseBtn.Parent = TitleBar
+
+        local CloseCorner = Instance.new("UICorner")
+        CloseCorner.CornerRadius = UDim.new(0, 6)
+        CloseCorner.Parent = CloseBtn
+
+        local ContentFrame = Instance.new("Frame")
+        ContentFrame.Name = "Content"
+        ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+        ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+        ContentFrame.BackgroundTransparency = 1
+        ContentFrame.ClipsDescendants = true
+        ContentFrame.Parent = MainFrame
+
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local isMinimized = savedMinimized
+        local originalSize = UDim2.new(0, MW, 0, MH)
+        local minimizedSize = UDim2.new(0, MW, 0, 36)
+
+        if isMinimized then
+            MinBtn.Text = "+"
+            MainFrame.Size = minimizedSize
+            ContentFrame.Visible = false
+        end
+
+        MinBtn.MouseButton1Click:Connect(function()
+            isMinimized = not isMinimized
+            currentShadersSettings.minimized = isMinimized
+            SaveShadersGUISettings()
+            if isMinimized then
+                MinBtn.Text = "+"
+                local tween = TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize})
+                tween:Play()
+                tween.Completed:Connect(function() ContentFrame.Visible = false end)
+            else
+                MinBtn.Text = "—"
+                ContentFrame.Visible = true
+                TweenService:Create(MainFrame, tweenInfo, {Size = originalSize}):Play()
+            end
+        end)
+
+        CloseBtn.MouseButton1Click:Connect(function()
+            resetShaders()
+            ScreenGui:Destroy()
+        end)
+
+        local ContentLayout = Instance.new("UIListLayout")
+        ContentLayout.Padding = UDim.new(0, 6)
+        ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        ContentLayout.Parent = ContentFrame
+
+        local ContentPadding = Instance.new("UIPadding")
+        ContentPadding.PaddingTop = UDim.new(0, 4)
+        ContentPadding.PaddingBottom = UDim.new(0, 4)
+        ContentPadding.PaddingLeft = UDim.new(0, 8)
+        ContentPadding.PaddingRight = UDim.new(0, 8)
+        ContentPadding.Parent = ContentFrame
+
+        -- Enable toggle
+        local EnableSection = Instance.new("Frame")
+        EnableSection.Size = UDim2.new(1, 0, 0, 32)
+        EnableSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        EnableSection.BackgroundTransparency = 0.4
+        EnableSection.BorderSizePixel = 0
+        EnableSection.LayoutOrder = 1
+        EnableSection.Parent = ContentFrame
+
+        local EnableCorner = Instance.new("UICorner")
+        EnableCorner.CornerRadius = UDim.new(0, 10)
+        EnableCorner.Parent = EnableSection
+
+        local EnableLabel = Instance.new("TextLabel")
+        EnableLabel.Size = UDim2.new(1, -48, 1, 0)
+        EnableLabel.Position = UDim2.new(0, 12, 0, 0)
+        EnableLabel.BackgroundTransparency = 1
+        EnableLabel.Text = "Enable Shaders"
+        EnableLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        EnableLabel.TextSize = 12
+        EnableLabel.Font = Enum.Font.Gotham
+        EnableLabel.TextXAlignment = Enum.TextXAlignment.Left
+        EnableLabel.Parent = EnableSection
+
+        local EnablePill = Instance.new("Frame")
+        EnablePill.Size = UDim2.new(0, 40, 0, 22)
+        EnablePill.Position = UDim2.new(1, -52, 0.5, -11)
+        EnablePill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        EnablePill.BorderSizePixel = 0
+        EnablePill.Parent = EnableSection
+
+        local EnablePillCorner = Instance.new("UICorner")
+        EnablePillCorner.CornerRadius = UDim.new(0, 11)
+        EnablePillCorner.Parent = EnablePill
+
+        local EnableKnob = Instance.new("Frame")
+        EnableKnob.Size = UDim2.new(0, 16, 0, 16)
+        EnableKnob.Position = UDim2.new(0, 3, 0.5, -8)
+        EnableKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        EnableKnob.BorderSizePixel = 0
+        EnableKnob.Parent = EnablePill
+
+        local EnableKnobCorner = Instance.new("UICorner")
+        EnableKnobCorner.CornerRadius = UDim.new(0, 8)
+        EnableKnobCorner.Parent = EnableKnob
+
+        local EnableBtn = Instance.new("TextButton")
+        EnableBtn.Size = UDim2.new(0, 52, 1, 0)
+        EnableBtn.Position = UDim2.new(1, -56, 0, 0)
+        EnableBtn.BackgroundTransparency = 1
+        EnableBtn.Text = ""
+        EnableBtn.Parent = EnableSection
+
+        local function updateEnableToggle()
+            if PM.Shaders.enabled then
+                TweenService:Create(EnablePill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+                TweenService:Create(EnableKnob, tweenInfo, {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
+            else
+                TweenService:Create(EnablePill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+                TweenService:Create(EnableKnob, tweenInfo, {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
+            end
+        end
+
+        EnableBtn.MouseButton1Click:Connect(function()
+            toggleShaders()
+            updateEnableToggle()
+        end)
+
+        -- Preset dropdown
+        local PresetSection = Instance.new("Frame")
+        PresetSection.Size = UDim2.new(1, 0, 0, 32)
+        PresetSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        PresetSection.BackgroundTransparency = 0.4
+        PresetSection.BorderSizePixel = 0
+        PresetSection.LayoutOrder = 2
+        PresetSection.Parent = ContentFrame
+
+        local PresetCorner = Instance.new("UICorner")
+        PresetCorner.CornerRadius = UDim.new(0, 10)
+        PresetCorner.Parent = PresetSection
+
+        local PresetLabel = Instance.new("TextLabel")
+        PresetLabel.Size = UDim2.new(1, -48, 1, 0)
+        PresetLabel.Position = UDim2.new(0, 12, 0, 0)
+        PresetLabel.BackgroundTransparency = 1
+        PresetLabel.Text = "Preset"
+        PresetLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        PresetLabel.TextSize = 12
+        PresetLabel.Font = Enum.Font.Gotham
+        PresetLabel.TextXAlignment = Enum.TextXAlignment.Left
+        PresetLabel.Parent = PresetSection
+
+        local PresetDropdown = Instance.new("TextButton")
+        PresetDropdown.Size = UDim2.new(0, 140, 0, 24)
+        PresetDropdown.Position = UDim2.new(1, -152, 0.5, -12)
+        PresetDropdown.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        PresetDropdown.BackgroundTransparency = 0.4
+        PresetDropdown.BorderSizePixel = 0
+        PresetDropdown.Text = PM.Shaders.currentPreset
+        PresetDropdown.TextColor3 = Color3.fromRGB(200, 200, 200)
+        PresetDropdown.TextSize = 11
+        PresetDropdown.Font = Enum.Font.Gotham
+        PresetDropdown.Parent = PresetSection
+
+        local PresetCorner2 = Instance.new("UICorner")
+        PresetCorner2.CornerRadius = UDim.new(0, 6)
+        PresetCorner2.Parent = PresetDropdown
+
+        local presetNames = {"default", "morning", "midday", "afternoon", "evening", "night", "midnight", 
+                          "black", "white", "rain", "snow", "fog", "sunny", "storm", 
+                          "autumn", "spring", "summer", "winter"}
+        local currentPresetIndex = 1
+
+        PresetDropdown.MouseButton1Click:Connect(function()
+            currentPresetIndex = currentPresetIndex % #presetNames + 1
+            local newPreset = presetNames[currentPresetIndex]
+            PresetDropdown.Text = newPreset
+            PM.Shaders.currentPreset = newPreset
+            if PM.Shaders.enabled then
+                applyPreset(newPreset)
+            end
+        end)
+
+        -- Quick preset buttons
+        local QuickSection = Instance.new("Frame")
+        QuickSection.Size = UDim2.new(1, 0, 0, 80)
+        QuickSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        QuickSection.BackgroundTransparency = 0.4
+        QuickSection.BorderSizePixel = 0
+        QuickSection.LayoutOrder = 3
+        QuickSection.Parent = ContentFrame
+
+        local QuickCorner = Instance.new("UICorner")
+        QuickCorner.CornerRadius = UDim.new(0, 10)
+        QuickCorner.Parent = QuickSection
+
+        local QuickLabel = Instance.new("TextLabel")
+        QuickLabel.Size = UDim2.new(1, 0, 0, 20)
+        QuickLabel.Position = UDim2.new(0, 0, 0, 0)
+        QuickLabel.BackgroundTransparency = 1
+        QuickLabel.Text = "Quick Presets"
+        QuickLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        QuickLabel.TextSize = 11
+        QuickLabel.Font = Enum.Font.GothamSemibold
+        QuickLabel.TextXAlignment = Enum.TextXAlignment.Left
+        QuickLabel.Parent = QuickSection
+
+        local QuickLayout = Instance.new("UIListLayout")
+        QuickLayout.Padding = UDim.new(0, 4)
+        QuickLayout.FillDirection = Enum.FillDirection.Horizontal
+        QuickLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        QuickLayout.Parent = QuickSection
+
+        local quickPresets = {"Morning", "Midday", "Evening", "Night", "Rain", "Snow"}
+        for i, presetName in ipairs(quickPresets) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 70, 0, 24)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            btn.BackgroundTransparency = 0.4
+            btn.BorderSizePixel = 0
+            btn.Text = presetName
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.TextSize = 10
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = QuickSection
+
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                local presetLower = presetName:lower()
+                if shaderPresets[presetLower] then
+                    PresetDropdown.Text = presetLower
+                    PM.Shaders.currentPreset = presetLower
+                    if not PM.Shaders.enabled then
+                        toggleShaders()
+                        updateEnableToggle()
+                    else
+                        applyPreset(presetLower)
+                    end
+                end
+            end)
+
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+            end)
+        end
+
+        -- Global illumination toggle
+        local GISection = Instance.new("Frame")
+        GISection.Size = UDim2.new(1, 0, 0, 32)
+        GISection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        GISection.BackgroundTransparency = 0.4
+        GISection.BorderSizePixel = 0
+        GISection.LayoutOrder = 4
+        GISection.Parent = ContentFrame
+
+        local GICorner = Instance.new("UICorner")
+        GICorner.CornerRadius = UDim.new(0, 10)
+        GICorner.Parent = GISection
+
+        local GILabel = Instance.new("TextLabel")
+        GILabel.Size = UDim2.new(1, -48, 1, 0)
+        GILabel.Position = UDim2.new(0, 12, 0, 0)
+        GILabel.BackgroundTransparency = 1
+        GILabel.Text = "Global Illumination"
+        GILabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        GILabel.TextSize = 12
+        GILabel.Font = Enum.Font.Gotham
+        GILabel.TextXAlignment = Enum.TextXAlignment.Left
+        GILabel.Parent = GISection
+
+        local GIPill = Instance.new("Frame")
+        GIPill.Size = UDim2.new(0, 40, 0, 22)
+        GIPill.Position = UDim2.new(1, -52, 0.5, -11)
+        GIPill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        GIPill.BorderSizePixel = 0
+        GIPill.Parent = GISection
+
+        local GIPillCorner = Instance.new("UICorner")
+        GIPillCorner.CornerRadius = UDim.new(0, 11)
+        GIPillCorner.Parent = GIPill
+
+        local GIKnob = Instance.new("Frame")
+        GIKnob.Size = UDim2.new(0, 16, 0, 16)
+        GIKnob.Position = UDim2.new(0, 3, 0.5, -8)
+        GIKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        GIKnob.BorderSizePixel = 0
+        GIKnob.Parent = GIPill
+
+        local GIKnobCorner = Instance.new("UICorner")
+        GIKnobCorner.CornerRadius = UDim.new(0, 8)
+        GIKnobCorner.Parent = GIKnob
+
+        local GIHit = Instance.new("TextButton")
+        GIHit.Size = UDim2.new(0, 52, 1, 0)
+        GIHit.Position = UDim2.new(1, -56, 0, 0)
+        GIHit.BackgroundTransparency = 1
+        GIHit.Text = ""
+        GIHit.Parent = GISection
+
+        local function updateGIToggle()
+            if PM.Shaders.globalIllumination.enabled then
+                TweenService:Create(GIPill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+                TweenService:Create(GIKnob, tweenInfo, {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
+                if giUpdateConn then giUpdateConn:Disconnect() end
+                giUpdateConn = RunService.Heartbeat:Connect(updateGlobalIllumination)
+            else
+                TweenService:Create(GIPill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+                TweenService:Create(GIKnob, tweenInfo, {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
+                if giUpdateConn then giUpdateConn:Disconnect() end
+                for _, gi in ipairs(giLights) do
+                    pcall(function() gi.part:Destroy() end)
+                end
+                giLights = {}
+            end
+        end
+
+        GIHit.MouseButton1Click:Connect(function()
+            PM.Shaders.globalIllumination.enabled = not PM.Shaders.globalIllumination.enabled
+            updateGIToggle()
+        end)
+
+        -- Effects toggles section
+        local EffectsSection = Instance.new("Frame")
+        EffectsSection.Size = UDim2.new(1, 0, 0, 120)
+        EffectsSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        EffectsSection.BackgroundTransparency = 0.4
+        EffectsSection.BorderSizePixel = 0
+        EffectsSection.LayoutOrder = 5
+        EffectsSection.Parent = ContentFrame
+
+        local EffectsCorner = Instance.new("UICorner")
+        EffectsCorner.CornerRadius = UDim.new(0, 10)
+        EffectsCorner.Parent = EffectsSection
+
+        local EffectsLabel = Instance.new("TextLabel")
+        EffectsLabel.Size = UDim2.new(1, 0, 0, 20)
+        EffectsLabel.Position = UDim2.new(0, 0, 0, 0)
+        EffectsLabel.BackgroundTransparency = 1
+        EffectsLabel.Text = "Effects"
+        EffectsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        EffectsLabel.TextSize = 11
+        EffectsLabel.Font = Enum.Font.GothamSemibold
+        EffectsLabel.TextXAlignment = Enum.TextXAlignment.Left
+        EffectsLabel.Parent = EffectsSection
+
+        local EffectsLayout = Instance.new("UIListLayout")
+        EffectsLayout.Padding = UDim.new(0, 4)
+        EffectsLayout.Parent = EffectsSection
+
+        local effectToggles = {
+            {name = "Sun Flare", key = "sunFlare"},
+            {name = "Motion Blur", key = "motionBlur"},
+            {name = "Bloom", key = "bloom"},
+            {name = "Blur", key = "blur"},
+            {name = "Sun Rays", key = "sunRays"},
+            {name = "Color Correction", key = "colorCorrection"}
+        }
+
+        for _, effect in ipairs(effectToggles) do
+            local row = Instance.new("Frame")
+            row.Size = UDim2.new(1, 0, 0, 28)
+            row.BackgroundTransparency = 1
+            row.Parent = EffectsSection
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -48, 1, 0)
+            label.Position = UDim2.new(0, 8, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = effect.name
+            label.TextColor3 = Color3.fromRGB(200, 200, 200)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = row
+
+            local pill = Instance.new("Frame")
+            pill.Size = UDim2.new(0, 36, 0, 18)
+            pill.Position = UDim2.new(1, -44, 0.5, -9)
+            pill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            pill.BorderSizePixel = 0
+            pill.Parent = row
+
+            local pillCorner = Instance.new("UICorner")
+            pillCorner.CornerRadius = UDim.new(0, 9)
+            pillCorner.Parent = pill
+
+            local knob = Instance.new("Frame")
+            knob.Size = UDim2.new(0, 14, 0, 14)
+            knob.Position = UDim2.new(0, 2, 0.5, -7)
+            knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            knob.BorderSizePixel = 0
+            knob.Parent = pill
+
+            local knobCorner = Instance.new("UICorner")
+            knobCorner.CornerRadius = UDim.new(0, 7)
+            knobCorner.Parent = knob
+
+            local hit = Instance.new("TextButton")
+            hit.Size = UDim2.new(1, 0, 1, 0)
+            hit.BackgroundTransparency = 1
+            hit.Text = ""
+            hit.Parent = row
+
+            local effectData = PM.Shaders[effect.key]
+            local isEnabled = effectData.enabled or false
+
+            local function updateEffectToggle()
+                if isEnabled then
+                    TweenService:Create(pill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+                    TweenService:Create(knob, tweenInfo, {Position = UDim2.new(1, -16, 0.5, -7)}):Play()
+                else
+                    TweenService:Create(pill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+                    TweenService:Create(knob, tweenInfo, {Position = UDim2.new(0, 2, 0.5, -7)}):Play()
+                end
+            end
+
+            -- Initialize toggle state
+            if isEnabled then updateEffectToggle() end
+
+            hit.MouseButton1Click:Connect(function()
+                isEnabled = not isEnabled
+                effectData.enabled = isEnabled
+                updateEffectToggle()
+                if PM.Shaders.enabled then
+                    applyPreset(PM.Shaders.currentPreset)
+                end
+            end)
+        end
+
+        -- Initialize
+        updateEnableToggle()
+    end)
+
+    if not success then
+        -- Failed to load shaders GUI
+    end
+end)
+
 registerCommand("gravity", "Control gravity", {}, function(args)
     local TweenService = game:GetService("TweenService")
     local UserInputService = game:GetService("UserInputService")
