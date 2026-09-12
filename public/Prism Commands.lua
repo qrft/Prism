@@ -1076,17 +1076,12 @@ registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(arg
     local VoiceChatService = game:GetService("VoiceChatService")
     local VoiceChatInternal = game:GetService("VoiceChatInternal")
 
-    pcall(function()
-        VoiceChatService:rejoinVoice()
-    end)
-
-    task.wait(0.02)
-
-    pcall(function()
-        for _, connection in pairs(getconnections(VoiceChatInternal.StateChanged)) do
-            connection:Disable()
-        end
-    end)
+    local Code = 'game:GetService("VoiceChatService"):rejoinVoice()\n'
+        ..'task.wait(0.02)\n'
+        ..'for _, Connections in getconnections(game:GetService("VoiceChatInternal").StateChanged) do\n'
+        ..'    Connections:Disable()\n'
+        ..'end'
+    loadstring(Code)()
 
     PM.VCBypasser.active = true
 
