@@ -7718,7 +7718,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
             sunRays = {enabled = false, intensity = 0.5, spread = 0.5},
             sunFlare = {enabled = false},
             motionBlur = {enabled = false, size = 26},
-            atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), decay = 0, glare = 0, haze = 0},
+            atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), glare = 0, haze = 0},
             clouds = {cover = 0, density = 0, color = Color3.fromRGB(1,1,1)},
             skybox = {bk = "", dn = "", ft = "", lt = "", rt = "", up = ""},
             lighting = {ambient = Color3.fromRGB(1,1,1), clockTime = 12, geographicLatitude = 0, brightness = 1, 
@@ -7768,7 +7768,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.5, spread = 0.5},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), decay = 0, glare = 0, haze = 0},
+                atmosphere = {density = 0, offset = 0, color = Color3.fromRGB(1,1,1), glare = 0, haze = 0},
                 clouds = {cover = 0, density = 0, color = Color3.fromRGB(1,1,1)}
             },
             morning = {
@@ -7783,7 +7783,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.5, spread = 0.4},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.9,0.85,0.8), decay = 0.3, glare = 0.2, haze = 0.1},
+                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.9,0.85,0.8), glare = 0.2, haze = 0.1},
                 clouds = {cover = 0.3, density = 0.2, color = Color3.fromRGB(0.9,0.9,0.9)}
             },
             midday = {
@@ -7798,7 +7798,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.6, spread = 0.5},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.15, offset = 0.05, color = Color3.fromRGB(0.95,0.95,1), decay = 0.2, glare = 0.3, haze = 0.05},
+                atmosphere = {density = 0.15, offset = 0.05, color = Color3.fromRGB(0.95,0.95,1), glare = 0.3, haze = 0.05},
                 clouds = {cover = 0.2, density = 0.15, color = Color3.fromRGB(1,1,1)}
             },
             afternoon = {
@@ -7813,7 +7813,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.55, spread = 0.45},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.25, offset = 0.15, color = Color3.fromRGB(0.9,0.8,0.7), decay = 0.35, glare = 0.25, haze = 0.15},
+                atmosphere = {density = 0.25, offset = 0.15, color = Color3.fromRGB(0.9,0.8,0.7), glare = 0.25, haze = 0.15},
                 clouds = {cover = 0.35, density = 0.25, color = Color3.fromRGB(0.95,0.9,0.85)}
             },
             evening = {
@@ -7828,7 +7828,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.7, spread = 0.6},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.35, offset = 0.2, color = Color3.fromRGB(0.8,0.6,0.4), decay = 0.4, glare = 0.4, haze = 0.25},
+                atmosphere = {density = 0.35, offset = 0.2, color = Color3.fromRGB(0.8,0.6,0.4), glare = 0.4, haze = 0.25},
                 clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.9,0.7,0.5)}
             },
             night = {
@@ -7843,7 +7843,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.4, offset = 0.25, color = Color3.fromRGB(0.1,0.1,0.2), decay = 0.5, glare = 0.1, haze = 0.3},
+                atmosphere = {density = 0.4, offset = 0.25, color = Color3.fromRGB(0.1,0.1,0.2), glare = 0.1, haze = 0.3},
                 clouds = {cover = 0.5, density = 0.4, color = Color3.fromRGB(0.2,0.2,0.3)}
             },
             midnight = {
@@ -7858,7 +7858,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.2, spread = 0.2},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.5, offset = 0.3, color = Color3.fromRGB(0.05,0.05,0.1), decay = 0.6, glare = 0.05, haze = 0.4},
+                atmosphere = {density = 0.5, offset = 0.3, color = Color3.fromRGB(0.05,0.05,0.1), glare = 0.05, haze = 0.4},
                 clouds = {cover = 0.6, density = 0.5, color = Color3.fromRGB(0.1,0.1,0.15)}
             },
             -- Color presets
@@ -7874,7 +7874,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.05,0.05,0.05), decay = 0.4, glare = 0.1, haze = 0.2},
+                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.05,0.05,0.05), glare = 0.1, haze = 0.2},
                 clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.1,0.1,0.1)}
             },
             white = {
@@ -7889,7 +7889,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.8, spread = 0.6},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,1,1), decay = 0.2, glare = 0.5, haze = 0.05},
+                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,1,1), glare = 0.5, haze = 0.05},
                 clouds = {cover = 0.2, density = 0.1, color = Color3.fromRGB(1,1,1)}
             },
             -- Weather presets
@@ -7905,7 +7905,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.3, spread = 0.3},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.6, offset = 0.3, color = Color3.fromRGB(0.7,0.75,0.8), decay = 0.5, glare = 0.2, haze = 0.5},
+                atmosphere = {density = 0.6, offset = 0.3, color = Color3.fromRGB(0.7,0.75,0.8), glare = 0.2, haze = 0.5},
                 clouds = {cover = 0.8, density = 0.7, color = Color3.fromRGB(0.6,0.65,0.7)}
             },
             snow = {
@@ -7920,7 +7920,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.6, spread = 0.4},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.4, offset = 0.2, color = Color3.fromRGB(0.95,0.97,1), decay = 0.3, glare = 0.3, haze = 0.2},
+                atmosphere = {density = 0.4, offset = 0.2, color = Color3.fromRGB(0.95,0.97,1), glare = 0.3, haze = 0.2},
                 clouds = {cover = 0.9, density = 0.8, color = Color3.fromRGB(1,1,1)}
             },
             fog = {
@@ -7935,7 +7935,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.2, spread = 0.2},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.8, offset = 0.4, color = Color3.fromRGB(0.8,0.82,0.85), decay = 0.6, glare = 0.1, haze = 0.7},
+                atmosphere = {density = 0.8, offset = 0.4, color = Color3.fromRGB(0.8,0.82,0.85), glare = 0.1, haze = 0.7},
                 clouds = {cover = 0.7, density = 0.6, color = Color3.fromRGB(0.75,0.78,0.8)}
             },
             sunny = {
@@ -7950,7 +7950,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.9, spread = 0.7},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,0.98,0.95), decay = 0.2, glare = 0.6, haze = 0.05},
+                atmosphere = {density = 0.1, offset = 0.05, color = Color3.fromRGB(1,0.98,0.95), glare = 0.6, haze = 0.05},
                 clouds = {cover = 0.1, density = 0.1, color = Color3.fromRGB(1,1,0.95)}
             },
             storm = {
@@ -7965,7 +7965,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = false, intensity = 0.25, spread = 0.25},
                 sunFlare = {enabled = false},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.7, offset = 0.35, color = Color3.fromRGB(0.5,0.52,0.6), decay = 0.55, glare = 0.15, haze = 0.6},
+                atmosphere = {density = 0.7, offset = 0.35, color = Color3.fromRGB(0.5,0.52,0.6), glare = 0.15, haze = 0.6},
                 clouds = {cover = 0.95, density = 0.85, color = Color3.fromRGB(0.45,0.48,0.55)}
             },
             -- Season presets
@@ -7981,7 +7981,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.55, spread = 0.45},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.85,0.78,0.7), decay = 0.35, glare = 0.25, haze = 0.2},
+                atmosphere = {density = 0.3, offset = 0.15, color = Color3.fromRGB(0.85,0.78,0.7), glare = 0.25, haze = 0.2},
                 clouds = {cover = 0.5, density = 0.4, color = Color3.fromRGB(0.9,0.8,0.7)}
             },
             spring = {
@@ -7996,7 +7996,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.6, spread = 0.5},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.95,0.98,0.95), decay = 0.25, glare = 0.3, haze = 0.1},
+                atmosphere = {density = 0.2, offset = 0.1, color = Color3.fromRGB(0.95,0.98,0.95), glare = 0.3, haze = 0.1},
                 clouds = {cover = 0.4, density = 0.3, color = Color3.fromRGB(0.98,1,0.98)}
             },
             summer = {
@@ -8011,7 +8011,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.8, spread = 0.6},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.15, offset = 0.08, color = Color3.fromRGB(1,0.98,0.95), decay = 0.2, glare = 0.4, haze = 0.08},
+                atmosphere = {density = 0.15, offset = 0.08, color = Color3.fromRGB(1,0.98,0.95), glare = 0.4, haze = 0.08},
                 clouds = {cover = 0.25, density = 0.2, color = Color3.fromRGB(1,0.98,0.95)}
             },
             winter = {
@@ -8026,7 +8026,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
                 sunRays = {enabled = true, intensity = 0.5, spread = 0.4},
                 sunFlare = {enabled = true},
                 motionBlur = {enabled = false, size = 26},
-                atmosphere = {density = 0.35, offset = 0.18, color = Color3.fromRGB(0.92,0.94,1), decay = 0.3, glare = 0.2, haze = 0.25},
+                atmosphere = {density = 0.35, offset = 0.18, color = Color3.fromRGB(0.92,0.94,1), glare = 0.2, haze = 0.25},
                 clouds = {cover = 0.85, density = 0.75, color = Color3.fromRGB(0.95,0.97,1)}
             }
         }
@@ -8053,7 +8053,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
         if not sky.Parent then sky.Parent = lighting end
         if not clouds.Parent then clouds.Parent = terrain end
 
-        -- Global illumination system
+        -- Global illumination toggle (beta feature - experimental)
         local giFolder = Instance.new("Folder")
         giFolder.Name = "Prism_Shaders_GI"
         giFolder.Parent = workspace
@@ -8184,7 +8184,6 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
             atmosphere.Density = at.density
             atmosphere.Offset = at.offset
             atmosphere.Color = at.color
-            atmosphere.Decay = at.decay
             atmosphere.Glare = at.glare
             atmosphere.Haze = at.haze
 
@@ -8238,7 +8237,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
             ScreenGui.Parent = CoreGui
         end
 
-        local MW, MH = 320, 400
+        local MW, MH = 320, 580
 
         local MainFrame = Instance.new("Frame")
         MainFrame.Name = "MainFrame"
@@ -8458,112 +8457,66 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
             updateEnableToggle()
         end)
 
-        -- Preset dropdown
-        local PresetSection = Instance.new("Frame")
-        PresetSection.Size = UDim2.new(1, 0, 0, 32)
-        PresetSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        PresetSection.BackgroundTransparency = 0.4
-        PresetSection.BorderSizePixel = 0
-        PresetSection.LayoutOrder = 2
-        PresetSection.Parent = ContentFrame
+        -- All preset buttons
+        local PresetsSection = Instance.new("Frame")
+        PresetsSection.Size = UDim2.new(1, 0, 0, 260)
+        PresetsSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        PresetsSection.BackgroundTransparency = 0.4
+        PresetsSection.BorderSizePixel = 0
+        PresetsSection.LayoutOrder = 3
+        PresetsSection.Parent = ContentFrame
 
-        local PresetCorner = Instance.new("UICorner")
-        PresetCorner.CornerRadius = UDim.new(0, 10)
-        PresetCorner.Parent = PresetSection
+        local PresetsCorner = Instance.new("UICorner")
+        PresetsCorner.CornerRadius = UDim.new(0, 10)
+        PresetsCorner.Parent = PresetsSection
 
-        local PresetLabel = Instance.new("TextLabel")
-        PresetLabel.Size = UDim2.new(1, -48, 1, 0)
-        PresetLabel.Position = UDim2.new(0, 12, 0, 0)
-        PresetLabel.BackgroundTransparency = 1
-        PresetLabel.Text = "Preset"
-        PresetLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        PresetLabel.TextSize = 12
-        PresetLabel.Font = Enum.Font.Gotham
-        PresetLabel.TextXAlignment = Enum.TextXAlignment.Left
-        PresetLabel.Parent = PresetSection
+        local PresetsLabel = Instance.new("TextLabel")
+        PresetsLabel.Size = UDim2.new(1, 0, 0, 20)
+        PresetsLabel.Position = UDim2.new(0, 0, 0, 0)
+        PresetsLabel.BackgroundTransparency = 1
+        PresetsLabel.Text = "All Presets"
+        PresetsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        PresetsLabel.TextSize = 11
+        PresetsLabel.Font = Enum.Font.GothamSemibold
+        PresetsLabel.TextXAlignment = Enum.TextXAlignment.Left
+        PresetsLabel.Parent = PresetsSection
 
-        local PresetDropdown = Instance.new("TextButton")
-        PresetDropdown.Size = UDim2.new(0, 140, 0, 24)
-        PresetDropdown.Position = UDim2.new(1, -152, 0.5, -12)
-        PresetDropdown.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        PresetDropdown.BackgroundTransparency = 0.4
-        PresetDropdown.BorderSizePixel = 0
-        PresetDropdown.Text = PM.Shaders.currentPreset
-        PresetDropdown.TextColor3 = Color3.fromRGB(200, 200, 200)
-        PresetDropdown.TextSize = 11
-        PresetDropdown.Font = Enum.Font.Gotham
-        PresetDropdown.Parent = PresetSection
+        local PresetsLayout = Instance.new("UIListLayout")
+        PresetsLayout.Padding = UDim.new(0, 4)
+        PresetsLayout.Parent = PresetsSection
 
-        local PresetCorner2 = Instance.new("UICorner")
-        PresetCorner2.CornerRadius = UDim.new(0, 6)
-        PresetCorner2.Parent = PresetDropdown
+        -- Time presets row
+        local TimeRow = Instance.new("Frame")
+        TimeRow.Size = UDim2.new(1, 0, 0, 24)
+        TimeRow.BackgroundTransparency = 1
+        TimeRow.Parent = PresetsSection
 
-        local presetNames = {"default", "morning", "midday", "afternoon", "evening", "night", "midnight", 
-                          "black", "white", "rain", "snow", "fog", "sunny", "storm", 
-                          "autumn", "spring", "summer", "winter"}
-        local currentPresetIndex = 1
+        local TimeRowLayout = Instance.new("UIListLayout")
+        TimeRowLayout.Padding = UDim.new(0, 4)
+        TimeRowLayout.FillDirection = Enum.FillDirection.Horizontal
+        TimeRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        TimeRowLayout.Parent = TimeRow
 
-        PresetDropdown.MouseButton1Click:Connect(function()
-            currentPresetIndex = currentPresetIndex % #presetNames + 1
-            local newPreset = presetNames[currentPresetIndex]
-            PresetDropdown.Text = newPreset
-            PM.Shaders.currentPreset = newPreset
-            if PM.Shaders.enabled then
-                applyPreset(newPreset)
-            end
-        end)
-
-        -- Quick preset buttons
-        local QuickSection = Instance.new("Frame")
-        QuickSection.Size = UDim2.new(1, 0, 0, 80)
-        QuickSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        QuickSection.BackgroundTransparency = 0.4
-        QuickSection.BorderSizePixel = 0
-        QuickSection.LayoutOrder = 3
-        QuickSection.Parent = ContentFrame
-
-        local QuickCorner = Instance.new("UICorner")
-        QuickCorner.CornerRadius = UDim.new(0, 10)
-        QuickCorner.Parent = QuickSection
-
-        local QuickLabel = Instance.new("TextLabel")
-        QuickLabel.Size = UDim2.new(1, 0, 0, 20)
-        QuickLabel.Position = UDim2.new(0, 0, 0, 0)
-        QuickLabel.BackgroundTransparency = 1
-        QuickLabel.Text = "Quick Presets"
-        QuickLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        QuickLabel.TextSize = 11
-        QuickLabel.Font = Enum.Font.GothamSemibold
-        QuickLabel.TextXAlignment = Enum.TextXAlignment.Left
-        QuickLabel.Parent = QuickSection
-
-        local QuickLayout = Instance.new("UIListLayout")
-        QuickLayout.Padding = UDim.new(0, 4)
-        QuickLayout.FillDirection = Enum.FillDirection.Horizontal
-        QuickLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        QuickLayout.Parent = QuickSection
-
-        local quickPresets = {"Morning", "Midday", "Evening", "Night", "Rain", "Snow"}
-        for i, presetName in ipairs(quickPresets) do
+        local timePresets = {"Default", "Morning", "Midday", "Afternoon", "Evening", "Night", "Midnight"}
+        for _, presetName in ipairs(timePresets) do
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(0, 70, 0, 24)
+            btn.Size = UDim2.new(0, 52, 0, 20)
             btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             btn.BackgroundTransparency = 0.4
             btn.BorderSizePixel = 0
             btn.Text = presetName
             btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            btn.TextSize = 10
+            btn.TextSize = 9
             btn.Font = Enum.Font.Gotham
-            btn.Parent = QuickSection
+            btn.Parent = TimeRow
 
             local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.CornerRadius = UDim.new(0, 5)
             btnCorner.Parent = btn
 
             btn.MouseButton1Click:Connect(function()
                 local presetLower = presetName:lower()
                 if shaderPresets[presetLower] then
-                    PresetDropdown.Text = presetLower
                     PM.Shaders.currentPreset = presetLower
                     if not PM.Shaders.enabled then
                         toggleShaders()
@@ -8582,80 +8535,155 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
             end)
         end
 
-        -- Global illumination toggle
-        local GISection = Instance.new("Frame")
-        GISection.Size = UDim2.new(1, 0, 0, 32)
-        GISection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        GISection.BackgroundTransparency = 0.4
-        GISection.BorderSizePixel = 0
-        GISection.LayoutOrder = 4
-        GISection.Parent = ContentFrame
+        -- Color presets row
+        local ColorRow = Instance.new("Frame")
+        ColorRow.Size = UDim2.new(1, 0, 0, 24)
+        ColorRow.BackgroundTransparency = 1
+        ColorRow.Parent = PresetsSection
 
-        local GICorner = Instance.new("UICorner")
-        GICorner.CornerRadius = UDim.new(0, 10)
-        GICorner.Parent = GISection
+        local ColorRowLayout = Instance.new("UIListLayout")
+        ColorRowLayout.Padding = UDim.new(0, 4)
+        ColorRowLayout.FillDirection = Enum.FillDirection.Horizontal
+        ColorRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        ColorRowLayout.Parent = ColorRow
 
-        local GILabel = Instance.new("TextLabel")
-        GILabel.Size = UDim2.new(1, -48, 1, 0)
-        GILabel.Position = UDim2.new(0, 12, 0, 0)
-        GILabel.BackgroundTransparency = 1
-        GILabel.Text = "Global Illumination"
-        GILabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        GILabel.TextSize = 12
-        GILabel.Font = Enum.Font.Gotham
-        GILabel.TextXAlignment = Enum.TextXAlignment.Left
-        GILabel.Parent = GISection
+        local colorPresets = {"Black", "White"}
+        for _, presetName in ipairs(colorPresets) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 52, 0, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            btn.BackgroundTransparency = 0.4
+            btn.BorderSizePixel = 0
+            btn.Text = presetName
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.TextSize = 9
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = ColorRow
 
-        local GIPill = Instance.new("Frame")
-        GIPill.Size = UDim2.new(0, 40, 0, 22)
-        GIPill.Position = UDim2.new(1, -52, 0.5, -11)
-        GIPill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        GIPill.BorderSizePixel = 0
-        GIPill.Parent = GISection
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 5)
+            btnCorner.Parent = btn
 
-        local GIPillCorner = Instance.new("UICorner")
-        GIPillCorner.CornerRadius = UDim.new(0, 11)
-        GIPillCorner.Parent = GIPill
-
-        local GIKnob = Instance.new("Frame")
-        GIKnob.Size = UDim2.new(0, 16, 0, 16)
-        GIKnob.Position = UDim2.new(0, 3, 0.5, -8)
-        GIKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        GIKnob.BorderSizePixel = 0
-        GIKnob.Parent = GIPill
-
-        local GIKnobCorner = Instance.new("UICorner")
-        GIKnobCorner.CornerRadius = UDim.new(0, 8)
-        GIKnobCorner.Parent = GIKnob
-
-        local GIHit = Instance.new("TextButton")
-        GIHit.Size = UDim2.new(0, 52, 1, 0)
-        GIHit.Position = UDim2.new(1, -56, 0, 0)
-        GIHit.BackgroundTransparency = 1
-        GIHit.Text = ""
-        GIHit.Parent = GISection
-
-        local function updateGIToggle()
-            if PM.Shaders.globalIllumination.enabled then
-                TweenService:Create(GIPill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
-                TweenService:Create(GIKnob, tweenInfo, {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
-                if giUpdateConn then giUpdateConn:Disconnect() end
-                giUpdateConn = RunService.Heartbeat:Connect(updateGlobalIllumination)
-            else
-                TweenService:Create(GIPill, tweenInfo, {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
-                TweenService:Create(GIKnob, tweenInfo, {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
-                if giUpdateConn then giUpdateConn:Disconnect() end
-                for _, gi in ipairs(giLights) do
-                    pcall(function() gi.part:Destroy() end)
+            btn.MouseButton1Click:Connect(function()
+                local presetLower = presetName:lower()
+                if shaderPresets[presetLower] then
+                    PM.Shaders.currentPreset = presetLower
+                    if not PM.Shaders.enabled then
+                        toggleShaders()
+                        updateEnableToggle()
+                    else
+                        applyPreset(presetLower)
+                    end
                 end
-                giLights = {}
-            end
+            end)
+
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+            end)
         end
 
-        GIHit.MouseButton1Click:Connect(function()
-            PM.Shaders.globalIllumination.enabled = not PM.Shaders.globalIllumination.enabled
-            updateGIToggle()
-        end)
+        -- Weather presets row
+        local WeatherRow = Instance.new("Frame")
+        WeatherRow.Size = UDim2.new(1, 0, 0, 24)
+        WeatherRow.BackgroundTransparency = 1
+        WeatherRow.Parent = PresetsSection
+
+        local WeatherRowLayout = Instance.new("UIListLayout")
+        WeatherRowLayout.Padding = UDim.new(0, 4)
+        WeatherRowLayout.FillDirection = Enum.FillDirection.Horizontal
+        WeatherRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        WeatherRowLayout.Parent = WeatherRow
+
+        local weatherPresets = {"Rain", "Snow", "Fog", "Sunny", "Storm"}
+        for _, presetName in ipairs(weatherPresets) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 52, 0, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            btn.BackgroundTransparency = 0.4
+            btn.BorderSizePixel = 0
+            btn.Text = presetName
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.TextSize = 9
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = WeatherRow
+
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 5)
+            btnCorner.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                local presetLower = presetName:lower()
+                if shaderPresets[presetLower] then
+                    PM.Shaders.currentPreset = presetLower
+                    if not PM.Shaders.enabled then
+                        toggleShaders()
+                        updateEnableToggle()
+                    else
+                        applyPreset(presetLower)
+                    end
+                end
+            end)
+
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+            end)
+        end
+
+        -- Season presets row
+        local SeasonRow = Instance.new("Frame")
+        SeasonRow.Size = UDim2.new(1, 0, 0, 24)
+        SeasonRow.BackgroundTransparency = 1
+        SeasonRow.Parent = PresetsSection
+
+        local SeasonRowLayout = Instance.new("UIListLayout")
+        SeasonRowLayout.Padding = UDim.new(0, 4)
+        SeasonRowLayout.FillDirection = Enum.FillDirection.Horizontal
+        SeasonRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        SeasonRowLayout.Parent = SeasonRow
+
+        local seasonPresets = {"Autumn", "Spring", "Summer", "Winter"}
+        for _, presetName in ipairs(seasonPresets) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 52, 0, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            btn.BackgroundTransparency = 0.4
+            btn.BorderSizePixel = 0
+            btn.Text = presetName
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.TextSize = 9
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = SeasonRow
+
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 5)
+            btnCorner.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                local presetLower = presetName:lower()
+                if shaderPresets[presetLower] then
+                    PM.Shaders.currentPreset = presetLower
+                    if not PM.Shaders.enabled then
+                        toggleShaders()
+                        updateEnableToggle()
+                    else
+                        applyPreset(presetLower)
+                    end
+                end
+            end)
+
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+            end)
+        end
 
         -- Effects toggles section
         local EffectsSection = Instance.new("Frame")
@@ -8663,7 +8691,7 @@ registerCommand("shaders", "Advanced shader effects with presets", {}, function(
         EffectsSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         EffectsSection.BackgroundTransparency = 0.4
         EffectsSection.BorderSizePixel = 0
-        EffectsSection.LayoutOrder = 5
+        EffectsSection.LayoutOrder = 4
         EffectsSection.Parent = ContentFrame
 
         local EffectsCorner = Instance.new("UICorner")
