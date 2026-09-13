@@ -261,12 +261,13 @@ local function createNametag()
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
-        billboard.Enabled = nametagEnabled
-        
         -- Track head
         local currentHead = player.Character and player.Character:FindFirstChild("Head")
         if currentHead then
             billboard.Adornee = currentHead
+            billboard.Enabled = nametagEnabled
+        else
+            billboard.Enabled = false
         end
     end)
     
@@ -470,12 +471,14 @@ local function createOtherNametag(plrObj)
             bgGradient.Rotation = (bgGradient.Rotation + 120 * dt) % 360
         end
         
-        billboard.Enabled = nametagEnabled
-        
         -- Track head
         local targetHead = plrObj.Character and plrObj.Character:FindFirstChild("Head")
         if targetHead then
             billboard.Adornee = targetHead
+            billboard.Enabled = nametagEnabled
+        else
+            billboard.Enabled = false
+            return
         end
         
         local myChar = PM.Svc.Players.LocalPlayer.Character

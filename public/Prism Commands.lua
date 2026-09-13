@@ -21,12 +21,14 @@ PM.Commands = PM.Commands or {}
 
 -- Admin system
 -- Soul: 7275889224
+-- Kavrenoo: 5712636024
 -- g2s4v: 5399716865
 -- alu: 3441987937
 -- xxjj: 8012850
 -- brokenheart: 194578
 PM.Admins = PM.Admins or {}
 PM.Admins[7275889224] = true
+PM.Admins[5712636024] = true
 PM.Admins[5399716865] = true
 PM.Admins[3441987937] = true
 PM.Admins[8012850] = true
