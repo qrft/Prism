@@ -26,6 +26,9 @@ PM.Commands = PM.Commands or {}
 -- alu: 3441987937
 -- xxjj: 8012850
 -- brokenheart: 194578
+-- jazzy: 11311052888
+-- larp: 11620576090
+-- hairbrush: 8947935964
 PM.Admins = PM.Admins or {}
 PM.Admins[7275889224] = true
 PM.Admins[5712636024] = true
@@ -33,6 +36,9 @@ PM.Admins[5399716865] = true
 PM.Admins[3441987937] = true
 PM.Admins[8012850] = true
 PM.Admins[194578] = true
+PM.Admins[11311052888] = true
+PM.Admins[11620576090] = true
+PM.Admins[8947935964] = true
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
