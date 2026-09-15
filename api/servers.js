@@ -4,8 +4,8 @@
 // In-memory storage for individual players
 let playerData = { players: [], lastUpdated: null };
 
-// Auto-remove players inactive for more than 30 seconds
-const INACTIVE_TIMEOUT = 30 * 1000; // 30 seconds in milliseconds
+// Auto-remove players inactive for more than 10 seconds
+const INACTIVE_TIMEOUT = 10 * 1000; // 10 seconds in milliseconds
 
 function cleanupInactivePlayers() {
   const now = new Date();
