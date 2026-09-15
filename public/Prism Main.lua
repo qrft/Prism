@@ -2201,8 +2201,43 @@ PM.createMainGUI = function()
         local renderServerList
         
         local function fetchPrismServers()
-            local servers = PM.PrismAPI.getServers(true)
-            return servers or {}
+            -- First POST our own data
+            PM.PrismAPI.getServers(true)
+            
+            -- Then GET the list
+            local HttpService = game:GetService("HttpService")
+            local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+            
+            if not requestFunction then
+                return {}
+            end
+            
+            local requestTable = {
+                Url = API_BASE_URL .. "/api/servers",
+                Method = "GET"
+            }
+            
+            local success, result = pcall(function()
+                return requestFunction(requestTable)
+            end)
+            
+            if not success then
+                return {}
+            end
+            
+            local responseBody = result.Body or result.body or result
+            
+            if responseBody then
+                local responseSuccess, responseData = pcall(function()
+                    return HttpService:JSONDecode(responseBody)
+                end)
+                
+                if responseSuccess and responseData.success then
+                    return responseData.data or {}
+                end
+            end
+            
+            return {}
         end
         
         renderServerList = function()
@@ -2358,10 +2393,10 @@ PM.createMainGUI = function()
         cachedServers = fetchPrismServers()
         renderServerList()
         
-        -- Refresh every 30 seconds
+        -- Auto-refresh every 2 seconds (like nametags)
         spawn(function()
             while PM.UI.JoinPanel do
-                task.wait(30)
+                task.wait(2)
                 cachedServers = fetchPrismServers()
                 renderServerList()
             end
