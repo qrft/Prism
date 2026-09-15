@@ -88,8 +88,22 @@ PM.PrismAPI = {
         end
         
         local player = PM.Svc.Players.LocalPlayer
+        if not player then
+            return nil
+        end
+        
         local jobId = game.JobId
-        local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown"
+        local gameName = "Unknown"
+        
+        -- Safely get game name
+        pcall(function()
+            local success, result = pcall(function()
+                return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+            end)
+            if success and result then
+                gameName = result.Name or "Unknown"
+            end
+        end)
         
         local requestBody = HttpService:JSONEncode({
             jobid = jobId,
@@ -2171,22 +2185,32 @@ PM.createMainGUI = function()
         })
         PM.corner(PM.UI.JoinSearch, 6)
         
-        -- User scroll frame (no refresh button, so larger)
+        -- User scroll frame
         PM.UI.JoinScroll = PM.mk("ScrollingFrame", PM.UI.JoinPanel, {
             Name = "JoinScroll",
-            Size = UDim2.new(1, -10, 1, -106),
-            Position = UDim2.new(0, 9, 0, 102),
-            BackgroundTransparency = 1,
+            Size = UDim2.new(1, -16, 1, -106),
+            Position = UDim2.new(0, 8, 0, 102),
+            BackgroundColor3 = C.card,
+            BackgroundTransparency = 0.5,
             BorderSizePixel = 0,
             ScrollBarThickness = 3,
             ScrollBarImageColor3 = C.border,
             CanvasSize = UDim2.new(0, 0, 0, 0),
             ZIndex = 101,
         })
+        PM.corner(PM.UI.JoinScroll, 6)
+        
+        PM.UI.JoinPadding = PM.mk("UIPadding", PM.UI.JoinScroll, {
+            PaddingTop = UDim.new(0, 4),
+            PaddingBottom = UDim.new(0, 10),
+            PaddingLeft = UDim.new(0, 8),
+            PaddingRight = UDim.new(0, 8),
+        })
         
         PM.UI.JoinList = PM.mk("UIListLayout", PM.UI.JoinScroll, {
-            Padding = UDim.new(0, 2),
+            Padding = UDim.new(0, 3),
             SortOrder = Enum.SortOrder.LayoutOrder,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
         })
         
         PM.UI.JoinList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -2288,7 +2312,7 @@ PM.createMainGUI = function()
                 end
                 
                 local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
-                    Size = UDim2.new(1, -6, 0, 60),
+                    Size = UDim2.new(1, -6, 0, 44),
                     BackgroundColor3 = C.card,
                     BackgroundTransparency = 0.5,
                     BorderSizePixel = 0,
@@ -2301,8 +2325,8 @@ PM.createMainGUI = function()
                 -- PFP on the left
                 local pfpUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerData.userId) .. "&width=150&height=150&format=png"
                 local pfp = PM.mk("ImageLabel", btn, {
-                    Size = UDim2.new(0, 44, 0, 44),
-                    Position = UDim2.new(0, 8, 0, 8),
+                    Size = UDim2.new(0, 36, 0, 36),
+                    Position = UDim2.new(0, 8, 0.5, -18),
                     BackgroundColor3 = Color3.fromRGB(30, 30, 30),
                     Image = pfpUrl,
                     ZIndex = 103,
@@ -2311,41 +2335,13 @@ PM.createMainGUI = function()
                 
                 -- Display name
                 PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -130, 0, 16),
-                    Position = UDim2.new(0, 60, 0, 8),
+                    Size = UDim2.new(1, -100, 0, 20),
+                    Position = UDim2.new(0, 52, 0.5, -10),
                     BackgroundTransparency = 1,
                     Text = playerData.displayName or playerData.username,
                     TextColor3 = C.text,
                     TextSize = 12,
                     Font = Enum.Font.GothamBold,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    ZIndex = 103,
-                })
-                
-                -- Username with @
-                PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -130, 0, 14),
-                    Position = UDim2.new(0, 60, 0, 24),
-                    BackgroundTransparency = 1,
-                    Text = "@" .. playerData.username,
-                    TextColor3 = C.textDim,
-                    TextSize = 10,
-                    Font = Enum.Font.Gotham,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    ZIndex = 103,
-                })
-                
-                -- Game name
-                PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -130, 0, 14),
-                    Position = UDim2.new(0, 60, 0, 40),
-                    BackgroundTransparency = 1,
-                    Text = playerData.gameName or "Unknown Game",
-                    TextColor3 = Color3.fromRGB(100, 150, 200),
-                    TextSize = 9,
-                    Font = Enum.Font.Gotham,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     ZIndex = 103,
