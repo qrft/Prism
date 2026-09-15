@@ -77,6 +77,57 @@ local C = PM.C
 local API_BASE_URL = "https://prismscript.vercel.app"
 local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
 
+-- Prism API for server joining
+PM.PrismAPI = {
+    getServers = function(forceRefresh)
+        local HttpService = game:GetService("HttpService")
+        local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
+        
+        if not requestFunction then
+            return nil
+        end
+        
+        local jobId = game.JobId
+        local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown"
+        
+        local requestBody = HttpService:JSONEncode({
+            jobid = jobId,
+            gameName = gameName
+        })
+        
+        local requestTable = {
+            Url = API_BASE_URL .. "/api/servers",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = requestBody
+        }
+        
+        local success, result = pcall(function()
+            return requestFunction(requestTable)
+        end)
+        
+        if not success then
+            return nil
+        end
+        
+        local responseBody = result.Body or result.body or result
+        
+        if responseBody then
+            local responseSuccess, responseData = pcall(function()
+                return HttpService:JSONDecode(responseBody)
+            end)
+            
+            if responseSuccess and responseData.success then
+                return responseData.data
+            end
+        end
+        
+        return nil
+    end
+}
+
 local nametagEnabled = true
 local nametagGui = nil
 local nametagConnection = nil
