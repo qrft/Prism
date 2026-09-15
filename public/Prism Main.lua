@@ -2190,15 +2190,14 @@ PM.createMainGUI = function()
             Name = "JoinScroll",
             Size = UDim2.new(1, -16, 1, -106),
             Position = UDim2.new(0, 8, 0, 102),
-            BackgroundColor3 = C.card,
-            BackgroundTransparency = 0.5,
+            BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 3,
-            ScrollBarImageColor3 = C.border,
+            ScrollBarImageColor3 = Color3.fromRGB(120, 60, 191),
             CanvasSize = UDim2.new(0, 0, 0, 0),
             ZIndex = 101,
         })
-        PM.corner(PM.UI.JoinScroll, 6)
+        PM.corner(PM.UI.JoinScroll, 5)
         
         PM.UI.JoinPadding = PM.mk("UIPadding", PM.UI.JoinScroll, {
             PaddingTop = UDim.new(0, 4),
@@ -2210,7 +2209,7 @@ PM.createMainGUI = function()
         PM.UI.JoinList = PM.mk("UIListLayout", PM.UI.JoinScroll, {
             Padding = UDim.new(0, 3),
             SortOrder = Enum.SortOrder.LayoutOrder,
-            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            HorizontalAlignment = Enum.HorizontalAlignment.Left,
         })
         
         PM.UI.JoinList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -2313,10 +2312,9 @@ PM.createMainGUI = function()
                 
                 local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
                     Size = UDim2.new(1, 0, 0, 54),
-                    BackgroundColor3 = Color3.fromRGB(163, 162, 165),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 1,
-                    BorderColor3 = Color3.fromRGB(27, 42, 53),
+                    BackgroundColor3 = Color3.fromRGB(10, 4, 20),
+                    BackgroundTransparency = 0.23,
+                    BorderSizePixel = 0,
                     Text = "",
                     Name = "Player_" .. tostring(playerData.userId),
                     ZIndex = 102,
@@ -2324,102 +2322,118 @@ PM.createMainGUI = function()
                 PM.corner(btn, 5)
                 PM.stroke(btn, Color3.fromRGB(30, 30, 38), 1, 0)
                 
-                -- PFP frame (from img 1-7)
-                local pfpFrame = PM.mk("Frame", btn, {
-                    Size = UDim2.new(0, 38, 0, 38),
-                    Position = UDim2.new(0, 0, 0.5, 0),
-                    AnchorPoint = Vector2.new(0, 0.5),
-                    BackgroundColor3 = Color3.fromRGB(163, 162, 165),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                    ZIndex = 103,
-                })
-                PM.corner(pfpFrame, 3)
-                
                 -- PFP image
                 local pfpUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerData.userId) .. "&width=150&height=150&format=png"
-                PM.mk("ImageLabel", pfpFrame, {
-                    Size = UDim2.new(1, 0, 1, 0),
-                    BackgroundTransparency = 1,
+                local pfp = PM.mk("ImageLabel", btn, {
+                    Size = UDim2.new(0, 30, 0, 30),
+                    Position = UDim2.new(0, 8, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundColor3 = Color3.fromRGB(24, 18, 38),
                     Image = pfpUrl,
-                    ZIndex = 104,
+                    ZIndex = 103,
                 })
+                PM.corner(pfp, 15)
+                
+                -- Text frame container
+                local textFrame = PM.mk("Frame", btn, {
+                    Size = UDim2.new(0, 100, 0, 38),
+                    Position = UDim2.new(0, 46, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundTransparency = 1,
+                    ZIndex = 103,
+                })
+                PM.corner(textFrame, 3)
                 
                 -- Display name
-                PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -140, 0, 16),
-                    Position = UDim2.new(0, 46, 0, 6),
+                PM.mk("TextLabel", textFrame, {
+                    Size = UDim2.new(1, 0, 0, 14),
                     BackgroundTransparency = 1,
                     Text = playerData.displayName or playerData.username,
-                    TextColor3 = C.text,
-                    TextSize = 13,
+                    TextColor3 = Color3.fromRGB(230, 230, 235),
+                    TextSize = 11,
                     Font = Enum.Font.GothamBold,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
-                    ZIndex = 103,
+                    ZIndex = 104,
                 })
                 
-                -- Username with @
-                PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -140, 0, 12),
-                    Position = UDim2.new(0, 46, 0, 22),
+                -- Username
+                PM.mk("TextLabel", textFrame, {
+                    Size = UDim2.new(1, 0, 0, 11),
+                    Position = UDim2.new(0, 0, 0, 14),
                     BackgroundTransparency = 1,
-                    Text = "@" .. playerData.username,
-                    TextColor3 = C.textDim,
-                    TextSize = 10,
-                    Font = Enum.Font.Gotham,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    ZIndex = 103,
-                })
-                
-                -- Game name/status
-                PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -140, 0, 12),
-                    Position = UDim2.new(0, 46, 0, 36),
-                    BackgroundTransparency = 1,
-                    Text = playerData.gameName or "Unknown Game",
-                    TextColor3 = Color3.fromRGB(140, 140, 150),
+                    Text = playerData.username,
+                    TextColor3 = Color3.fromRGB(120, 120, 130),
                     TextSize = 9,
                     Font = Enum.Font.Gotham,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
-                    ZIndex = 103,
-                })
-                
-                -- Join button on the right
-                local buttonText = "Join"
-                if playerData.jobid == game.JobId then
-                    buttonText = "current server"
-                end
-                
-                local joinBtn = PM.mk("TextButton", btn, {
-                    Size = UDim2.new(0, 90, 0, 24),
-                    Position = UDim2.new(1, -98, 0.5, -12),
-                    BackgroundColor3 = Color3.fromRGB(80, 80, 90),
-                    BackgroundTransparency = 0.3,
-                    BorderSizePixel = 0,
-                    Text = buttonText,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextSize = 10,
-                    Font = Enum.Font.GothamBold,
                     ZIndex = 104,
                 })
-                PM.corner(joinBtn, 4)
                 
-                btn.MouseEnter:Connect(function()
-                    PM.tween(btn, 0.15, {BackgroundTransparency = 0.2})
-                end)
-                btn.MouseLeave:Connect(function()
-                    PM.tween(btn, 0.15, {BackgroundTransparency = 0.5})
-                end)
+                -- Game name
+                PM.mk("TextLabel", textFrame, {
+                    Size = UDim2.new(1, 0, 0, 10),
+                    Position = UDim2.new(0, 0, 0, 26),
+                    BackgroundTransparency = 1,
+                    Text = playerData.gameName or "Unknown Game",
+                    TextColor3 = Color3.fromRGB(55, 55, 65),
+                    TextSize = 9,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 104,
+                })
                 
-                joinBtn.MouseEnter:Connect(function()
-                    PM.tween(joinBtn, 0.15, {BackgroundTransparency = 0})
-                end)
-                joinBtn.MouseLeave:Connect(function()
-                    PM.tween(joinBtn, 0.15, {BackgroundTransparency = 0.3})
-                end)
+                -- Button frame container
+                local buttonFrame = PM.mk("Frame", btn, {
+                    Size = UDim2.new(0, 62, 0, 40),
+                    Position = UDim2.new(1, -68, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundTransparency = 1,
+                    ZIndex = 103,
+                })
+                PM.corner(buttonFrame, 3)
+                
+                -- "now" indicator
+                PM.mk("TextLabel", buttonFrame, {
+                    Size = UDim2.new(1, 0, 0, 12),
+                    BackgroundTransparency = 1,
+                    Text = "now",
+                    TextColor3 = Color3.fromRGB(80, 220, 120),
+                    TextSize = 9,
+                    Font = Enum.Font.GothamBold,
+                    TextXAlignment = Enum.TextXAlignment.Right,
+                    ZIndex = 104,
+                })
+                
+                -- Join/current server button
+                local buttonText = "JOIN"
+                local buttonBg = Color3.fromRGB(255, 255, 255)
+                local buttonTextCol = Color3.fromRGB(0, 0, 0)
+                local buttonTrans = 0
+                
+                if playerData.jobid == game.JobId then
+                    buttonText = "current server"
+                    buttonBg = Color3.fromRGB(24, 18, 38)
+                    buttonTextCol = Color3.fromRGB(120, 120, 130)
+                    buttonTrans = 0.3
+                end
+                
+                local joinBtn = PM.mk("TextButton", buttonFrame, {
+                    Size = UDim2.new(1, 0, 0, 22),
+                    Position = UDim2.new(0, 0, 0, 16),
+                    BackgroundColor3 = buttonBg,
+                    BackgroundTransparency = buttonTrans,
+                    BorderSizePixel = 0,
+                    Text = buttonText,
+                    TextColor3 = buttonTextCol,
+                    TextSize = 9,
+                    Font = Enum.Font.GothamBold,
+                    AutoButtonColor = false,
+                    ZIndex = 104,
+                })
+                PM.corner(joinBtn, 3)
                 
                 joinBtn.MouseButton1Click:Connect(function()
                     PM.playClickSound()
