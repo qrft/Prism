@@ -2312,7 +2312,7 @@ PM.createMainGUI = function()
                 end
                 
                 local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
-                    Size = UDim2.new(1, 0, 0, 38),
+                    Size = UDim2.new(1, 0, 0, 54),
                     BackgroundColor3 = Color3.fromRGB(163, 162, 165),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 1,
@@ -2324,7 +2324,7 @@ PM.createMainGUI = function()
                 PM.corner(btn, 5)
                 PM.stroke(btn, Color3.fromRGB(30, 30, 38), 1, 0)
                 
-                -- PFP frame
+                -- PFP frame (from img 1-7)
                 local pfpFrame = PM.mk("Frame", btn, {
                     Size = UDim2.new(0, 38, 0, 38),
                     Position = UDim2.new(0, 0, 0.5, 0),
@@ -2347,26 +2347,59 @@ PM.createMainGUI = function()
                 
                 -- Display name
                 PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -100, 0, 10),
-                    Position = UDim2.new(0, 46, 0, 26),
+                    Size = UDim2.new(1, -140, 0, 16),
+                    Position = UDim2.new(0, 46, 0, 6),
                     BackgroundTransparency = 1,
                     Text = playerData.displayName or playerData.username,
                     TextColor3 = C.text,
-                    TextSize = 12,
+                    TextSize = 13,
                     Font = Enum.Font.GothamBold,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextTruncate = Enum.TextTruncate.AtEnd,
                     ZIndex = 103,
                 })
                 
+                -- Username with @
+                PM.mk("TextLabel", btn, {
+                    Size = UDim2.new(1, -140, 0, 12),
+                    Position = UDim2.new(0, 46, 0, 22),
+                    BackgroundTransparency = 1,
+                    Text = "@" .. playerData.username,
+                    TextColor3 = C.textDim,
+                    TextSize = 10,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 103,
+                })
+                
+                -- Game name/status
+                PM.mk("TextLabel", btn, {
+                    Size = UDim2.new(1, -140, 0, 12),
+                    Position = UDim2.new(0, 46, 0, 36),
+                    BackgroundTransparency = 1,
+                    Text = playerData.gameName or "Unknown Game",
+                    TextColor3 = Color3.fromRGB(140, 140, 150),
+                    TextSize = 9,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 103,
+                })
+                
                 -- Join button on the right
+                local buttonText = "Join"
+                if playerData.jobid == game.JobId then
+                    buttonText = "current server"
+                end
+                
                 local joinBtn = PM.mk("TextButton", btn, {
-                    Size = UDim2.new(0, 50, 0, 24),
-                    Position = UDim2.new(1, -58, 0.5, -12),
-                    BackgroundColor3 = C.green,
+                    Size = UDim2.new(0, 90, 0, 24),
+                    Position = UDim2.new(1, -98, 0.5, -12),
+                    BackgroundColor3 = Color3.fromRGB(80, 80, 90),
                     BackgroundTransparency = 0.3,
                     BorderSizePixel = 0,
-                    Text = "Join",
+                    Text = buttonText,
                     TextColor3 = Color3.fromRGB(255, 255, 255),
                     TextSize = 10,
                     Font = Enum.Font.GothamBold,
