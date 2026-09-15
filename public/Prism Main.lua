@@ -2312,31 +2312,43 @@ PM.createMainGUI = function()
                 end
                 
                 local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
-                    Size = UDim2.new(1, -6, 0, 44),
-                    BackgroundColor3 = C.card,
-                    BackgroundTransparency = 0.5,
-                    BorderSizePixel = 0,
+                    Size = UDim2.new(1, 0, 0, 38),
+                    BackgroundColor3 = Color3.fromRGB(163, 162, 165),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 1,
+                    BorderColor3 = Color3.fromRGB(27, 42, 53),
                     Text = "",
                     Name = "Player_" .. tostring(playerData.userId),
                     ZIndex = 102,
                 })
-                PM.corner(btn, 6)
+                PM.corner(btn, 5)
+                PM.stroke(btn, Color3.fromRGB(30, 30, 38), 1, 0)
                 
-                -- PFP on the left
-                local pfpUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerData.userId) .. "&width=150&height=150&format=png"
-                local pfp = PM.mk("ImageLabel", btn, {
-                    Size = UDim2.new(0, 36, 0, 36),
-                    Position = UDim2.new(0, 8, 0.5, -18),
-                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                    Image = pfpUrl,
+                -- PFP frame
+                local pfpFrame = PM.mk("Frame", btn, {
+                    Size = UDim2.new(0, 38, 0, 38),
+                    Position = UDim2.new(0, 0, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundColor3 = Color3.fromRGB(163, 162, 165),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
                     ZIndex = 103,
                 })
-                PM.corner(pfp, 8)
+                PM.corner(pfpFrame, 3)
+                
+                -- PFP image
+                local pfpUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerData.userId) .. "&width=150&height=150&format=png"
+                PM.mk("ImageLabel", pfpFrame, {
+                    Size = UDim2.new(1, 0, 1, 0),
+                    BackgroundTransparency = 1,
+                    Image = pfpUrl,
+                    ZIndex = 104,
+                })
                 
                 -- Display name
                 PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -100, 0, 20),
-                    Position = UDim2.new(0, 52, 0.5, -10),
+                    Size = UDim2.new(1, -100, 0, 10),
+                    Position = UDim2.new(0, 46, 0, 26),
                     BackgroundTransparency = 1,
                     Text = playerData.displayName or playerData.username,
                     TextColor3 = C.text,
