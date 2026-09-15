@@ -1,17 +1,17 @@
 // Vercel Serverless Function for Prism Server List
 // Using in-memory storage (for testing - data resets on redeploy)
 
-// In-memory storage for servers
-let serverData = { servers: [], lastUpdated: null };
+// In-memory storage for individual players
+let playerData = { players: [], lastUpdated: null };
 
-// Auto-remove servers inactive for more than 30 seconds
+// Auto-remove players inactive for more than 30 seconds
 const INACTIVE_TIMEOUT = 30 * 1000; // 30 seconds in milliseconds
 
-function cleanupInactiveServers() {
+function cleanupInactivePlayers() {
   const now = new Date();
   
-  serverData.servers = serverData.servers.filter(server => {
-    const lastSeen = new Date(server.lastSeen);
+  playerData.players = playerData.players.filter(player => {
+    const lastSeen = new Date(player.lastSeen);
     const inactiveTime = now - lastSeen;
     return inactiveTime < INACTIVE_TIMEOUT;
   });
@@ -29,45 +29,46 @@ module.exports = async function handler(req, res) {
 
   try {
     // Run cleanup on every request
-    cleanupInactiveServers();
+    cleanupInactivePlayers();
 
     if (req.method === 'POST') {
-      const { jobid, gameName } = req.body;
+      const { jobid, gameName, userId, username, displayName } = req.body;
       
-      if (!jobid || !gameName) {
+      if (!jobid || !gameName || !userId || !username) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: jobid and gameName'
+          error: 'Missing required fields: jobid, gameName, userId, and username'
         });
       }
       
-      // Check if server already exists
-      const existingIndex = serverData.servers.findIndex(s => s.server_id === jobid);
-      const serverInfo = {
-        server_id: jobid,
+      // Check if player already exists
+      const existingIndex = playerData.players.findIndex(p => p.userId === userId);
+      const playerInfo = {
+        userId: userId,
+        username: username,
+        displayName: displayName || username,
+        jobid: jobid,
         gameName: gameName,
-        user_count: 1, // Will be updated based on actual users
-        usernames: [], // Will be populated from nametag data
         lastSeen: new Date().toISOString()
       };
       
       if (existingIndex >= 0) {
-        serverData.servers[existingIndex] = serverInfo;
+        playerData.players[existingIndex] = playerInfo;
       } else {
-        serverData.servers.push(serverInfo);
+        playerData.players.push(playerInfo);
       }
       
-      serverData.lastUpdated = new Date().toISOString();
+      playerData.lastUpdated = new Date().toISOString();
       
-      // Return the list of servers
+      // Return the list of players
       return res.status(200).json({
         success: true,
-        data: serverData.servers
+        data: playerData.players
       });
     } else if (req.method === 'GET') {
       return res.status(200).json({
         success: true,
-        data: serverData.servers
+        data: playerData.players
       });
     } else {
       return res.status(405).json({

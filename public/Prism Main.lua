@@ -87,12 +87,16 @@ PM.PrismAPI = {
             return nil
         end
         
+        local player = PM.Svc.Players.LocalPlayer
         local jobId = game.JobId
         local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown"
         
         local requestBody = HttpService:JSONEncode({
             jobid = jobId,
-            gameName = gameName
+            gameName = gameName,
+            userId = tostring(player.UserId),
+            username = player.Name,
+            displayName = player.DisplayName
         })
         
         local requestTable = {
@@ -2157,7 +2161,7 @@ PM.createMainGUI = function()
             BackgroundColor3 = C.card,
             BackgroundTransparency = 0.5,
             Text = "",
-            PlaceholderText = "Search users...",
+            PlaceholderText = "Search players...",
             TextColor3 = C.text,
             PlaceholderColor3 = Color3.fromRGB(120, 120, 120),
             TextSize = 10,
@@ -2209,62 +2213,123 @@ PM.createMainGUI = function()
                 end
             end
             
-            local servers = cachedServers
+            local players = cachedServers
             local searchQuery = PM.UI.JoinSearch.Text:lower()
+            local myUserId = PM.Svc.Players.LocalPlayer.UserId
+            local myGameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown"
             
-            for _, server in ipairs(servers) do
-                -- Filter by search
-                if searchQuery ~= "" then
-                    local usernames = server.usernames or {}
-                    local match = false
-                    for _, username in ipairs(usernames) do
-                        if username:lower():find(searchQuery, 1, true) then
-                            match = true
-                            break
-                        end
-                    end
-                    if not match then continue end
+            for _, playerData in ipairs(players) do
+                -- Skip self
+                if tostring(playerData.userId) == tostring(myUserId) then
+                    continue
                 end
                 
-                local userCount = server.user_count or 0
-                local usernames = server.usernames or {}
-                local usernameList = table.concat(usernames, ", ")
+                -- Skip if in same server (same jobid)
+                if playerData.jobid == game.JobId then
+                    continue
+                end
+                
+                -- Filter by game
+                if currentJoinFilter == "This Game" then
+                    if playerData.gameName ~= myGameName then
+                        continue
+                    end
+                elseif currentJoinFilter == "Friends" then
+                    local isFriend = false
+                    pcall(function()
+                        isFriend = PM.Svc.Players.LocalPlayer:IsFriendsWith(tonumber(playerData.userId))
+                    end)
+                    if not isFriend then
+                        continue
+                    end
+                end
+                
+                -- Filter by search
+                if searchQuery ~= "" then
+                    local nameMatch = playerData.username:lower():find(searchQuery, 1, true) or 
+                                     (playerData.displayName and playerData.displayName:lower():find(searchQuery, 1, true)) or
+                                     (playerData.gameName and playerData.gameName:lower():find(searchQuery, 1, true))
+                    if not nameMatch then continue end
+                end
                 
                 local btn = PM.mk("TextButton", PM.UI.JoinScroll, {
-                    Size = UDim2.new(1, -6, 0, 44),
+                    Size = UDim2.new(1, -6, 0, 60),
                     BackgroundColor3 = C.card,
                     BackgroundTransparency = 0.5,
                     BorderSizePixel = 0,
                     Text = "",
-                    Name = "Server_" .. tostring(server.server_id),
+                    Name = "Player_" .. tostring(playerData.userId),
                     ZIndex = 102,
                 })
                 PM.corner(btn, 6)
                 
+                -- PFP on the left
+                local pfpUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(playerData.userId) .. "&width=150&height=150&format=png"
+                local pfp = PM.mk("ImageLabel", btn, {
+                    Size = UDim2.new(0, 44, 0, 44),
+                    Position = UDim2.new(0, 8, 0, 8),
+                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+                    Image = pfpUrl,
+                    ZIndex = 103,
+                })
+                PM.corner(pfp, 8)
+                
+                -- Display name
                 PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -16, 0, 16),
-                    Position = UDim2.new(0, 8, 0, 4),
+                    Size = UDim2.new(1, -130, 0, 16),
+                    Position = UDim2.new(0, 60, 0, 8),
                     BackgroundTransparency = 1,
-                    Text = userCount .. " Prism User(s)",
-                    TextColor3 = Color3.fromRGB(0, 200, 70),
-                    TextSize = 11,
+                    Text = playerData.displayName or playerData.username,
+                    TextColor3 = C.text,
+                    TextSize = 12,
                     Font = Enum.Font.GothamBold,
                     TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
                     ZIndex = 103,
                 })
                 
+                -- Username with @
                 PM.mk("TextLabel", btn, {
-                    Size = UDim2.new(1, -16, 0, 24),
-                    Position = UDim2.new(0, 8, 0, 20),
+                    Size = UDim2.new(1, -130, 0, 14),
+                    Position = UDim2.new(0, 60, 0, 24),
                     BackgroundTransparency = 1,
-                    Text = usernameList,
+                    Text = "@" .. playerData.username,
                     TextColor3 = C.textDim,
+                    TextSize = 10,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 103,
+                })
+                
+                -- Game name
+                PM.mk("TextLabel", btn, {
+                    Size = UDim2.new(1, -130, 0, 14),
+                    Position = UDim2.new(0, 60, 0, 40),
+                    BackgroundTransparency = 1,
+                    Text = playerData.gameName or "Unknown Game",
+                    TextColor3 = Color3.fromRGB(100, 150, 200),
                     TextSize = 9,
                     Font = Enum.Font.Gotham,
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    TextWrapped = true,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
                     ZIndex = 103,
                 })
+                
+                -- Join button on the right
+                local joinBtn = PM.mk("TextButton", btn, {
+                    Size = UDim2.new(0, 50, 0, 24),
+                    Position = UDim2.new(1, -58, 0.5, -12),
+                    BackgroundColor3 = C.green,
+                    BackgroundTransparency = 0.3,
+                    BorderSizePixel = 0,
+                    Text = "Join",
+                    TextColor3 = Color3.fromRGB(255, 255, 255),
+                    TextSize = 10,
+                    Font = Enum.Font.GothamBold,
+                    ZIndex = 104,
+                })
+                PM.corner(joinBtn, 4)
                 
                 btn.MouseEnter:Connect(function()
                     PM.tween(btn, 0.15, {BackgroundTransparency = 0.2})
@@ -2272,10 +2337,18 @@ PM.createMainGUI = function()
                 btn.MouseLeave:Connect(function()
                     PM.tween(btn, 0.15, {BackgroundTransparency = 0.5})
                 end)
-                btn.MouseButton1Click:Connect(function()
+                
+                joinBtn.MouseEnter:Connect(function()
+                    PM.tween(joinBtn, 0.15, {BackgroundTransparency = 0})
+                end)
+                joinBtn.MouseLeave:Connect(function()
+                    PM.tween(joinBtn, 0.15, {BackgroundTransparency = 0.3})
+                end)
+                
+                joinBtn.MouseButton1Click:Connect(function()
                     PM.playClickSound()
                     pcall(function()
-                        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.server_id, PM.Svc.Players.LocalPlayer)
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, playerData.jobid, PM.Svc.Players.LocalPlayer)
                     end)
                 end)
             end
@@ -2307,6 +2380,7 @@ PM.createMainGUI = function()
                 for _, b in ipairs(PM.UI.JoinFilterButtons) do
                     PM.tween(b, 0.15, {BackgroundTransparency = b.Name == currentJoinFilter and 0.3 or 0.7})
                 end
+                renderServerList()
             end)
         end
     end
