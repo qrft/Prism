@@ -239,13 +239,13 @@ local function createPlayerOverlay(plr)
             bill.Adornee = plr.Character.Head
         end
 
-        -- Distance check - only show within 100 studs
+        -- Distance check - only show within 50 studs
         local LP = game:GetService("Players").LocalPlayer
         local visible = false
         if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             local dist = (LP.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-            visible = dist <= 100
+            visible = dist <= 50
         end
         bill.Enabled = visible
 
