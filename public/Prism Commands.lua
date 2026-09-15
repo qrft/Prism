@@ -441,6 +441,12 @@ local function cleanupPrism()
         PM.UI.Gui = nil
     end
     
+    -- Cancel profile refresh task
+    if PM.profileRefreshTask then
+        pcall(function() task.cancel(PM.profileRefreshTask) end)
+        PM.profileRefreshTask = nil
+    end
+    
     -- Disconnect all PM-level connections
     local topLevelConns = {
         "HideAllPlayerAddedConn",

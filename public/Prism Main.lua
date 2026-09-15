@@ -949,6 +949,7 @@ PM.createMainGUI = function()
         {name = "NameTags", layout = 5, image = "rbxassetid://99892550804409"},
         {name = "Join", layout = 7, image = "rbxassetid://84437305519060"},
         {name = "Servers", layout = 9, image = "rbxassetid://138470287250966"},
+        {name = "Profile", layout = 10, image = "rbxassetid://6098218845"},
         {name = "Settings", layout = 11, image = "rbxassetid://101119408272746"},
     }
     
@@ -1057,6 +1058,10 @@ PM.createMainGUI = function()
                         PM.isSettingsOpen = false
                         PM.hideSettingsPanel()
                     end
+                    if PM.isProfileOpen then
+                        PM.isProfileOpen = false
+                        PM.hideProfilePanel()
+                    end
                     PM.toggleTerminalPanel()
                 end
             end)
@@ -1088,6 +1093,10 @@ PM.createMainGUI = function()
                         PM.isSettingsOpen = false
                         PM.hideSettingsPanel()
                     end
+                    if PM.isProfileOpen then
+                        PM.isProfileOpen = false
+                        PM.hideProfilePanel()
+                    end
                     PM.openCommandsPanel()
                 end
             end)
@@ -1115,6 +1124,10 @@ PM.createMainGUI = function()
                 if PM.isSettingsOpen then
                     PM.isSettingsOpen = false
                     PM.hideSettingsPanel()
+                end
+                if PM.isProfileOpen then
+                    PM.isProfileOpen = false
+                    PM.hideProfilePanel()
                 end
                 PM.toggleNameTagsPanel()
             end)
@@ -1145,6 +1158,10 @@ PM.createMainGUI = function()
                     if PM.isSettingsOpen then
                         PM.isSettingsOpen = false
                         PM.hideSettingsPanel()
+                    end
+                    if PM.isProfileOpen then
+                        PM.isProfileOpen = false
+                        PM.hideProfilePanel()
                     end
                     PM.openServersPanel()
                 end
@@ -1180,6 +1197,41 @@ PM.createMainGUI = function()
                     PM.openJoinPanel()
                 end
             end)
+        elseif btn.name == "Profile" then
+            PM.isProfileOpen = false
+            button.MouseButton1Click:Connect(function()
+                PM.playClickSound()
+                if PM.isProfileOpen then
+                    PM.isProfileOpen = false
+                    PM.closeProfilePanel()
+                else
+                    PM.isProfileOpen = true
+                    if PM.isTerminalOpen then
+                        PM.isTerminalOpen = false
+                        PM.hideTerminalPanel()
+                    end
+                    if PM.isCommandsOpen then
+                        PM.isCommandsOpen = false
+                        PM.hideCommandsPanel()
+                    end
+                    if PM.isServersOpen then
+                        PM.isServersOpen = false
+                        PM.hideServersPanel()
+                    end
+                    if PM.isJoinOpen then
+                        PM.isJoinOpen = false
+                        PM.hideJoinPanel()
+                    end
+                    if PM.UI.NameTagsPanel and PM.UI.NameTagsPanel.Visible then
+                        PM.UI.NameTagsPanel.Visible = false
+                    end
+                    if PM.isSettingsOpen then
+                        PM.isSettingsOpen = false
+                        PM.hideSettingsPanel()
+                    end
+                    PM.openProfilePanel()
+                end
+            end)
         elseif btn.name == "Settings" then
             PM.isSettingsOpen = false
             button.MouseButton1Click:Connect(function()
@@ -1204,6 +1256,10 @@ PM.createMainGUI = function()
                     if PM.isJoinOpen then
                         PM.isJoinOpen = false
                         PM.hideJoinPanel()
+                    end
+                    if PM.isProfileOpen then
+                        PM.isProfileOpen = false
+                        PM.hideProfilePanel()
                     end
                     if PM.UI.NameTagsPanel and PM.UI.NameTagsPanel.Visible then
                         PM.UI.NameTagsPanel.Visible = false
@@ -1481,6 +1537,7 @@ PM.createMainGUI = function()
     PM.closeTerminalPanel = function()
         if not PM.UI.TerminalPanel or not PM.UI.TerminalPanel.Visible then return end
         
+        PM.isTerminalOpen = false
         PM.UI.TerminalInput:ReleaseFocus()
         PM.UI.TerminalInput.Text = ""
         PM.UI.TerminalAutofill.Text = ""
@@ -1493,6 +1550,7 @@ PM.createMainGUI = function()
     
     PM.hideTerminalPanel = function()
         if not PM.UI.TerminalPanel then return end
+        PM.isTerminalOpen = false
         PM.UI.TerminalInput:ReleaseFocus()
         PM.UI.TerminalPanel.Visible = false
         PM.UI.TerminalPanel.Size = UDim2.new(0, 340, 0, 38)
@@ -1633,6 +1691,10 @@ PM.createMainGUI = function()
         PM.UI.CommandsSearch.Text = ""
         PM.UI.CommandsPanel.Visible = false
         PM.UI.CommandsPanel.Size = UDim2.new(0, 280, 0, 320)
+        if PM.isProfileOpen then
+            PM.isProfileOpen = false
+            PM.hideProfilePanel()
+        end
     end
 
     PM.createNameTagsPanel = function()
@@ -2047,6 +2109,10 @@ PM.createMainGUI = function()
         PM.isServersOpen = false
         PM.UI.ServersPanel.Visible = false
         PM.UI.ServersPanel.Size = UDim2.new(0, 280, 0, 320)
+        if PM.isProfileOpen then
+            PM.isProfileOpen = false
+            PM.hideProfilePanel()
+        end
     end
     
     -- ========== JOIN PRISM USERS PANEL ==========
@@ -2338,6 +2404,309 @@ PM.createMainGUI = function()
         PM.isJoinOpen = false
         PM.UI.JoinPanel.Visible = false
         PM.UI.JoinPanel.Size = UDim2.new(0, 280, 0, 320)
+        if PM.isProfileOpen then
+            PM.isProfileOpen = false
+            PM.hideProfilePanel()
+        end
+    end
+    
+    -- ========== USER PROFILE PANEL ==========
+    PM.createProfilePanel = function()
+        if PM.UI.ProfilePanel then return end
+        
+        PM.UI.ProfilePanel = PM.mk("Frame", PM.UI.Gui, {
+            Name = "ProfilePanel",
+            Size = UDim2.new(0, 280, 0, 0),
+            Position = UDim2.new(0.5, -140, 0, 35),
+            BackgroundColor3 = C.bg,
+            BackgroundTransparency = 0.2,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 100,
+            ClipsDescendants = true,
+        })
+        PM.corner(PM.UI.ProfilePanel, 12)
+        PM.stroke(PM.UI.ProfilePanel, C.border, 1, 0.4)
+        
+        -- Close button
+        PM.UI.ProfileClose = PM.mk("TextButton", PM.UI.ProfilePanel, {
+            Size = UDim2.new(0, 24, 0, 24),
+            Position = UDim2.new(1, -30, 0, 6),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Text = "X",
+            TextColor3 = C.text,
+            TextSize = 11,
+            Font = Enum.Font.GothamBold,
+            ZIndex = 101,
+        })
+        PM.corner(PM.UI.ProfileClose, 6)
+        
+        PM.UI.ProfileClose.MouseEnter:Connect(function()
+            PM.UI.ProfileClose.TextColor3 = Color3.fromRGB(255, 80, 80)
+        end)
+        PM.UI.ProfileClose.MouseLeave:Connect(function()
+            PM.UI.ProfileClose.TextColor3 = C.text
+        end)
+        
+        PM.UI.ProfileClose.MouseButton1Click:Connect(function()
+            PM.playClickSound()
+            PM.isProfileOpen = false
+            PM.closeProfilePanel()
+        end)
+        
+        -- Profile content frame
+        PM.UI.ProfileContent = PM.mk("Frame", PM.UI.ProfilePanel, {
+            Size = UDim2.new(1, -16, 1, -40),
+            Position = UDim2.new(0, 8, 0, 36),
+            BackgroundTransparency = 1,
+            ZIndex = 101,
+        })
+        
+        -- User info card
+        PM.UI.ProfileCard = PM.mk("Frame", PM.UI.ProfileContent, {
+            Size = UDim2.new(1, 0, 0, 80),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundColor3 = C.card,
+            BackgroundTransparency = 0.3,
+            BorderSizePixel = 0,
+            ZIndex = 102,
+        })
+        PM.corner(PM.UI.ProfileCard, 8)
+        
+        -- Headshot
+        local player = PM.Svc.Players.LocalPlayer
+        local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. player.UserId .. "&width=150&height=150&format=png"
+        
+        PM.UI.ProfileHeadshot = PM.mk("ImageLabel", PM.UI.ProfileCard, {
+            Size = UDim2.new(0, 60, 0, 60),
+            Position = UDim2.new(0, 10, 0.5, -30),
+            BackgroundTransparency = 1,
+            Image = headshotUrl,
+            ZIndex = 103,
+        })
+        PM.corner(PM.UI.ProfileHeadshot, 30)
+        
+        -- Username
+        PM.UI.ProfileUsername = PM.mk("TextLabel", PM.UI.ProfileCard, {
+            Size = UDim2.new(1, -80, 0, 20),
+            Position = UDim2.new(0, 75, 0, 15),
+            BackgroundTransparency = 1,
+            Text = player.DisplayName,
+            TextColor3 = C.text,
+            TextSize = 14,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 103,
+        })
+        
+        -- Actual username
+        PM.UI.ProfileHandle = PM.mk("TextLabel", PM.UI.ProfileCard, {
+            Size = UDim2.new(1, -80, 0, 16),
+            Position = UDim2.new(0, 75, 0, 38),
+            BackgroundTransparency = 1,
+            Text = "@" .. player.Name,
+            TextColor3 = C.textDim,
+            TextSize = 11,
+            Font = Enum.Font.Gotham,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 103,
+        })
+        
+        -- User ID
+        PM.UI.ProfileUserId = PM.mk("TextLabel", PM.UI.ProfileCard, {
+            Size = UDim2.new(1, -80, 0, 14),
+            Position = UDim2.new(0, 75, 0, 56),
+            BackgroundTransparency = 1,
+            Text = "ID: " .. player.UserId,
+            TextColor3 = Color3.fromRGB(100, 100, 120),
+            TextSize = 9,
+            Font = Enum.Font.Gotham,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 103,
+        })
+        
+        -- Attributes section
+        PM.UI.ProfileAttributes = PM.mk("ScrollingFrame", PM.UI.ProfileContent, {
+            Size = UDim2.new(1, 0, 1, -90),
+            Position = UDim2.new(0, 0, 0, 90),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = C.border,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            ZIndex = 102,
+        })
+        
+        PM.UI.ProfileAttributesLayout = PM.mk("UIListLayout", PM.UI.ProfileAttributes, {
+            Padding = UDim.new(0, 8),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+        })
+        
+        PM.UI.ProfileAttributesLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            PM.UI.ProfileAttributes.CanvasSize = UDim2.new(0, 0, 0, PM.UI.ProfileAttributesLayout.AbsoluteContentSize.Y)
+        end)
+        
+        -- Add attribute function
+        PM.addProfileAttribute = function(name, value)
+            local attrFrame = PM.mk("Frame", PM.UI.ProfileAttributes, {
+                Size = UDim2.new(1, 0, 0, 28),
+                BackgroundColor3 = C.card,
+                BackgroundTransparency = 0.5,
+                BorderSizePixel = 0,
+                ZIndex = 103,
+            })
+            PM.corner(attrFrame, 6)
+            
+            PM.mk("TextLabel", attrFrame, {
+                Size = UDim2.new(0, 80, 1, 0),
+                Position = UDim2.new(0, 8, 0, 0),
+                BackgroundTransparency = 1,
+                Text = name,
+                TextColor3 = C.textDim,
+                TextSize = 10,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 104,
+            })
+            
+            PM.mk("TextLabel", attrFrame, {
+                Size = UDim2.new(1, -96, 1, 0),
+                Position = UDim2.new(0, 88, 0, 0),
+                BackgroundTransparency = 1,
+                Text = tostring(value),
+                TextColor3 = C.text,
+                TextSize = 10,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Right,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                ZIndex = 104,
+            })
+        end
+        
+        -- Add default attributes
+        PM.addProfileAttribute("Prism User", "✓")
+        PM.addProfileAttribute("Server", game.JobId:sub(1, 8) .. "...")
+        PM.addProfileAttribute("Game", game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name:sub(1, 20) .. "...")
+        PM.addProfileAttribute("Place ID", game.PlaceId)
+        PM.addProfileAttribute("Players", #PM.Svc.Players:GetPlayers() .. "/" .. game:GetService("Players").MaxPlayers)
+        
+        -- Safe ping retrieval
+        local pingValue = "N/A"
+        pcall(function()
+            local stats = game:GetService("Stats")
+            if stats and stats.Network and stats.Network.ServerStatsItem then
+                local dataPing = stats.Network.ServerStatsItem["Data Ping"]
+                if dataPing then
+                    pingValue = math.floor(dataPing:GetValue())
+                end
+            end
+        end)
+        PM.addProfileAttribute("Ping", pingValue)
+    end
+    
+    PM.openProfilePanel = function()
+        if not PM.UI.ProfilePanel then
+            PM.createProfilePanel()
+        end
+        
+        -- Refresh dynamic attributes
+        if PM.UI.ProfileAttributes then
+            -- Clear existing attributes
+            for _, child in ipairs(PM.UI.ProfileAttributes:GetChildren()) do
+                if child:IsA("Frame") then
+                    child:Destroy()
+                end
+            end
+            
+            -- Re-add attributes with updated values
+            PM.addProfileAttribute("Prism User", "✓")
+            PM.addProfileAttribute("Server", game.JobId:sub(1, 8) .. "...")
+            PM.addProfileAttribute("Game", game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name:sub(1, 20) .. "...")
+            PM.addProfileAttribute("Place ID", game.PlaceId)
+            PM.addProfileAttribute("Players", #PM.Svc.Players:GetPlayers() .. "/" .. game:GetService("Players").MaxPlayers)
+            
+            -- Safe ping retrieval
+            local pingValue = "N/A"
+            pcall(function()
+                local stats = game:GetService("Stats")
+                if stats and stats.Network and stats.Network.ServerStatsItem then
+                    local dataPing = stats.Network.ServerStatsItem["Data Ping"]
+                    if dataPing then
+                        pingValue = math.floor(dataPing:GetValue())
+                    end
+                end
+            end)
+            PM.addProfileAttribute("Ping", pingValue)
+        end
+        
+        PM.isProfileOpen = true
+        PM.UI.ProfilePanel.Visible = true
+        PM.UI.ProfilePanel.Size = UDim2.new(0, 280, 0, 0)
+        PM.tween(PM.UI.ProfilePanel, 0.3, {Size = UDim2.new(0, 280, 0, 320)})
+        
+        -- Auto-refresh stats every 5 seconds while open
+        if PM.profileRefreshTask then
+            task.cancel(PM.profileRefreshTask)
+        end
+        PM.profileRefreshTask = task.spawn(function()
+            while PM.isProfileOpen and PM.UI.ProfilePanel and PM.UI.ProfilePanel.Visible do
+                task.wait(5)
+                if PM.isProfileOpen and PM.UI.ProfileAttributes then
+                    -- Clear and re-add attributes
+                    for _, child in ipairs(PM.UI.ProfileAttributes:GetChildren()) do
+                        if child:IsA("Frame") then
+                            child:Destroy()
+                        end
+                    end
+                    PM.addProfileAttribute("Prism User", "✓")
+                    PM.addProfileAttribute("Server", game.JobId:sub(1, 8) .. "...")
+                    PM.addProfileAttribute("Game", game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name:sub(1, 20) .. "...")
+                    PM.addProfileAttribute("Place ID", game.PlaceId)
+                    PM.addProfileAttribute("Players", #PM.Svc.Players:GetPlayers() .. "/" .. game:GetService("Players").MaxPlayers)
+                    
+                    local pingValue = "N/A"
+                    pcall(function()
+                        local stats = game:GetService("Stats")
+                        if stats and stats.Network and stats.Network.ServerStatsItem then
+                            local dataPing = stats.Network.ServerStatsItem["Data Ping"]
+                            if dataPing then
+                                pingValue = math.floor(dataPing:GetValue())
+                            end
+                        end
+                    end)
+                    PM.addProfileAttribute("Ping", pingValue)
+                end
+            end
+        end)
+    end
+    
+    PM.closeProfilePanel = function()
+        if not PM.UI.ProfilePanel or not PM.UI.ProfilePanel.Visible then return end
+        
+        PM.isProfileOpen = false
+        if PM.profileRefreshTask then
+            task.cancel(PM.profileRefreshTask)
+            PM.profileRefreshTask = nil
+        end
+        PM.tween(PM.UI.ProfilePanel, 0.3, {Size = UDim2.new(0, 280, 0, 0)})
+        task.delay(0.3, function()
+            PM.UI.ProfilePanel.Visible = false
+            PM.UI.ProfilePanel.Size = UDim2.new(0, 280, 0, 320)
+        end)
+    end
+    
+    PM.hideProfilePanel = function()
+        if not PM.UI.ProfilePanel then return end
+        PM.isProfileOpen = false
+        if PM.profileRefreshTask then
+            task.cancel(PM.profileRefreshTask)
+            PM.profileRefreshTask = nil
+        end
+        PM.UI.ProfilePanel.Visible = false
+        PM.UI.ProfilePanel.Size = UDim2.new(0, 280, 0, 320)
     end
 
     PM.createSettingsPanel = function()
@@ -2890,6 +3259,10 @@ PM.createMainGUI = function()
         PM.isSettingsOpen = false
         PM.UI.SettingsPanel.Visible = false
         PM.UI.SettingsPanel.Size = UDim2.new(0, 280, 0, 320)
+        if PM.isProfileOpen then
+            PM.isProfileOpen = false
+            PM.hideProfilePanel()
+        end
     end
 
     PM.UI.LeftDivider = PM.mk("Frame", PM.UI.Main, {
@@ -3146,6 +3519,10 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gameProce
             if PM.isSettingsOpen then
                 PM.isSettingsOpen = false
                 PM.hideSettingsPanel()
+            end
+            if PM.isProfileOpen then
+                PM.isProfileOpen = false
+                PM.hideProfilePanel()
             end
             PM.openTerminalPanel()
         end
