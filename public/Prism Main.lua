@@ -2446,6 +2446,29 @@ PM.createMainGUI = function()
         
         -- Initial fetch
         cachedServers = fetchPrismServers()
+        
+        -- Add placeholder example if no data
+        if #cachedServers == 0 then
+            cachedServers = {
+                {
+                    userId = "7275889224",
+                    username = "Soul",
+                    displayName = "Soul",
+                    jobid = "example-job-id-1",
+                    gameName = "Catalog Avatar Creator",
+                    lastSeen = os.date("%Y-%m-%dT%H:%M:%S.000Z")
+                },
+                {
+                    userId = "4193493829",
+                    username = "brokenheart",
+                    displayName = "brokenheart",
+                    jobid = "example-job-id-2",
+                    gameName = "Your Game",
+                    lastSeen = os.date("%Y-%m-%dT%H:%M:%S.000Z")
+                }
+            }
+        end
+        
         renderServerList()
         
         -- Auto-refresh every 2 seconds (like nametags)
