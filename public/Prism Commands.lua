@@ -1,6 +1,6 @@
 --[[ missing
 
-    -- DONE: fix invis with respawn to last location
+    fix invis with respawn to last location
     rewind
     headsit player
     backpack player
@@ -11,7 +11,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
-
+    
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
 repeat task.wait() until getgenv().PrismMain
@@ -512,27 +512,12 @@ local function cleanupPrism()
     end
 
     -- Cleanup Respawn hooks
-    warn("[PRISM RESPAWN DEBUG] Cleanup - Disconnecting respawn hooks")
-    if respawnCharAddedConn then
-        warn("[PRISM RESPAWN DEBUG] Cleanup - Disconnecting respawnCharAddedConn")
-        pcall(function() respawnCharAddedConn:Disconnect() end)
-        respawnCharAddedConn = nil
-    else
-        warn("[PRISM RESPAWN DEBUG] Cleanup - respawnCharAddedConn was nil")
-    end
-    if respawnDiedConn then
-        warn("[PRISM RESPAWN DEBUG] Cleanup - Disconnecting respawnDiedConn")
-        pcall(function() respawnDiedConn:Disconnect() end)
-        respawnDiedConn = nil
-    else
-        warn("[PRISM RESPAWN DEBUG] Cleanup - respawnDiedConn was nil")
-    end
+    if respawnCharAddedConn then pcall(function() respawnCharAddedConn:Disconnect() end); respawnCharAddedConn = nil end
+    if respawnDiedConn then pcall(function() respawnDiedConn:Disconnect() end); respawnDiedConn = nil end
     _respawnEnabled = false
     _respawnLastCFrame = nil
     PM.Respawn.enabled = false
     PM.Respawn.lastCFrame = nil
-    _justExitedInvis = false
-    warn("[PRISM RESPAWN DEBUG] Cleanup - Cleared all respawn state including _justExitedInvis")
     
     -- Cleanup Anti All
     if PM.Anti then
@@ -2258,7 +2243,6 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
         if not root or not char then return end
 
         local savedCF = root.CFrame
-        warn("[PRISM INVIS DEBUG] BeginInvis - Starting at:", savedCF.Position)
 
         char.Archivable = true
         local fakeChar = char:Clone()
@@ -2343,12 +2327,6 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
             if not fakeHRP or not fakeHRP.Parent then return end
             if not platform or not platform.Parent then return end
             platform.CFrame = CFrame.new(fakeHRP.Position.X, -653, fakeHRP.Position.Z)
-            -- Update saved CFrame continuously so EndInvis uses current position
-            PM.Invis.savedCF = fakeHRP.CFrame
-            -- Debug: log position every 60 frames (~1 second)
-            if tick() % 1 < 0.02 then
-                warn("[PRISM INVIS DEBUG] FakeHRP Position:", fakeHRP.Position, "SavedCF:", PM.Invis.savedCF.Position)
-            end
         end)
 
         local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
@@ -2363,10 +2341,6 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
         if not PM.Invis.active then return end
         PM.Invis.active = false
 
-        warn("[PRISM INVIS DEBUG] EndInvis - Called")
-        warn("[PRISM INVIS DEBUG] EndInvis - SavedCF before:", PM.Invis.savedCF and PM.Invis.savedCF.Position or "nil")
-        warn("[PRISM INVIS DEBUG] EndInvis - Respawn system CF before:", _respawnLastCFrame and _respawnLastCFrame.Position or "nil")
-
         if PM.Invis.holdConn then
             PM.Invis.holdConn:Disconnect()
             PM.Invis.holdConn = nil
@@ -2380,45 +2354,17 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
                     local fakeChar = PM.Invis.fakeModel
                     local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
                     if fakeHRP then
-                        warn("[PRISM INVIS DEBUG] EndInvis - FakeHRP found at:", fakeHRP.Position)
-                        warn("[PRISM INVIS DEBUG] EndInvis - Teleporting real char to:", fakeHRP.CFrame.Position)
                         hrp.CFrame = fakeHRP.CFrame
-                        -- Update respawn system's saved CFrame to current position
-                        _respawnLastCFrame = fakeHRP.CFrame
-                        PM.Respawn.lastCFrame = fakeHRP.CFrame
-                        warn("[PRISM INVIS DEBUG] EndInvis - Updated respawn CF to:", _respawnLastCFrame.Position)
-                        warn("[PRISM INVIS DEBUG] EndInvis - PM.Respawn.lastCFrame:", PM.Respawn.lastCFrame and PM.Respawn.lastCFrame.Position or "nil")
                     elseif PM.Invis.savedCF then
-                        warn("[PRISM INVIS DEBUG] EndInvis - FakeHRP not found, using savedCF:", PM.Invis.savedCF.Position)
-                        warn("[PRISM INVIS DEBUG] EndInvis - Teleporting real char to:", PM.Invis.savedCF.Position)
                         hrp.CFrame = PM.Invis.savedCF
-                        -- Update respawn system's saved CFrame to current position
-                        _respawnLastCFrame = PM.Invis.savedCF
-                        PM.Respawn.lastCFrame = PM.Invis.savedCF
-                        warn("[PRISM INVIS DEBUG] EndInvis - Updated respawn CF to:", _respawnLastCFrame.Position)
-                    else
-                        warn("[PRISM INVIS DEBUG] EndInvis - ERROR: No fakeHRP and no savedCF!")
                     end
-                else
-                    warn("[PRISM INVIS DEBUG] EndInvis - ERROR: No real HRP found!")
                 end
                 local fakeChar = PM.Invis.fakeModel
                 if fakeChar then
                     local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
                     if fakeHum then pcall(function() fakeHum:UnequipTools() end) end
                 end
-                warn("[PRISM INVIS DEBUG] EndInvis - Swapping character back to real")
                 LocalPlayer.Character = realChar
-                -- Set flag to prevent respawn teleport for the next character load
-                _justExitedInvis = true
-                warn("[PRISM INVIS DEBUG] EndInvis - Set _justExitedInvis flag to true")
-                -- Clear flag after 2 seconds
-                task.delay(2, function()
-                    _justExitedInvis = false
-                    warn("[PRISM INVIS DEBUG] EndInvis - Cleared _justExitedInvis flag")
-                end)
-            else
-                warn("[PRISM INVIS DEBUG] EndInvis - ERROR: Real char not found or not parented!")
             end
         end)
 
@@ -2469,11 +2415,9 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
     local function SetInvis(val)
         if val == invOn then return end
         if val then
-            warn("[PRISM INVIS DEBUG] SetInvis - Turning ON")
             InvBtn.Text = "Stop"
             StartInvis()
         else
-            warn("[PRISM INVIS DEBUG] SetInvis - Turning OFF")
             InvBtn.Text = "Invisibility"
             StopInvis()
         end
@@ -2482,7 +2426,6 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
     end
 
     InvBtn.MouseButton1Click:Connect(function()
-        warn("[PRISM INVIS DEBUG] InvBtn clicked - Current state:", invOn, "Switching to:", not invOn)
         SetInvis(not invOn)
     end)
 
@@ -2492,7 +2435,6 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
             if gpe or invCapturing then return end
             if UserInputService:GetFocusedTextBox() then return end
             if input.UserInputType == Enum.UserInputType.Keyboard and invKey and input.KeyCode == invKey then
-                warn("[PRISM INVIS DEBUG] Keybind triggered - Key:", invKey.Name, "Current state:", invOn, "Switching to:", not invOn)
                 SetInvis(not invOn)
             end
         end)
@@ -10507,7 +10449,6 @@ end)
 -- Respawn state management (use global variables like Axon)
 local _respawnEnabled = false
 local _respawnLastCFrame = nil
-local _justExitedInvis = false  -- Flag to prevent respawn teleport right after exiting invis
 
 PM.Respawn = {
     enabled = false,
@@ -10538,42 +10479,21 @@ local respawnCharAddedConn = nil
 local respawnDiedConn = nil
 
 local function OnCharacterAdded(char)
-    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Character loaded")
-    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - _justExitedInvis flag:", _justExitedInvis)
     local root = char:WaitForChild("HumanoidRootPart", 5)
     local hum = char:WaitForChild("Humanoid", 5)
     if not root or not hum then return end
-
-    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - HRP at:", root.Position)
-    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Respawn enabled:", _respawnEnabled)
-    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Saved CF:", _respawnLastCFrame and _respawnLastCFrame.Position or "nil")
-
-    -- Skip respawn teleport if we just exited invis (character swap triggered this)
-    if _justExitedInvis then
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - SKIPPED respawn teleport due to _justExitedInvis flag")
-        return
-    end
-
+    
     if _respawnEnabled and _respawnLastCFrame then
         task.wait(0.1)
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Teleporting to saved CF:", _respawnLastCFrame.Position)
         root.CFrame = _respawnLastCFrame
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - After teleport, HRP at:", root.Position)
     end
 
     if respawnDiedConn then respawnDiedConn:Disconnect(); respawnDiedConn = nil end
     respawnDiedConn = hum.Died:Connect(function()
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Died event fired")
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Root position at death:", root and root.Position or "no root")
-        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - FallenPartsDestroyHeight:", workspace.FallenPartsDestroyHeight)
         if root and root.Position.Y > (workspace.FallenPartsDestroyHeight + 10) then
             _respawnLastCFrame = root.CFrame
-            PM.Respawn.lastCFrame = root.CFrame
-            warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Saved death location:", _respawnLastCFrame.Position)
         else
             _respawnLastCFrame = nil
-            PM.Respawn.lastCFrame = nil
-            warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Died in void, cleared saved CF")
         end
     end)
 end
@@ -10585,9 +10505,6 @@ end
 respawnCharAddedConn = LP.CharacterAdded:Connect(OnCharacterAdded)
 
 registerCommand("respawnlastlocation", "Respawn to last location with toggle", {}, function(args)
-    warn("[PRISM RESPAWN DEBUG] Command called - Respawn last location GUI")
-    warn("[PRISM RESPAWN DEBUG] Command - Current _respawnEnabled:", _respawnEnabled)
-    warn("[PRISM RESPAWN DEBUG] Command - Current _respawnLastCFrame:", _respawnLastCFrame and _respawnLastCFrame.Position or "nil")
     local CoreGui = game:GetService("CoreGui")
     local function guiExists(guiName)
         if CoreGui:FindFirstChild(guiName) then return true end
@@ -10855,11 +10772,8 @@ registerCommand("respawnlastlocation", "Respawn to last location with toggle", {
         PillHit.Parent = ToggleSection
 
         local function SetRespawn(val, save)
-            warn("[PRISM RESPAWN DEBUG] SetRespawn called - val:", val, "save:", save)
-            warn("[PRISM RESPAWN DEBUG] SetRespawn - Current _respawnLastCFrame:", _respawnLastCFrame and _respawnLastCFrame.Position or "nil")
             _respawnEnabled = val
             PM.Respawn.enabled = val
-            warn("[PRISM RESPAWN DEBUG] SetRespawn - Set _respawnEnabled to:", _respawnEnabled)
             if val then
                 TweenService:Create(Pill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
                 TweenService:Create(Knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
