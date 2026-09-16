@@ -1,34 +1,17 @@
 // Vercel Serverless Function for Prism API
 // Combines nametags and server tracking into one unified endpoint
-// Using Vercel KV (Redis) for shared storage across function instances
+// Using in-memory storage (resets on function cold start)
 
-const { kv } = require('@vercel/kv');
+// In-memory storage (resets on function cold start)
+let prismData = { users: [], lastUpdated: null };
 
-const PRISM_DATA_KEY = 'prism_users';
+// Auto-remove users inactive for more than 10 seconds
 const INACTIVE_TIMEOUT = 10 * 1000; // 10 seconds in milliseconds
 
-async function getPrismData() {
-  try {
-    const data = await kv.get(PRISM_DATA_KEY);
-    return data || { users: [], lastUpdated: null };
-  } catch (error) {
-    console.error('Error getting prism data:', error);
-    return { users: [], lastUpdated: null };
-  }
-}
-
-async function setPrismData(data) {
-  try {
-    await kv.set(PRISM_DATA_KEY, data, { ex: 30 }); // Auto-expire after 30 seconds
-  } catch (error) {
-    console.error('Error setting prism data:', error);
-  }
-}
-
-function cleanupInactiveUsers(users) {
+function cleanupInactiveUsers() {
   const now = new Date();
   
-  return users.filter(user => {
+  prismData.users = prismData.users.filter(user => {
     const lastSeen = new Date(user.lastSeen);
     const inactiveTime = now - lastSeen;
     return inactiveTime < INACTIVE_TIMEOUT;
@@ -46,10 +29,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    let prismData = await getPrismData();
-    
     // Run cleanup on every request
-    prismData.users = cleanupInactiveUsers(prismData.users);
+    cleanupInactiveUsers();
 
     if (req.method === 'GET') {
       return res.status(200).json({
@@ -84,9 +65,6 @@ module.exports = async function handler(req, res) {
       
       prismData.lastUpdated = new Date().toISOString();
       
-      // Save to KV
-      await setPrismData(prismData);
-      
       return res.status(200).json({
         success: true,
         message: existingIndex >= 0 ? 'User updated' : 'User added',
@@ -105,11 +83,6 @@ module.exports = async function handler(req, res) {
       const existingIndex = prismData.users.findIndex(u => u.userId === userId);
       if (existingIndex >= 0) {
         prismData.users.splice(existingIndex, 1);
-        prismData.lastUpdated = new Date().toISOString();
-        
-        // Save to KV
-        await setPrismData(prismData);
-        
         return res.status(200).json({
           success: true,
           message: 'User removed'
