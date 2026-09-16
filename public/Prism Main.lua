@@ -635,7 +635,7 @@ local function readFromAPI()
         
         if responseSuccess and responseData.success then
             -- New API returns {data: {users: [...], lastUpdated: ...}}
-            return responseData.data and responseData.data.users or {}
+            return responseData.data or {users: []}
         end
     end
     
