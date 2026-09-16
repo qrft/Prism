@@ -1,6 +1,6 @@
 --[[ missing
 
-    fix invis with respawn to last location
+    -- DONE: fix invis with respawn to last location
     rewind
     headsit player
     backpack player
@@ -11,7 +11,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
-    
+
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
 repeat task.wait() until getgenv().PrismMain
@@ -2327,6 +2327,8 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
             if not fakeHRP or not fakeHRP.Parent then return end
             if not platform or not platform.Parent then return end
             platform.CFrame = CFrame.new(fakeHRP.Position.X, -653, fakeHRP.Position.Z)
+            -- Update saved CFrame continuously so EndInvis uses current position
+            PM.Invis.savedCF = fakeHRP.CFrame
         end)
 
         local fakeHum = fakeChar:FindFirstChildOfClass("Humanoid")
@@ -2355,8 +2357,14 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
                     local fakeHRP = fakeChar and fakeChar:FindFirstChild("HumanoidRootPart")
                     if fakeHRP then
                         hrp.CFrame = fakeHRP.CFrame
+                        -- Update respawn system's saved CFrame to current position
+                        _respawnLastCFrame = fakeHRP.CFrame
+                        PM.Respawn.lastCFrame = fakeHRP.CFrame
                     elseif PM.Invis.savedCF then
                         hrp.CFrame = PM.Invis.savedCF
+                        -- Update respawn system's saved CFrame to current position
+                        _respawnLastCFrame = PM.Invis.savedCF
+                        PM.Respawn.lastCFrame = PM.Invis.savedCF
                     end
                 end
                 local fakeChar = PM.Invis.fakeModel
