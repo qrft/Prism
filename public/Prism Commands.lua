@@ -531,7 +531,8 @@ local function cleanupPrism()
     _respawnLastCFrame = nil
     PM.Respawn.enabled = false
     PM.Respawn.lastCFrame = nil
-    warn("[PRISM RESPAWN DEBUG] Cleanup - Cleared all respawn state")
+    _justExitedInvis = false
+    warn("[PRISM RESPAWN DEBUG] Cleanup - Cleared all respawn state including _justExitedInvis")
     
     -- Cleanup Anti All
     if PM.Anti then
@@ -2408,6 +2409,14 @@ registerCommand("invisibility", "Invisibility with keybind", {}, function(args)
                 end
                 warn("[PRISM INVIS DEBUG] EndInvis - Swapping character back to real")
                 LocalPlayer.Character = realChar
+                -- Set flag to prevent respawn teleport for the next character load
+                _justExitedInvis = true
+                warn("[PRISM INVIS DEBUG] EndInvis - Set _justExitedInvis flag to true")
+                -- Clear flag after 2 seconds
+                task.delay(2, function()
+                    _justExitedInvis = false
+                    warn("[PRISM INVIS DEBUG] EndInvis - Cleared _justExitedInvis flag")
+                end)
             else
                 warn("[PRISM INVIS DEBUG] EndInvis - ERROR: Real char not found or not parented!")
             end
@@ -10498,6 +10507,7 @@ end)
 -- Respawn state management (use global variables like Axon)
 local _respawnEnabled = false
 local _respawnLastCFrame = nil
+local _justExitedInvis = false  -- Flag to prevent respawn teleport right after exiting invis
 
 PM.Respawn = {
     enabled = false,
@@ -10529,6 +10539,7 @@ local respawnDiedConn = nil
 
 local function OnCharacterAdded(char)
     warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Character loaded")
+    warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - _justExitedInvis flag:", _justExitedInvis)
     local root = char:WaitForChild("HumanoidRootPart", 5)
     local hum = char:WaitForChild("Humanoid", 5)
     if not root or not hum then return end
@@ -10536,6 +10547,12 @@ local function OnCharacterAdded(char)
     warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - HRP at:", root.Position)
     warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Respawn enabled:", _respawnEnabled)
     warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - Saved CF:", _respawnLastCFrame and _respawnLastCFrame.Position or "nil")
+
+    -- Skip respawn teleport if we just exited invis (character swap triggered this)
+    if _justExitedInvis then
+        warn("[PRISM RESPAWN DEBUG] OnCharacterAdded - SKIPPED respawn teleport due to _justExitedInvis flag")
+        return
+    end
 
     if _respawnEnabled and _respawnLastCFrame then
         task.wait(0.1)
