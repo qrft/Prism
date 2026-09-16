@@ -688,6 +688,7 @@ end
 local function getUserInfo()
     local player = PM.Svc.Players.LocalPlayer
     if not player then
+        warn("[Prism] No local player found")
         return nil
     end
     
@@ -707,13 +708,16 @@ local function getUserInfo()
         end
     end)
     
-    return {
+    local userInfo = {
         username = username,
         displayName = displayName,
         userId = tostring(userId),
         jobid = jobid,
         gameName = gameName
     }
+    
+    print("[Prism] getUserInfo:", game:GetService("HttpService"):JSONEncode(userInfo))
+    return userInfo
 end
 
 local function sendToAPI(userInfo)
@@ -721,6 +725,7 @@ local function sendToAPI(userInfo)
     local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
     
     if not requestFunction then
+        warn("[Prism] No HTTP function available")
         return false, "No HTTP function available"
     end
     
@@ -734,13 +739,18 @@ local function sendToAPI(userInfo)
         Body = requestBody
     }
     
+    print("[Prism] Sending to API:", API_ENDPOINT)
+    
     local success, result = pcall(function()
         return requestFunction(requestTable)
     end)
     
     if not success then
+        warn("[Prism] Request failed:", result)
         return false, result
     end
+    
+    print("[Prism] Request success, result:", result)
     
     local responseBody = result.Body or result.body or result
     
@@ -750,6 +760,7 @@ local function sendToAPI(userInfo)
         end)
         
         if responseSuccess then
+            print("[Prism] Response data:", game:GetService("HttpService"):JSONEncode(responseData))
             if responseData.success then
                 return true, responseData
             else
@@ -813,6 +824,7 @@ end
 local function sendNametagData()
     local userInfo = getUserInfo()
     if not userInfo then
+        warn("[Prism] getUserInfo returned nil")
         return
     end
     
@@ -820,6 +832,8 @@ local function sendNametagData()
     
     if success then
         updateOtherNametags()
+    else
+        warn("[Prism] Failed to send to API:", result)
     end
 end
 
@@ -3287,6 +3301,7 @@ PM.PrismNametags = {
 }
 
 -- Send initial data IMMEDIATELY on execute
+print("[Prism] Starting initial API registration...")
 sendNametagData()
 
 -- Start auto-sync in background
