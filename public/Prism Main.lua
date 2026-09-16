@@ -73,9 +73,9 @@ PM.C = {
 }
 local C = PM.C
 
--- Prism API Integration (unified nametags + server tracking)
+-- Prism Nametag System Integration
 local API_BASE_URL = "https://prismscript.vercel.app"
-local API_ENDPOINT = API_BASE_URL .. "/api/prism"
+local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
 
 -- Prism API for server joining
 PM.PrismAPI = {
@@ -114,7 +114,7 @@ PM.PrismAPI = {
         })
         
         local requestTable = {
-            Url = API_BASE_URL .. "/api/prism",
+            Url = API_BASE_URL .. "/api/servers",
             Method = "POST",
             Headers = {
                 ["Content-Type"] = "application/json"
@@ -138,8 +138,7 @@ PM.PrismAPI = {
             end)
             
             if responseSuccess and responseData.success then
-                -- New API returns {data: {users: [...], lastUpdated: ...}}
-                return responseData.data and responseData.data.users or {}
+                return responseData.data
             end
         end
         
@@ -634,8 +633,7 @@ local function readFromAPI()
         end)
         
         if responseSuccess and responseData.success then
-            -- New API returns {data: {users: [...], lastUpdated: ...}}
-            return responseData.data or {users: []}
+            return responseData.data
         end
     end
     
@@ -694,25 +692,11 @@ local function getUserInfo()
     local userId = player.UserId
     local username = player.Name
     local displayName = player.DisplayName or username
-    local jobid = game.JobId
-    local gameName = "Unknown"
-    
-    -- Safely get game name
-    pcall(function()
-        local success, result = pcall(function()
-            return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-        end)
-        if success and result then
-            gameName = result.Name or "Unknown"
-        end
-    end)
     
     return {
         username = username,
         displayName = displayName,
-        userId = tostring(userId),
-        jobid = jobid,
-        gameName = gameName
+        userId = tostring(userId)
     }
 end
 
@@ -2252,7 +2236,7 @@ PM.createMainGUI = function()
             end
             
             local requestTable = {
-                Url = API_BASE_URL .. "/api/prism",
+                Url = API_BASE_URL .. "/api/servers",
                 Method = "GET"
             }
             
@@ -2272,8 +2256,7 @@ PM.createMainGUI = function()
                 end)
                 
                 if responseSuccess and responseData.success then
-                    -- New API returns {data: {users: [...], lastUpdated: ...}}
-                    return responseData.data and responseData.data.users or {}
+                    return responseData.data or {}
                 end
             end
             

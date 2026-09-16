@@ -1,8 +1,8 @@
 {
-  "name": "prism-api",
+  "name": "prism-nametag-api",
   "version": "1.0.0",
-  "description": "Prism API - Unified nametags and server tracking",
-  "main": "api/prism.js",
+  "description": "Prism Nametag System API",
+  "main": "api/nametags.js",
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod"
