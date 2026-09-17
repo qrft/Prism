@@ -41,6 +41,7 @@ PM.Admins[194578] = true
 PM.Admins[11311052888] = true
 PM.Admins[11620576090] = true
 PM.Admins[8947935964] = true
+PM.Admins[1196547606] = true
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
@@ -376,7 +377,7 @@ local function onAnyChat(speaker, msg)
             end
         end
         if isOwner then
-            -- Every Prism user who sees this chat message will reload their script
+            -- Every Prism user who sees this chat messsage will reload their script
             cleanupPrism()
             getgenv().PrismMain = nil
             task.wait(0.5)
