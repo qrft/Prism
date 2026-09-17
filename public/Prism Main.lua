@@ -254,7 +254,7 @@ local function createNametag()
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
-    local ownerBorderColor = Color3.fromRGB(100, 0, 150)  -- Lighter purple for border
+    local ownerBorderColor = Color3.fromRGB(180, 50, 255)  -- Much brighter purple for border
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -285,11 +285,11 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser then
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 50, 200)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
             ColorSequenceKeypoint.new(0.25, ownerBorderColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 0, 100)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
             ColorSequenceKeypoint.new(0.75, ownerBorderColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -465,7 +465,7 @@ local function createOtherNametag(plrObj)
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
-    local ownerBorderColor = Color3.fromRGB(100, 0, 150)  -- Lighter purple for border
+    local ownerBorderColor = Color3.fromRGB(180, 50, 255)  -- Much brighter purple for border
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -496,11 +496,11 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser then
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 50, 200)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
             ColorSequenceKeypoint.new(0.25, ownerBorderColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 0, 100)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
             ColorSequenceKeypoint.new(0.75, ownerBorderColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
         })
     else
         bgGradient.Color = ColorSequence.new({
