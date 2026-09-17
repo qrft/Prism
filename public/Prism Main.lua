@@ -250,6 +250,12 @@ local function createNametag()
         end
     end
     
+    local isOwnerUser = isOwner(player.UserId)
+    
+    -- Custom colors for owners
+    local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
+    local ownerBorderColor = Color3.fromRGB(100, 0, 150)  -- Lighter purple for border
+    
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
     billboard.Size = UDim2.new(0, 150, 0, 50)
@@ -267,7 +273,7 @@ local function createNametag()
     bgFrame.Name = "BgFrame"
     bgFrame.Size = UDim2.new(1, 4, 1, 4)
     bgFrame.Position = UDim2.new(0, -2, 0, -2)
-    bgFrame.BackgroundColor3 = C.sep
+    bgFrame.BackgroundColor3 = isOwnerUser and ownerBorderColor or C.sep
     bgFrame.BackgroundTransparency = 0
     bgFrame.BorderSizePixel = 0
     bgFrame.Parent = billboard
@@ -277,19 +283,29 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    bgGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.25, C.sep),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
-        ColorSequenceKeypoint.new(0.75, C.sep),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-    })
+    if isOwnerUser then
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 50, 200)),
+            ColorSequenceKeypoint.new(0.25, ownerBorderColor),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 0, 100)),
+            ColorSequenceKeypoint.new(0.75, ownerBorderColor),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200)),
+        })
+    else
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.25, C.sep),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+            ColorSequenceKeypoint.new(0.75, C.sep),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+        })
+    end
     bgGradient.Parent = bgFrame
     
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = C.card
+    frame.BackgroundColor3 = isOwnerUser and ownerBgColor or C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
@@ -303,7 +319,7 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = player.DisplayName
+    displayNameLabel.Text = isOwnerUser and (player.DisplayName .. " • Owner") or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
@@ -326,7 +342,7 @@ local function createNametag()
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = "P"
+    smallLabel.Text = isOwnerUser and "O" or "P"
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
