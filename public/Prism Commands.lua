@@ -11,6 +11,7 @@
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
+    fix anti fling fps dropping
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -29,6 +30,7 @@ PM.Commands = PM.Commands or {}
 -- jazzy: 11311052888
 -- larp: 11620576090
 -- hairbrush: 8947935964
+-- shino: 1196547606
 PM.Admins = PM.Admins or {}
 PM.Admins[7275889224] = true
 PM.Admins[5712636024] = true
