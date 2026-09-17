@@ -347,7 +347,7 @@ local function onChat(msg)
     end
 end
 
--- Monitor all chat for cross-script bring commands
+-- Monitor all chat for cross-script bring commands and reload all
 local function onAnyChat(speaker, msg)
     if not msg:sub(1, 1) == ChatPrefix then return end
 
@@ -363,6 +363,28 @@ local function onAnyChat(speaker, msg)
     local cmdName = parts[1]:lower()
     table.remove(parts, 1)
 
+    -- Handle reload all commands from owners
+    if cmdName == "reload" and parts[1] == "all" then
+        table.remove(parts, 1) -- Remove "all" from parts
+        -- Only specific owner IDs can use this
+        local ownerIds = {7275889224, 5712636024}
+        local isOwner = false
+        for _, id in ipairs(ownerIds) do
+            if speaker.UserId == id then
+                isOwner = true
+                break
+            end
+        end
+        if isOwner then
+            -- Every Prism user who sees this chat message will reload their script
+            cleanupPrism()
+            getgenv().PrismMain = nil
+            task.wait(0.5)
+            loadstring(game:HttpGet("https://prismscript.vercel.app/Prism.lua"))()
+        end
+        return
+    end
+
     -- Only handle bring commands from admins
     if cmdName ~= "bring" then return end
     if not isAdmin(speaker) then return end
@@ -370,7 +392,15 @@ local function onAnyChat(speaker, msg)
     local targetName = parts[1] or ""
     if targetName == "" then return end
 
+    -- Support "displayname / username" format
     local q = targetName:lower()
+    if q:find("/", 1, true) then
+        local parts2 = {}
+        for part in q:gmatch("[^/]+") do
+            table.insert(parts2, part:gsub("^%s+", ""):gsub("%s+$", ""))
+        end
+        q = parts2[1] or q -- Use the first part (displayname)
+    end
 
     -- Check if "all" or if I'm the target
     if q == "all" then
@@ -724,6 +754,22 @@ registerCommand("destroy", "Destroy Prism", {}, function(args)
     cleanupPrism()
     getgenv().PrismMain = nil
 end, true)
+
+registerCommand("reload all", "Reload Prism for all users (Owner only)", {}, function(args)
+    -- Only specific owner IDs can use this
+    local ownerIds = {7275889224, 5712636024}
+    local isOwner = false
+    for _, id in ipairs(ownerIds) do
+        if LP.UserId == id then
+            isOwner = true
+            break
+        end
+    end
+    if isOwner then
+        -- Send the reload all command in chat so all Prism users detect it
+        LP:SendChat("'reload all")
+    end
+end, true, true)
 
 registerCommand("reload", "Reload Prism script", {}, function(args)
     cleanupPrism()
@@ -1254,8 +1300,64 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
 end, true)
 
 registerCommand("bring", "Bring a player to you", {}, function(args)
-    -- This command is handled by cross-script chat monitoring
-    -- When you type it in chat, other script users will detect it and teleport themselves to you
+    local targetName = table.concat(args, " ")
+    if targetName == "" then return end
+
+    -- Support "displayname / username" format
+    local q = targetName:lower()
+    if q:find("/", 1, true) then
+        local parts2 = {}
+        for part in q:gmatch("[^/]+") do
+            table.insert(parts2, part:gsub("^%s+", ""):gsub("%s+$", ""))
+        end
+        q = parts2[1] or q -- Use the first part (displayname)
+    end
+
+    -- Handle "bring all"
+    if q == "all" then
+        -- Send bring all command in chat for other Prism users
+        LP:SendChat("'bring all")
+        return
+    end
+
+    -- Find target player
+    local target = nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            if p.Name:lower() == q or p.DisplayName:lower() == q then
+                target = p
+                break
+            end
+        end
+    end
+
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+
+    if not target then return end
+
+    -- Send bring command in chat for the target Prism user
+    -- Use the original targetName (what the user typed) instead of the full DisplayName
+    LP:SendChat("'bring " .. targetName)
 end, true, true)
 
 registerCommand("inspect", "Inspect a player", {}, function(args)
