@@ -1673,6 +1673,11 @@ PM.createMainGUI = function()
         end
         if PM.UI.CommandsPanel.Visible then return end
         
+        -- Populate commands when opening the panel
+        if PM.populateCommandsPanel then
+            PM.populateCommandsPanel()
+        end
+        
         PM.UI.CommandsPanel.Visible = true
         PM.UI.CommandsPanel.Size = UDim2.new(0, 280, 0, 0)
         PM.tween(PM.UI.CommandsPanel, 0.3, {Size = UDim2.new(0, 280, 0, 320)})
