@@ -43,6 +43,7 @@ PM.Admins[11311052888] = true
 PM.Admins[11620576090] = true
 PM.Admins[8947935964] = true
 PM.Admins[1675739196] = true
+PM.Admins[1196547606] = true
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
