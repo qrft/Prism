@@ -1481,16 +1481,22 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
         if not gameProcessed and input.KeyCode == Enum.KeyCode.Return and PM.Backpack.target then 
             PM.Backpack.active = not PM.Backpack.active
             if not PM.Backpack.active then
-                -- Disable weld and cleanup sit state
+                -- Disable weld immediately like ZeroDelayWeld
                 local ch = LP.Character
                 if ch then
                     local hr = ch:FindFirstChild("HumanoidRootPart")
                     if hr then
                         pcall(function()
                             sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
-                            local bv = hr:FindFirstChild("BackpackBV")
-                            if bv then bv:Destroy() end
                         end)
+                    end
+                end
+                -- Then cleanup sit state
+                if ch then
+                    local hr = ch:FindFirstChild("HumanoidRootPart")
+                    if hr then
+                        local bv = hr:FindFirstChild("BackpackBV")
+                        if bv then bv:Destroy() end
                     end
                     local hm = ch:FindFirstChild("Humanoid")
                     if hm then
@@ -1515,19 +1521,26 @@ registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
     PM.Backpack.target = nil
     local hadNoSit = PM.Backpack.hadNoSit
     
+    -- First disable the weld exactly like ZeroDelayWeld
+    local ch = LP.Character
+    if ch then
+        local hr = ch:FindFirstChild("HumanoidRootPart")
+        if hr then
+            pcall(function()
+                sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+            end)
+        end
+    end
+    
+    -- Then cleanup the rest
     if PM.Backpack.connection then
         if PM.Backpack.connection.rep then
-            -- Disable weld
-            local ch = LP.Character
+            -- Remove BodyVelocity and cleanup sit state
             if ch then
                 local hr = ch:FindFirstChild("HumanoidRootPart")
                 if hr then
-                    pcall(function()
-                        sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
-                        -- Remove BodyVelocity
-                        local bv = hr:FindFirstChild("BackpackBV")
-                        if bv then bv:Destroy() end
-                    end)
+                    local bv = hr:FindFirstChild("BackpackBV")
+                    if bv then bv:Destroy() end
                 end
                 local hm = ch:FindFirstChild("Humanoid")
                 if hm then
