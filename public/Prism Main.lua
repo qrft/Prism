@@ -156,8 +156,8 @@ local originalDisplayTypes = {}
 
 -- Special owner user IDs for custom nametags
 local OWNER_USER_IDS = {
-    [7275889224] = "soul",  -- Soul
-    [5712636024] = "kavrenoo",  -- Kavrenoo
+    [7275889224] = true,  -- Soul
+    [5712636024] = true,  -- Kavrenoo
 }
 
 -- Check if user is an owner
@@ -165,15 +165,10 @@ local function isOwner(userId)
     return OWNER_USER_IDS[userId] ~= nil
 end
 
--- Get owner name for typing effect
-local function getOwnerName(userId)
-    return OWNER_USER_IDS[userId] or ""
-end
-
 -- Typing effect system for owner nametags
 local typingEffectConnections = {}
 
-local function startTypingEffect(textLabel, ownerName)
+local function startTypingEffect(textLabel, displayName)
     -- Stop any existing typing effect for this label
     if typingEffectConnections[textLabel] then
         for _, connection in ipairs(typingEffectConnections[textLabel]) do
@@ -182,7 +177,7 @@ local function startTypingEffect(textLabel, ownerName)
     end
     
     local connections = {}
-    local targetText = ownerName .. " . owner"
+    local targetText = displayName .. " • Owner"
     local currentText = ""
     local currentIndex = 1
     local isTyping = true
@@ -416,8 +411,7 @@ local function createNametag()
     
     -- Start typing effect for owner nametags
     if isOwnerUser then
-        local ownerName = getOwnerName(player.UserId)
-        startTypingEffect(displayNameLabel, ownerName)
+        startTypingEffect(displayNameLabel, player.DisplayName)
     end
     
     local usernameLabel = Instance.new("TextLabel")
@@ -642,8 +636,7 @@ local function createOtherNametag(plrObj)
     
     -- Start typing effect for owner nametags
     if isOwnerUser then
-        local ownerName = getOwnerName(plrObj.UserId)
-        startTypingEffect(displayNameLabel, ownerName)
+        startTypingEffect(displayNameLabel, plrObj.DisplayName)
     end
     
     local usernameLabel = Instance.new("TextLabel")
