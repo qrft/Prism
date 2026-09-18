@@ -588,16 +588,29 @@ local function cleanupPrism()
     if PM.Backpack then
         PM.Backpack.active = false
         PM.Backpack.target = nil
+        local hadNoSit = PM.Backpack.hadNoSit
         if PM.Backpack.connection then pcall(function() PM.Backpack.connection:Disconnect() end) end
         if PM.Backpack.charAddedConn then pcall(function() PM.Backpack.charAddedConn:Disconnect() end) end
         if PM.Backpack.toggleConn then pcall(function() PM.Backpack.toggleConn:Disconnect() end) end
-        -- Disable weld
+        -- Disable weld and cleanup sit state
         local ch = LP.Character
         if ch then
             local hr = ch:FindFirstChild("HumanoidRootPart")
             if hr then
                 pcall(function()
                     sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                    local bv = hr:FindFirstChild("BackpackBV")
+                    if bv then bv:Destroy() end
+                end)
+            end
+            local hm = ch:FindFirstChild("Humanoid")
+            if hm then
+                pcall(function()
+                    hm.Sit = false
+                    hm.AutoRotate = true
+                    if hadNoSit then
+                        hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                    end
                 end)
             end
         end
@@ -716,16 +729,29 @@ local function cleanupPrism()
     if PM.Backpack then
         PM.Backpack.active = false
         PM.Backpack.target = nil
+        local hadNoSit = PM.Backpack.hadNoSit
         if PM.Backpack.connection then pcall(function() PM.Backpack.connection:Disconnect() end) end
         if PM.Backpack.charAddedConn then pcall(function() PM.Backpack.charAddedConn:Disconnect() end) end
         if PM.Backpack.toggleConn then pcall(function() PM.Backpack.toggleConn:Disconnect() end) end
-        -- Disable weld
+        -- Disable weld and cleanup sit state
         local ch = LP.Character
         if ch then
             local hr = ch:FindFirstChild("HumanoidRootPart")
             if hr then
                 pcall(function()
                     sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                    local bv = hr:FindFirstChild("BackpackBV")
+                    if bv then bv:Destroy() end
+                end)
+            end
+            local hm = ch:FindFirstChild("Humanoid")
+            if hm then
+                pcall(function()
+                    hm.Sit = false
+                    hm.AutoRotate = true
+                    if hadNoSit then
+                        hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                    end
                 end)
             end
         end
@@ -1301,7 +1327,8 @@ PM.Backpack = {
     target = nil,
     connection = nil,
     charAddedConn = nil,
-    toggleConn = nil
+    toggleConn = nil,
+    hadNoSit = false
 }
 
 registerCommand("backpack", "Attach to player's back", {}, function(args)
@@ -1374,6 +1401,16 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
         local ta = target
         local tgl = true
         
+        -- Enable sit state if needed
+        local hadNoSit = not hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+        PM.Backpack.hadNoSit = hadNoSit
+        
+        if hadNoSit then
+            pcall(function()
+                hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            end)
+        end
+        
         local function rep()
             task.spawn(function()
                 while task.wait() do
@@ -1400,11 +1437,27 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
         
         rep()
         
-        -- Position on back using CFrame (sit on them)
+        -- Position on back with sit animation and 180 flip
         task.spawn(function()
             while tgl and task.wait() do 
                 if ta and ta.Character and ta.Character:FindFirstChild("HumanoidRootPart") and hr then 
-                    hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, 0, 0)
+                    -- Sit and zero velocity
+                    pcall(function()
+                        hm.Sit = true
+                        hm.AutoRotate = false
+                        -- Zero out velocity
+                        local bv = hr:FindFirstChild("BackpackBV")
+                        if not bv then
+                            bv = Instance.new("BodyVelocity")
+                            bv.Name = "BackpackBV"
+                            bv.Velocity = Vector3.zero
+                            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                            bv.Parent = hr
+                        end
+                    end)
+                    
+                    -- Position with 180 flip
+                    hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -math.pi, 0)
                 end 
             end 
         end)
@@ -1428,13 +1481,25 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
         if not gameProcessed and input.KeyCode == Enum.KeyCode.Return and PM.Backpack.target then 
             PM.Backpack.active = not PM.Backpack.active
             if not PM.Backpack.active then
-                -- Disable weld
+                -- Disable weld and cleanup sit state
                 local ch = LP.Character
                 if ch then
                     local hr = ch:FindFirstChild("HumanoidRootPart")
                     if hr then
                         pcall(function()
                             sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                            local bv = hr:FindFirstChild("BackpackBV")
+                            if bv then bv:Destroy() end
+                        end)
+                    end
+                    local hm = ch:FindFirstChild("Humanoid")
+                    if hm then
+                        pcall(function()
+                            hm.Sit = false
+                            hm.AutoRotate = true
+                            if PM.Backpack.hadNoSit then
+                                hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                            end
                         end)
                     end
                 end
@@ -1448,6 +1513,7 @@ end, true)
 registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
     PM.Backpack.active = false
     PM.Backpack.target = nil
+    local hadNoSit = PM.Backpack.hadNoSit
     
     if PM.Backpack.connection then
         if PM.Backpack.connection.rep then
@@ -1458,6 +1524,19 @@ registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
                 if hr then
                     pcall(function()
                         sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                        -- Remove BodyVelocity
+                        local bv = hr:FindFirstChild("BackpackBV")
+                        if bv then bv:Destroy() end
+                    end)
+                end
+                local hm = ch:FindFirstChild("Humanoid")
+                if hm then
+                    pcall(function()
+                        hm.Sit = false
+                        hm.AutoRotate = true
+                        if hadNoSit then
+                            hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                        end
                     end)
                 end
             end
