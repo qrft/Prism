@@ -177,7 +177,8 @@ local function startTypingEffect(textLabel, displayName)
     end
     
     local connections = {}
-    local targetText = displayName .. " · Owner"
+    local targetText = displayName .. "  Owner" -- Space for the dot
+    local dotChar = "•"
     local currentText = ""
     local currentIndex = 1
     local isTyping = true
@@ -187,6 +188,9 @@ local function startTypingEffect(textLabel, displayName)
     local isBackspacing = false
     local lastBackspaceUpdate = tick()
     local lastCycleStart = tick()
+    
+    -- Find the position where the dot should be (after displayName + space)
+    local dotPosition = #displayName + 2
     
     -- Main typing effect loop
     local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
@@ -225,9 +229,31 @@ local function startTypingEffect(textLabel, displayName)
             end
         end
         
+        -- Insert the dot at the correct position with visibility control
+        local displayText = currentText
+        local dotVisible = false
+        
+        -- Show dot when typing has passed the dot position
+        if not isBackspacing and currentIndex > dotPosition then
+            dotVisible = true
+        -- Hide dot when backspacing has passed the dot position
+        elseif isBackspacing and currentIndex <= dotPosition then
+            dotVisible = false
+        -- Keep dot visible if we're in the middle of the text (not backspacing)
+        elseif not isBackspacing and #currentText >= dotPosition then
+            dotVisible = true
+        end
+        
+        -- Insert the dot at the correct position
+        if dotVisible then
+            local beforeDot = displayText:sub(1, dotPosition - 1)
+            local afterDot = displayText:sub(dotPosition)
+            displayText = beforeDot .. dotChar .. afterDot
+        end
+        
         -- Update the label with cursor
         local cursor = showCursor and "|" or ""
-        textLabel.Text = currentText .. cursor
+        textLabel.Text = displayText .. cursor
     end)
     
     table.insert(connections, heartbeatConnection)
