@@ -95,7 +95,7 @@ local CUSTOM_USER_IDS = {
     [11311052888] = {
         assetId = "90136764649150",
         borderColor = Color3.fromRGB(165, 122, 90),
-        bgColor = Color3.fromRGB(75, 0, 130)
+        bgColor = nil
     },  -- jazzy
 }
 
@@ -316,11 +316,11 @@ local function createNametag()
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
     
     -- Custom colors for owners
-    local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
+    local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
     
     -- Use custom settings if available, otherwise use owner settings
-    local userBgColor = customSettings and customSettings.bgColor or ownerBgColor
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
     local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or C.sep)
     
     local billboard = Instance.new("BillboardGui")
@@ -373,8 +373,8 @@ local function createNametag()
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = (isOwnerUser or isCustomUser) and userBgColor or C.card
-    frame.BackgroundTransparency = 0.1
+    frame.BackgroundColor3 = userBgColor or C.card
+    frame.BackgroundTransparency = userBgColor and 1 or 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
@@ -386,7 +386,7 @@ local function createNametag()
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
         bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
-        bgImage.ImageTransparency = 0.3
+        bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
@@ -565,11 +565,11 @@ local function createOtherNametag(plrObj)
     local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
     
     -- Custom colors for owners
-    local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
+    local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
     
     -- Use custom settings if available, otherwise use owner settings
-    local userBgColor = customSettings and customSettings.bgColor or ownerBgColor
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
     local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or C.sep)
     
     local billboard = Instance.new("BillboardGui")
@@ -622,8 +622,8 @@ local function createOtherNametag(plrObj)
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = (isOwnerUser or isCustomUser) and userBgColor or C.card
-    frame.BackgroundTransparency = 0.1
+    frame.BackgroundColor3 = userBgColor or C.card
+    frame.BackgroundTransparency = userBgColor and 1 or 0.1
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Parent = billboard
@@ -636,7 +636,7 @@ local function createOtherNametag(plrObj)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
         bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
-        bgImage.ImageTransparency = 0.3
+        bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
