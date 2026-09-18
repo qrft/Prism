@@ -9,6 +9,7 @@
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
     add zero delay backpack / headsit / facebang and old method
+    fix anti sit
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -536,14 +537,6 @@ local function cleanupPrism()
         if PM.Anti.origVoidY ~= nil then
             pcall(function() workspace.FallenPartsDestroyHeight = PM.Anti.origVoidY end)
             PM.Anti.origVoidY = nil
-        end
-
-        -- Disconnect sit prevention connections
-        if PM.Anti.sitConnections then
-            for _, conn in pairs(PM.Anti.sitConnections) do
-                pcall(function() conn:Disconnect() end)
-            end
-            PM.Anti.sitConnections = nil
         end
 
         -- Restore humanoid states using stored original values
@@ -4203,7 +4196,7 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
             end
         end)
 
-        -- Anti Sit: prevents player from sitting by immediately standing them up
+        -- Anti Sit: disables Seated humanoid state
         CreateToggle("sit", "Anti Sit", 2, PM.Anti.sit, function(on)
             PM.Anti.sit = on
             SaveAntiToggles()
@@ -4212,22 +4205,19 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum then
                     if disable then
-                        -- Connect to Sit property change and immediately stand up
-                        PM.Anti.sitConnections = PM.Anti.sitConnections or {}
-                        PM.Anti.sitConnections[char] = hum:GetPropertyChangedSignal("Sit"):Connect(function()
-                            if hum.Sit then
-                                hum.Sit = false
-                            end
-                        end)
-                        -- Also immediately stand up if already sitting
-                        if hum.Sit then
-                            hum.Sit = false
-                        end
+                        -- Store original state before disabling
+                        PM.Anti.origSeatedEnabled = PM.Anti.origSeatedEnabled or {}
+                        PM.Anti.origSeatedEnabled[char] = pcall(function()
+                            return hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
+                        end) and true or true
+                        pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false) end)
                     else
-                        -- Disconnect the sit prevention
-                        if PM.Anti.sitConnections and PM.Anti.sitConnections[char] then
-                            PM.Anti.sitConnections[char]:Disconnect()
-                            PM.Anti.sitConnections[char] = nil
+                        -- Restore original state
+                        local origState = PM.Anti.origSeatedEnabled and PM.Anti.origSeatedEnabled[char]
+                        if origState ~= nil then
+                            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, origState) end)
+                        else
+                            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
                         end
                     end
                 end
