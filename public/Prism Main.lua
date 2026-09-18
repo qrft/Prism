@@ -236,11 +236,14 @@ local function startTypingEffect(textLabel, displayName)
         -- Show dot when typing has passed the dot position
         if not isBackspacing and currentIndex > dotPosition then
             dotVisible = true
-        -- Hide dot when backspacing has passed the dot position
-        elseif isBackspacing and currentIndex <= dotPosition then
+        -- Hide dot when backspacing has passed the dot position (check actual text length)
+        elseif isBackspacing and #currentText < dotPosition then
             dotVisible = false
         -- Keep dot visible if we're in the middle of the text (not backspacing)
         elseif not isBackspacing and #currentText >= dotPosition then
+            dotVisible = true
+        -- Keep dot visible during backspacing if we haven't reached it yet
+        elseif isBackspacing and #currentText >= dotPosition then
             dotVisible = true
         end
         
