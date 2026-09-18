@@ -541,6 +541,47 @@ local function cleanupPrism()
             pcall(function() workspace.FallenPartsDestroyHeight = PM.Anti.origVoidY end)
             PM.Anti.origVoidY = nil
         end
+
+        -- Restore humanoid states using stored original values
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildWhichIsA("Humanoid")
+            if hum then
+                -- Restore Seated state
+                local origSeated = PM.Anti.origSeatedEnabled and PM.Anti.origSeatedEnabled[char]
+                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, origSeated ~= nil and origSeated or true) end)
+
+                -- Restore Ragdoll and FallingDown states
+                local origRagdoll = PM.Anti.origRagdollEnabled and PM.Anti.origRagdollEnabled[char]
+                local origFallingDown = PM.Anti.origFallingDownEnabled and PM.Anti.origFallingDownEnabled[char]
+                pcall(function()
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, origRagdoll ~= nil and origRagdoll or true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, origFallingDown ~= nil and origFallingDown or true)
+                end)
+            end
+        end
+
+        -- Restore player collisions using stored original values (anti fling)
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LP and player.Character then
+                local origStates = PM.Anti.origCanCollide and PM.Anti.origCanCollide[player.Character]
+                for _, v in pairs(player.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        if origStates and origStates[v] ~= nil then
+                            pcall(function() v.CanCollide = origStates[v] end)
+                        else
+                            pcall(function() v.CanCollide = true end)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Clear stored states
+        PM.Anti.origSeatedEnabled = nil
+        PM.Anti.origRagdollEnabled = nil
+        PM.Anti.origFallingDownEnabled = nil
+        PM.Anti.origCanCollide = nil
     end
     
     -- Cleanup Infinite Baseplate
@@ -4163,19 +4204,36 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
             PM.Anti.sit = on
             SaveAntiToggles()
             DisconnectAnti("sit")
-            local function applyAntiSit(char)
+            local function applyAntiSit(char, disable)
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum then
-                    pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, not on) end)
+                    if disable then
+                        -- Store original state before disabling
+                        PM.Anti.origSeatedEnabled = PM.Anti.origSeatedEnabled or {}
+                        PM.Anti.origSeatedEnabled[char] = pcall(function()
+                            return hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
+                        end) and true or true
+                        pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false) end)
+                    else
+                        -- Restore original state
+                        local origState = PM.Anti.origSeatedEnabled and PM.Anti.origSeatedEnabled[char]
+                        if origState ~= nil then
+                            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, origState) end)
+                        else
+                            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
+                        end
+                    end
                 end
             end
             if on then
-                if LocalPlayer.Character then applyAntiSit(LocalPlayer.Character) end
+                if LocalPlayer.Character then applyAntiSit(LocalPlayer.Character, true) end
                 PM.Anti.connections.sitChar = LocalPlayer.CharacterAdded:Connect(function(newChar)
                     repeat task.wait() until newChar:FindFirstChildWhichIsA("Humanoid")
-                    local newHum = newChar:FindFirstChildWhichIsA("Humanoid")
-                    if newHum then pcall(function() newHum:SetStateEnabled(Enum.HumanoidStateType.Seated, false) end) end
+                    applyAntiSit(newChar, true)
                 end)
+            else
+                -- Restore Seated state when turned off
+                if LocalPlayer.Character then applyAntiSit(LocalPlayer.Character, false) end
             end
         end)
 
@@ -4184,22 +4242,44 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
             PM.Anti.ragdoll = on
             SaveAntiToggles()
             DisconnectAnti("ragdoll")
-            local function applyAntiRagdoll(character)
+            local function applyAntiRagdoll(character, disable)
                 local h = character:FindFirstChildWhichIsA("Humanoid")
                 if h then
-                    pcall(function()
-                        h:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                        h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                    end)
+                    if disable then
+                        -- Store original states before disabling
+                        PM.Anti.origRagdollEnabled = PM.Anti.origRagdollEnabled or {}
+                        PM.Anti.origFallingDownEnabled = PM.Anti.origFallingDownEnabled or {}
+                        PM.Anti.origRagdollEnabled[character] = pcall(function()
+                            return h:GetStateEnabled(Enum.HumanoidStateType.Ragdoll)
+                        end) and true or true
+                        PM.Anti.origFallingDownEnabled[character] = pcall(function()
+                            return h:GetStateEnabled(Enum.HumanoidStateType.FallingDown)
+                        end) and true or true
+                        pcall(function()
+                            h:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                            h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                        end)
+                    else
+                        -- Restore original states
+                        local origRagdoll = PM.Anti.origRagdollEnabled and PM.Anti.origRagdollEnabled[character]
+                        local origFallingDown = PM.Anti.origFallingDownEnabled and PM.Anti.origFallingDownEnabled[character]
+                        pcall(function()
+                            h:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, origRagdoll ~= nil and origRagdoll or true)
+                            h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, origFallingDown ~= nil and origFallingDown or true)
+                        end)
+                    end
                 end
             end
             if on then
                 local c = LocalPlayer.Character
-                if c then applyAntiRagdoll(c) end
+                if c then applyAntiRagdoll(c, true) end
                 PM.Anti.connections.ragdollChar = LocalPlayer.CharacterAdded:Connect(function(newChar)
                     if not PM.Anti.ragdoll then return end
-                    applyAntiRagdoll(newChar)
+                    applyAntiRagdoll(newChar, true)
                 end)
+            else
+                -- Restore Ragdoll and FallingDown states when turned off
+                if LocalPlayer.Character then applyAntiRagdoll(LocalPlayer.Character, false) end
             end
         end)
 
@@ -4270,9 +4350,28 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 -- Function to disable collisions for a character
                 local function disableCollisions(char)
                     if not char then return end
+                    PM.Anti.origCanCollide = PM.Anti.origCanCollide or {}
+                    PM.Anti.origCanCollide[char] = PM.Anti.origCanCollide[char] or {}
                     for _, v in pairs(char:GetDescendants()) do
                         if v:IsA("BasePart") then
+                            -- Store original CanCollide state
+                            PM.Anti.origCanCollide[char][v] = v.CanCollide
                             v.CanCollide = false
+                        end
+                    end
+                end
+
+                -- Function to restore collisions for a character
+                local function restoreCollisions(char)
+                    if not char then return end
+                    local origStates = PM.Anti.origCanCollide and PM.Anti.origCanCollide[char]
+                    for _, v in pairs(char:GetDescendants()) do
+                        if v:IsA("BasePart") then
+                            if origStates and origStates[v] ~= nil then
+                                v.CanCollide = origStates[v]
+                            else
+                                v.CanCollide = true
+                            end
                         end
                     end
                 end
@@ -4305,9 +4404,14 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 -- Restore collisions when turned off
                 for _, player in pairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character then
+                        local origStates = PM.Anti.origCanCollide and PM.Anti.origCanCollide[player.Character]
                         for _, v in pairs(player.Character:GetDescendants()) do
                             if v:IsA("BasePart") then
-                                v.CanCollide = true
+                                if origStates and origStates[v] ~= nil then
+                                    v.CanCollide = origStates[v]
+                                else
+                                    v.CanCollide = true
+                                end
                             end
                         end
                     end
