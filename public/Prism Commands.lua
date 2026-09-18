@@ -10,9 +10,9 @@
     join other prism users
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
-    custom nametag text effects
     custom nametag pictures / gifs
     fix anti fling fps dropping
+    add zero delay backpack
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -584,6 +584,25 @@ local function cleanupPrism()
         PM.Noclip.snapshot = {}
     end
 
+    -- Cleanup Backpack
+    if PM.Backpack then
+        PM.Backpack.active = false
+        PM.Backpack.target = nil
+        if PM.Backpack.connection then pcall(function() PM.Backpack.connection:Disconnect() end) end
+        if PM.Backpack.charAddedConn then pcall(function() PM.Backpack.charAddedConn:Disconnect() end) end
+        if PM.Backpack.toggleConn then pcall(function() PM.Backpack.toggleConn:Disconnect() end) end
+        -- Disable weld
+        local ch = LP.Character
+        if ch then
+            local hr = ch:FindFirstChild("HumanoidRootPart")
+            if hr then
+                pcall(function()
+                    sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                end)
+            end
+        end
+    end
+
     -- Cleanup Invisibility
     if PM.Invis then
         PM.Invis.active = false
@@ -690,6 +709,25 @@ local function cleanupPrism()
     for _, obj in ipairs(LP.Backpack:GetChildren()) do
         if obj.Name:find("Prism") or obj.Name == "Teleport Tool" or obj.Name == "Jerk" or obj.Name == "Hitler Salute" then
             pcall(function() obj:Destroy() end)
+        end
+    end
+
+    -- Cleanup Backpack weld
+    if PM.Backpack then
+        PM.Backpack.active = false
+        PM.Backpack.target = nil
+        if PM.Backpack.connection then pcall(function() PM.Backpack.connection:Disconnect() end) end
+        if PM.Backpack.charAddedConn then pcall(function() PM.Backpack.charAddedConn:Disconnect() end) end
+        if PM.Backpack.toggleConn then pcall(function() PM.Backpack.toggleConn:Disconnect() end) end
+        -- Disable weld
+        local ch = LP.Character
+        if ch then
+            local hr = ch:FindFirstChild("HumanoidRootPart")
+            if hr then
+                pcall(function()
+                    sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                end)
+            end
         end
     end
 
@@ -1254,6 +1292,185 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
     local char = LP.Character
     if char and char:FindFirstChild("Humanoid") then
         camera.CameraSubject = char.Humanoid
+    end
+end, true)
+
+-- Backpack state management
+PM.Backpack = {
+    active = false,
+    target = nil,
+    connection = nil,
+    charAddedConn = nil,
+    toggleConn = nil
+}
+
+registerCommand("backpack", "Attach to player's back", {}, function(args)
+    local targetName = args[1] or ""
+    if targetName == "" then return end
+    
+    local q = targetName:lower()
+    local target = nil
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            if p.Name:lower() == q or p.DisplayName:lower() == q then
+                target = p
+                break
+            end
+        end
+    end
+    
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+    
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+    
+    if not target then return end
+    
+    -- Disconnect existing backpack
+    if PM.Backpack.connection then
+        PM.Backpack.connection:Disconnect()
+        PM.Backpack.connection = nil
+    end
+    if PM.Backpack.charAddedConn then
+        PM.Backpack.charAddedConn:Disconnect()
+        PM.Backpack.charAddedConn = nil
+    end
+    if PM.Backpack.toggleConn then
+        PM.Backpack.toggleConn:Disconnect()
+        PM.Backpack.toggleConn = nil
+    end
+    
+    PM.Backpack.active = true
+    PM.Backpack.target = target
+    
+    local function cloneref(service)
+        return cloneref and cloneref(service) or service
+    end
+    
+    local function startBackpack()
+        local ch = LP.Character or LP.CharacterAdded:Wait()
+        local hm = ch:WaitForChild("Humanoid")
+        local rp = hm.RootPart or ch:WaitForChild("HumanoidRootPart")
+        local hr = rp
+        local tp = nil
+        local ta = target
+        local tgl = true
+        
+        local function rep()
+            task.spawn(function()
+                while task.wait() do
+                    if LP.Character == ch and tgl then
+                        if ta and ta.Character and ta.Character:FindFirstChild("Head") then 
+                            tp = ta.Character.Head 
+                        end
+                        if rp and tp then 
+                            pcall(function()
+                                sethiddenproperty(rp, "PhysicsRepRootPart", tp) 
+                            end)
+                        end
+                    else
+                        if rp then 
+                            pcall(function()
+                                sethiddenproperty(rp, "PhysicsRepRootPart", nil) 
+                            end)
+                        end
+                        break
+                    end
+                end
+            end)
+        end
+        
+        rep()
+        
+        -- Position on back using CFrame (sit on them)
+        task.spawn(function()
+            while tgl and task.wait() do 
+                if ta and ta.Character and ta.Character:FindFirstChild("HumanoidRootPart") and hr then 
+                    hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, 0, 0)
+                end 
+            end 
+        end)
+        
+        PM.Backpack.connection = PM.Backpack.connection or {}
+        PM.Backpack.connection.rep = rep
+    end
+    
+    startBackpack()
+    
+    -- Handle character respawn
+    PM.Backpack.charAddedConn = LP.CharacterAdded:Connect(function(nc)
+        if PM.Backpack.active then
+            task.wait(0.5)
+            startBackpack()
+        end
+    end)
+    
+    -- Toggle with Enter key
+    PM.Backpack.toggleConn = game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == Enum.KeyCode.Return and PM.Backpack.target then 
+            PM.Backpack.active = not PM.Backpack.active
+            if not PM.Backpack.active then
+                -- Disable weld
+                local ch = LP.Character
+                if ch then
+                    local hr = ch:FindFirstChild("HumanoidRootPart")
+                    if hr then
+                        pcall(function()
+                            sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                        end)
+                    end
+                end
+            else
+                startBackpack()
+            end
+        end
+    end)
+end, true)
+
+registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
+    PM.Backpack.active = false
+    PM.Backpack.target = nil
+    
+    if PM.Backpack.connection then
+        if PM.Backpack.connection.rep then
+            -- Disable weld
+            local ch = LP.Character
+            if ch then
+                local hr = ch:FindFirstChild("HumanoidRootPart")
+                if hr then
+                    pcall(function()
+                        sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
+                    end)
+                end
+            end
+        end
+    end
+    
+    if PM.Backpack.charAddedConn then
+        PM.Backpack.charAddedConn:Disconnect()
+        PM.Backpack.charAddedConn = nil
+    end
+    if PM.Backpack.toggleConn then
+        PM.Backpack.toggleConn:Disconnect()
+        PM.Backpack.toggleConn = nil
     end
 end, true)
 
