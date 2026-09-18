@@ -12,7 +12,7 @@
     nametag cleanup on unload and reload
     custom nametag pictures / gifs
     fix anti fling fps dropping
-    add zero delay backpack
+    add zero delay backpack / headsit
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -4134,6 +4134,13 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 PM.Anti.connections[name .. "Char"]:Disconnect()
                 PM.Anti.connections[name .. "Char"] = nil
             end
+            -- Disconnect per-player connections (e.g., fling_[userId])
+            for key, conn in pairs(PM.Anti.connections) do
+                if key:sub(1, #name + 1) == name .. "_" then
+                    conn:Disconnect()
+                    PM.Anti.connections[key] = nil
+                end
+            end
         end
 
         -- Anti AFK: prevents Roblox from kicking you for idling
@@ -4260,17 +4267,51 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
             SaveAntiToggles()
             DisconnectAnti("fling")
             if on then
-                PM.Anti.connections.fling = RunService.Stepped:Connect(function()
-                    for _, player in pairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer and player.Character then
-                            for _, v in pairs(player.Character:GetDescendants()) do
-                                if v:IsA("BasePart") then
-                                    v.CanCollide = false
-                                end
+                -- Function to disable collisions for a character
+                local function disableCollisions(char)
+                    if not char then return end
+                    for _, v in pairs(char:GetDescendants()) do
+                        if v:IsA("BasePart") then
+                            v.CanCollide = false
+                        end
+                    end
+                end
+
+                -- Handle existing players
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer then
+                        if player.Character then
+                            disableCollisions(player.Character)
+                        end
+                        -- Handle respawns
+                        PM.Anti.connections["fling_" .. player.UserId] = player.CharacterAdded:Connect(function(char)
+                            disableCollisions(char)
+                        end)
+                    end
+                end
+
+                -- Handle new players joining
+                PM.Anti.connections.fling = Players.PlayerAdded:Connect(function(player)
+                    if player ~= LocalPlayer then
+                        if player.Character then
+                            disableCollisions(player.Character)
+                        end
+                        PM.Anti.connections["fling_" .. player.UserId] = player.CharacterAdded:Connect(function(char)
+                            disableCollisions(char)
+                        end)
+                    end
+                end)
+            else
+                -- Restore collisions when turned off
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character then
+                        for _, v in pairs(player.Character:GetDescendants()) do
+                            if v:IsA("BasePart") then
+                                v.CanCollide = true
                             end
                         end
                     end
-                end)
+                end
             end
         end)
 
