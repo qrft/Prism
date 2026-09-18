@@ -364,6 +364,10 @@ local function createNametag()
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
+        
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(0, 8)
+        bgCorner.Parent = bgImage
     end
     
     local corner = Instance.new("UICorner")
@@ -603,6 +607,10 @@ local function createOtherNametag(plrObj)
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
+        
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(0, 8)
+        bgCorner.Parent = bgImage
     end
     
     local corner = Instance.new("UICorner")
