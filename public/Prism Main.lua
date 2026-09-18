@@ -86,7 +86,7 @@ local originalDisplayTypes = {}
 
 -- Special owner user IDs for custom nametags
 local OWNER_USER_IDS = {
-    [7275889224] = true,  -- Soul
+    [7275889224] = true,  -- Soul / Tampon
     [5712636024] = true,  -- Kavrenoo
 }
 
