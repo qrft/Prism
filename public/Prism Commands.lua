@@ -1321,14 +1321,15 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
     end
 end, true)
 
--- Backpack state management
+-- Backpack state management (exact ZeroDelayWeld structure)
 PM.Backpack = {
     active = false,
     target = nil,
     connection = nil,
     charAddedConn = nil,
     toggleConn = nil,
-    hadNoSit = false
+    hadNoSit = false,
+    PM.Backpack.tgl = true  -- Main toggle state accessible by all functions
 }
 
 registerCommand("backpack", "Attach to player's back", {}, function(args)
@@ -1387,59 +1388,56 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
     
     PM.Backpack.active = true
     PM.Backpack.target = target
+    PM.Backpack.PM.Backpack.tgl = true
     
-    local function cloneref(service)
-        return cloneref and cloneref(service) or service
+    -- Exact ZeroDelayWeld initialization (local variables like original)
+    local ch = LP.Character or LP.CharacterAdded:Wait()
+    local hm = ch:WaitForChild("Humanoid")
+    local rp = hm.RootPart or ch:WaitForChild("HumanoidRootPart")
+    local hr = rp
+    local tp = nil
+    local ta = target
+    
+    -- Enable sit state if needed
+    local hadNoSit = not hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+    PM.Backpack.hadNoSit = hadNoSit
+    
+    if hadNoSit then
+        pcall(function()
+            hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        end)
     end
     
-    local function startBackpack()
-        local ch = LP.Character or LP.CharacterAdded:Wait()
-        local hm = ch:WaitForChild("Humanoid")
-        local rp = hm.RootPart or ch:WaitForChild("HumanoidRootPart")
-        local hr = rp
-        local tp = nil
-        local ta = target
-        local tgl = true
-        
-        -- Enable sit state if needed
-        local hadNoSit = not hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
-        PM.Backpack.hadNoSit = hadNoSit
-        
-        if hadNoSit then
-            pcall(function()
-                hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-            end)
-        end
-        
-        local function rep()
-            task.spawn(function()
-                while task.wait() do
-                    if LP.Character == ch and tgl then
-                        if ta and ta.Character and ta.Character:FindFirstChild("Head") then 
-                            tp = ta.Character.Head 
-                        end
-                        if rp and tp then 
-                            pcall(function()
-                                sethiddenproperty(rp, "PhysicsRepRootPart", tp) 
-                            end)
-                        end
-                    else
-                        if rp then 
-                            pcall(function()
-                                sethiddenproperty(rp, "PhysicsRepRootPart", nil) 
-                            end)
-                        end
-                        break
+    -- Exact ZeroDelayWeld rep function (references PM.Backpack.PM.Backpack.tgl)
+    local function rep()
+        task.spawn(function()
+            while task.wait() do
+                if LP.Character == ch and PM.Backpack.PM.Backpack.tgl then
+                    if ta and ta.Character and ta.Character:FindFirstChild("Head") then 
+                        tp = ta.Character.Head 
                     end
+                    if rp and tp then 
+                        pcall(function()
+                            sethiddenproperty(rp, "PhysicsRepRootPart", tp) 
+                        end)
+                    end
+                else
+                    if rp then 
+                        pcall(function()
+                            sethiddenproperty(rp, "PhysicsRepRootPart", nil) 
+                        end)
+                    end
+                    break
                 end
-            end)
-        end
+            end
+        end)
+    end
         
         rep()
         
-        -- Position on back with sit animation and 180 flip
+        -- Position on back with sit animation and 180 flip (exact ZeroDelayWeld method)
         task.spawn(function()
-            while tgl and task.wait() do 
+            while PM.Backpack.tgl and task.wait() do 
                 if ta and ta.Character and ta.Character:FindFirstChild("HumanoidRootPart") and hr then 
                     -- Sit and zero velocity
                     pcall(function()
@@ -1459,58 +1457,215 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
                     -- Position with 180 flip
                     hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -math.pi, 0)
                 end 
-            end 
+            end
         end)
         
         PM.Backpack.connection = PM.Backpack.connection or {}
-        PM.Backpack.connection.rep = rep
+        PM.Backpack.connection.PM.Backpack.tgl = PM.Backpack.tgl
+        PM.Backpack.connection.ch = ch
+        PM.Backpack.connection.rp = rp
+        PM.Backpack.connection.hr = hr
+        PM.Backpack.connection.ta = ta
     end
     
     startBackpack()
     
-    -- Handle character respawn
+    -- Handle character respawn (recreate local variables like ZeroDelayWeld)
     PM.Backpack.charAddedConn = LP.CharacterAdded:Connect(function(nc)
         if PM.Backpack.active then
             task.wait(0.5)
-            startBackpack()
+            -- Recreate local variables
+            local ch = nc
+            local hm = ch:WaitForChild("Humanoid")
+            local rp = hm.RootPart or ch:WaitForChild("HumanoidRootPart")
+            local hr = rp
+            local tp = nil
+            local ta = PM.Backpack.target
+            local PM.Backpack.tgl = true
+            
+            -- Enable sit state if needed
+            local hadNoSit = not hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+            PM.Backpack.hadNoSit = hadNoSit
+            
+            if hadNoSit then
+                pcall(function()
+                    hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                end)
+            end
+            
+            -- Exact ZeroDelayWeld rep function
+            local function rep()
+                task.spawn(function()
+                    while task.wait() do
+                        if LP.Character == ch and PM.Backpack.tgl then
+                            if ta and ta.Character and ta.Character:FindFirstChild("Head") then 
+                                tp = ta.Character.Head 
+                            end
+                            if rp and tp then 
+                                pcall(function()
+                                    sethiddenproperty(rp, "PhysicsRepRootPart", tp) 
+                                end)
+                            end
+                        else
+                            if rp then 
+                                pcall(function()
+                                    sethiddenproperty(rp, "PhysicsRepRootPart", nil) 
+                                end)
+                            end
+                            break
+                        end
+                    end
+                end)
+            end
+            
+            rep()
+            
+            -- Position on back with sit animation and 180 flip
+            task.spawn(function()
+                while PM.Backpack.tgl and task.wait() do 
+                    if ta and ta.Character and ta.Character:FindFirstChild("HumanoidRootPart") and hr then 
+                        -- Sit and zero velocity
+                        pcall(function()
+                            hm.Sit = true
+                            hm.AutoRotate = false
+                            -- Zero out velocity
+                            local bv = hr:FindFirstChild("BackpackBV")
+                            if not bv then
+                                bv = Instance.new("BodyVelocity")
+                                bv.Name = "BackpackBV"
+                                bv.Velocity = Vector3.zero
+                                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                                bv.Parent = hr
+                            end
+                        end)
+                        
+                        -- Position with 180 flip
+                        hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -math.pi, 0)
+                    end 
+                end 
+            end)
+            
+            -- Update connection references
+            PM.Backpack.connection = PM.Backpack.connection or {}
+            PM.Backpack.connection.PM.Backpack.tgl = PM.Backpack.tgl
+            PM.Backpack.connection.ch = ch
+            PM.Backpack.connection.rp = rp
+            PM.Backpack.connection.hr = hr
+            PM.Backpack.connection.ta = ta
+            PM.Backpack.connection.tp = tp
+            PM.Backpack.connection.hm = hm
         end
     end)
     
-    -- Toggle with Enter key
+    -- Toggle with Enter key (exact ZeroDelayWeld method)
     PM.Backpack.toggleConn = game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
         if not gameProcessed and input.KeyCode == Enum.KeyCode.Return and PM.Backpack.target then 
             PM.Backpack.active = not PM.Backpack.active
+            if PM.Backpack.connection and PM.Backpack.connection.PM.Backpack.tgl then
+                PM.Backpack.connection.PM.Backpack.tgl = not PM.Backpack.connection.PM.Backpack.tgl
+            end
             if not PM.Backpack.active then
                 -- Disable weld immediately like ZeroDelayWeld
-                local ch = LP.Character
-                if ch then
-                    local hr = ch:FindFirstChild("HumanoidRootPart")
-                    if hr then
-                        pcall(function()
-                            sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
-                        end)
-                    end
+                if PM.Backpack.connection and PM.Backpack.connection.rp then
+                    pcall(function()
+                        sethiddenproperty(PM.Backpack.connection.rp, "PhysicsRepRootPart", nil) 
+                    end)
                 end
                 -- Then cleanup sit state
-                if ch then
-                    local hr = ch:FindFirstChild("HumanoidRootPart")
-                    if hr then
-                        local bv = hr:FindFirstChild("BackpackBV")
-                        if bv then bv:Destroy() end
-                    end
-                    local hm = ch:FindFirstChild("Humanoid")
-                    if hm then
-                        pcall(function()
-                            hm.Sit = false
-                            hm.AutoRotate = true
-                            if PM.Backpack.hadNoSit then
-                                hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-                            end
-                        end)
-                    end
+                if PM.Backpack.connection and PM.Backpack.connection.hr then
+                    local bv = PM.Backpack.connection.hr:FindFirstChild("BackpackBV")
+                    if bv then bv:Destroy() end
+                end
+                if PM.Backpack.connection and PM.Backpack.connection.hm then
+                    pcall(function()
+                        PM.Backpack.connection.hm.Sit = false
+                        PM.Backpack.connection.hm.AutoRotate = true
+                        if PM.Backpack.hadNoSit then
+                            PM.Backpack.connection.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                        end
+                    end)
                 end
             else
-                startBackpack()
+                -- Restart backpack with new local variables
+                local ch = LP.Character or LP.CharacterAdded:Wait()
+                local hm = ch:WaitForChild("Humanoid")
+                local rp = hm.RootPart or ch:WaitForChild("HumanoidRootPart")
+                local hr = rp
+                local tp = nil
+                local ta = PM.Backpack.target
+                local PM.Backpack.tgl = true
+                
+                -- Enable sit state if needed
+                local hadNoSit = not hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+                PM.Backpack.hadNoSit = hadNoSit
+                
+                if hadNoSit then
+                    pcall(function()
+                        hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                    end)
+                end
+                
+                -- Exact ZeroDelayWeld rep function
+                local function rep()
+                    task.spawn(function()
+                        while task.wait() do
+                            if LP.Character == ch and PM.Backpack.tgl then
+                                if ta and ta.Character and ta.Character:FindFirstChild("Head") then 
+                                    tp = ta.Character.Head 
+                                end
+                                if rp and tp then 
+                                    pcall(function()
+                                        sethiddenproperty(rp, "PhysicsRepRootPart", tp) 
+                                    end)
+                                end
+                            else
+                                if rp then 
+                                    pcall(function()
+                                        sethiddenproperty(rp, "PhysicsRepRootPart", nil) 
+                                    end)
+                                end
+                                break
+                            end
+                        end
+                    end)
+                end
+                
+                rep()
+                
+                -- Position on back with sit animation and 180 flip
+                task.spawn(function()
+                    while PM.Backpack.tgl and task.wait() do 
+                        if ta and ta.Character and ta.Character:FindFirstChild("HumanoidRootPart") and hr then 
+                            -- Sit and zero velocity
+                            pcall(function()
+                                hm.Sit = true
+                                hm.AutoRotate = false
+                                -- Zero out velocity
+                                local bv = hr:FindFirstChild("BackpackBV")
+                                if not bv then
+                                    bv = Instance.new("BodyVelocity")
+                                    bv.Name = "BackpackBV"
+                                    bv.Velocity = Vector3.zero
+                                    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                                    bv.Parent = hr
+                                end
+                            end)
+                            
+                            -- Position with 180 flip
+                            hr.CFrame = ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -math.pi, 0)
+                        end 
+                    end 
+                end)
+                
+                -- Update connection references
+                PM.Backpack.connection = PM.Backpack.connection or {}
+                PM.Backpack.connection.PM.Backpack.tgl = PM.Backpack.tgl
+                PM.Backpack.connection.ch = ch
+                PM.Backpack.connection.rp = rp
+                PM.Backpack.connection.hr = hr
+                PM.Backpack.connection.ta = ta
+                PM.Backpack.connection.tp = tp
+                PM.Backpack.connection.hm = hm
             end
         end
     end)
@@ -1521,39 +1676,26 @@ registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
     PM.Backpack.target = nil
     local hadNoSit = PM.Backpack.hadNoSit
     
-    -- First disable the weld exactly like ZeroDelayWeld
-    local ch = LP.Character
-    if ch then
-        local hr = ch:FindFirstChild("HumanoidRootPart")
-        if hr then
-            pcall(function()
-                sethiddenproperty(hr, "PhysicsRepRootPart", nil) 
-            end)
-        end
+    -- Exact ZeroDelayWeld detach method - immediate
+    if PM.Backpack.connection and PM.Backpack.connection.rp then
+        pcall(function()
+            sethiddenproperty(PM.Backpack.connection.rp, "PhysicsRepRootPart", nil) 
+        end)
     end
     
-    -- Then cleanup the rest
-    if PM.Backpack.connection then
-        if PM.Backpack.connection.rep then
-            -- Remove BodyVelocity and cleanup sit state
-            if ch then
-                local hr = ch:FindFirstChild("HumanoidRootPart")
-                if hr then
-                    local bv = hr:FindFirstChild("BackpackBV")
-                    if bv then bv:Destroy() end
-                end
-                local hm = ch:FindFirstChild("Humanoid")
-                if hm then
-                    pcall(function()
-                        hm.Sit = false
-                        hm.AutoRotate = true
-                        if hadNoSit then
-                            hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-                        end
-                    end)
-                end
+    -- Then cleanup sit state and BodyVelocity
+    if PM.Backpack.connection and PM.Backpack.connection.hr then
+        local bv = PM.Backpack.connection.hr:FindFirstChild("BackpackBV")
+        if bv then bv:Destroy() end
+    end
+    if PM.Backpack.connection and PM.Backpack.connection.hm then
+        pcall(function()
+            PM.Backpack.connection.hm.Sit = false
+            PM.Backpack.connection.hm.AutoRotate = true
+            if hadNoSit then
+                PM.Backpack.connection.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
             end
-        end
+        end)
     end
     
     if PM.Backpack.charAddedConn then
@@ -1563,6 +1705,10 @@ registerCommand("unbackpack", "Stop backpack attachment", {}, function(args)
     if PM.Backpack.toggleConn then
         PM.Backpack.toggleConn:Disconnect()
         PM.Backpack.toggleConn = nil
+    end
+    if PM.Backpack.connection then
+        PM.Backpack.connection:Disconnect()
+        PM.Backpack.connection = nil
     end
 end, true)
 
