@@ -397,7 +397,7 @@ local function createNametag()
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. player.Name
-    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextColor3 = isOwnerUser and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -640,7 +640,7 @@ local function createOtherNametag(plrObj)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextColor3 = isOwnerUser and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
