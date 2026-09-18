@@ -74,77 +74,7 @@ PM.C = {
 local C = PM.C
 
 -- Prism Nametag System Integration
-local API_BASE_URL = "https://prismscript.vercel.app"
-local API_ENDPOINT = API_BASE_URL .. "/api/nametags"
-
--- Prism API for server joining
-PM.PrismAPI = {
-    getServers = function(forceRefresh)
-        local HttpService = game:GetService("HttpService")
-        local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-        
-        if not requestFunction then
-            return nil
-        end
-        
-        local player = PM.Svc.Players.LocalPlayer
-        if not player then
-            return nil
-        end
-        
-        local jobId = game.JobId
-        local gameName = "Unknown"
-        
-        -- Safely get game name
-        pcall(function()
-            local success, result = pcall(function()
-                return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-            end)
-            if success and result then
-                gameName = result.Name or "Unknown"
-            end
-        end)
-        
-        local requestBody = HttpService:JSONEncode({
-            jobid = jobId,
-            gameName = gameName,
-            userId = tostring(player.UserId),
-            username = player.Name,
-            displayName = player.DisplayName
-        })
-        
-        local requestTable = {
-            Url = API_BASE_URL .. "/api/servers",
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = requestBody
-        }
-        
-        local success, result = pcall(function()
-            return requestFunction(requestTable)
-        end)
-        
-        if not success then
-            return nil
-        end
-        
-        local responseBody = result.Body or result.body or result
-        
-        if responseBody then
-            local responseSuccess, responseData = pcall(function()
-                return HttpService:JSONDecode(responseBody)
-            end)
-            
-            if responseSuccess and responseData.success then
-                return responseData.data
-            end
-        end
-        
-        return nil
-    end
-}
+local API_ENDPOINT = "https://prismscript.vercel.app/api/prism"
 
 local nametagEnabled = true
 local nametagGui = nil
@@ -873,11 +803,25 @@ local function getUserInfo()
     local userId = player.UserId
     local username = player.Name
     local displayName = player.DisplayName or username
+    local jobId = game.JobId
+    local gameName = "Unknown"
+    
+    -- Safely get game name
+    pcall(function()
+        local success, result = pcall(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+        end)
+        if success and result then
+            gameName = result.Name or "Unknown"
+        end
+    end)
     
     return {
         username = username,
         displayName = displayName,
-        userId = tostring(userId)
+        userId = tostring(userId),
+        jobid = jobId,
+        gameName = gameName
     }
 end
 
@@ -2415,42 +2359,7 @@ PM.createMainGUI = function()
         local renderServerList
         
         local function fetchPrismServers()
-            -- First POST our own data
-            PM.PrismAPI.getServers(true)
-            
-            -- Then GET the list
-            local HttpService = game:GetService("HttpService")
-            local requestFunction = request or (HttpService and HttpService.request) or http_request or (fluxus and fluxus.request)
-            
-            if not requestFunction then
-                return {}
-            end
-            
-            local requestTable = {
-                Url = API_BASE_URL .. "/api/servers",
-                Method = "GET"
-            }
-            
-            local success, result = pcall(function()
-                return requestFunction(requestTable)
-            end)
-            
-            if not success then
-                return {}
-            end
-            
-            local responseBody = result.Body or result.body or result
-            
-            if responseBody then
-                local responseSuccess, responseData = pcall(function()
-                    return HttpService:JSONDecode(responseBody)
-                end)
-                
-                if responseSuccess and responseData.success then
-                    return responseData.data or {}
-                end
-            end
-            
+            -- Server joining API disabled - keeping UI only
             return {}
         end
         
