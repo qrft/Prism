@@ -1,6 +1,6 @@
 --[[ missing
 
-    fix invis with respawn to last location
+    fix invis with respawn to last location and dying to void
     rewind
     headsit player
     backpack player
@@ -10,6 +10,7 @@
     join other prism users
     better vcbypasser icons / bypass
     nametag cleanup on unload and reload
+    custom nametag text effects
     custom nametag pictures / gifs
     fix anti fling fps dropping
     

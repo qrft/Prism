@@ -156,18 +156,106 @@ local originalDisplayTypes = {}
 
 -- Special owner user IDs for custom nametags
 local OWNER_USER_IDS = {
-    [7275889224] = true,  -- Soul
-    [5712636024] = true,  -- Kavrenoo
+    [7275889224] = "soul",  -- Soul
+    [5712636024] = "kavrenoo",  -- Kavrenoo
 }
 
 -- Check if user is an owner
 local function isOwner(userId)
-    return OWNER_USER_IDS[userId] == true
+    return OWNER_USER_IDS[userId] ~= nil
+end
+
+-- Get owner name for typing effect
+local function getOwnerName(userId)
+    return OWNER_USER_IDS[userId] or ""
+end
+
+-- Typing effect system for owner nametags
+local typingEffectConnections = {}
+
+local function startTypingEffect(textLabel, ownerName)
+    -- Stop any existing typing effect for this label
+    if typingEffectConnections[textLabel] then
+        for _, connection in ipairs(typingEffectConnections[textLabel]) do
+            connection:Disconnect()
+        end
+    end
+    
+    local connections = {}
+    local targetText = ownerName .. " . owner"
+    local currentText = ""
+    local currentIndex = 1
+    local isTyping = true
+    local showCursor = true
+    local lastCursorToggle = tick()
+    local lastTypingUpdate = tick()
+    local isBackspacing = false
+    local lastBackspaceUpdate = tick()
+    local lastCycleStart = tick()
+    
+    -- Main typing effect loop
+    local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        local now = tick()
+        
+        -- Toggle cursor every 0.5 seconds
+        if now - lastCursorToggle >= 0.5 then
+            showCursor = not showCursor
+            lastCursorToggle = now
+        end
+        
+        -- Check if we need to start a new cycle (every 5 seconds)
+        if now - lastCycleStart >= 5 then
+            isBackspacing = true
+            lastCycleStart = now
+        end
+        
+        -- Handle typing or backspacing
+        if isBackspacing then
+            if now - lastBackspaceUpdate >= 0.05 then -- Backspace speed
+                if #currentText > 0 then
+                    currentText = currentText:sub(1, -2)
+                else
+                    isBackspacing = false
+                    currentIndex = 1
+                end
+                lastBackspaceUpdate = now
+            end
+        else
+            if now - lastTypingUpdate >= 0.08 then -- Typing speed
+                if currentIndex <= #targetText then
+                    currentText = targetText:sub(1, currentIndex)
+                    currentIndex = currentIndex + 1
+                end
+                lastTypingUpdate = now
+            end
+        end
+        
+        -- Update the label with cursor
+        local cursor = showCursor and "|" or ""
+        textLabel.Text = currentText .. cursor
+    end)
+    
+    table.insert(connections, heartbeatConnection)
+    typingEffectConnections[textLabel] = connections
+end
+
+local function stopTypingEffect(textLabel)
+    if typingEffectConnections[textLabel] then
+        for _, connection in ipairs(typingEffectConnections[textLabel]) do
+            connection:Disconnect()
+        end
+        typingEffectConnections[textLabel] = nil
+    end
 end
 
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
     local playerGui = player:FindFirstChild("PlayerGui")
+    
+    -- Stop all typing effects
+    for textLabel, _ in pairs(typingEffectConnections) do
+        stopTypingEffect(textLabel)
+    end
     
     -- Clear own nametag from PlayerGui
     if playerGui then
@@ -319,12 +407,18 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = isOwnerUser and (player.DisplayName .. " • Owner") or player.DisplayName
+    displayNameLabel.Text = isOwnerUser and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
+    
+    -- Start typing effect for owner nametags
+    if isOwnerUser then
+        local ownerName = getOwnerName(player.UserId)
+        startTypingEffect(displayNameLabel, ownerName)
+    end
     
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
@@ -371,6 +465,14 @@ local function createNametag()
 end
 
 local function removeNametag()
+    -- Stop typing effect for the local player's nametag
+    if nametagGui then
+        local displayNameLabel = nametagGui:FindFirstChild("TagFrame") and nametagGui.TagFrame:FindFirstChild("DisplayName")
+        if displayNameLabel then
+            stopTypingEffect(displayNameLabel)
+        end
+    end
+    
     if nametagConnection then
         nametagConnection:Disconnect()
         nametagConnection = nil
@@ -531,12 +633,18 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = isOwnerUser and (plrObj.DisplayName .. " • Owner") or plrObj.DisplayName
+    displayNameLabel.Text = isOwnerUser and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
+    
+    -- Start typing effect for owner nametags
+    if isOwnerUser then
+        local ownerName = getOwnerName(plrObj.UserId)
+        startTypingEffect(displayNameLabel, ownerName)
+    end
     
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
@@ -634,6 +742,14 @@ end
 
 local function removeOtherNametag(userId)
     if otherNametags[userId] then
+        -- Stop typing effect for this nametag
+        if otherNametags[userId].gui then
+            local displayNameLabel = otherNametags[userId].gui:FindFirstChild("TagFrame") and otherNametags[userId].gui.TagFrame:FindFirstChild("DisplayName")
+            if displayNameLabel then
+                stopTypingEffect(displayNameLabel)
+            end
+        end
+        
         if otherNametags[userId].connection then
             otherNametags[userId].connection:Disconnect()
         end
@@ -867,6 +983,11 @@ PM.PrismNametags = {
         return nametagEnabled
     end,
     cleanup = function()
+        -- Stop all typing effects
+        for textLabel, _ in pairs(typingEffectConnections) do
+            stopTypingEffect(textLabel)
+        end
+        
         -- Stop auto-sync
         autoSyncEnabled = false
         
