@@ -296,7 +296,7 @@ local function createNametag()
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
-    local ownerBorderColor = Color3.fromRGB(180, 50, 255)  -- Much brighter purple for border
+    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -351,6 +351,20 @@ local function createNametag()
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
+    
+    -- Add background image for owners
+    if isOwnerUser then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "BgImage"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        bgImage.Image = "rbxassetid://136814745088590"
+        bgImage.ImageTransparency = 0.3
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = -1
+        bgImage.Parent = frame
+    end
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
@@ -520,7 +534,7 @@ local function createOtherNametag(plrObj)
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
-    local ownerBorderColor = Color3.fromRGB(180, 50, 255)  -- Much brighter purple for border
+    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -576,6 +590,20 @@ local function createOtherNametag(plrObj)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Parent = billboard
+    
+    -- Add background image for owners
+    if isOwnerUser then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "BgImage"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        bgImage.Image = "rbxassetid://136814745088590"
+        bgImage.ImageTransparency = 0.3
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = -1
+        bgImage.Parent = frame
+    end
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
