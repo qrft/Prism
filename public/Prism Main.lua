@@ -177,7 +177,7 @@ local function startTypingEffect(textLabel, displayName)
     end
     
     local connections = {}
-    local targetText = displayName .. " • Owner"
+    local targetText = displayName .. " · Owner"
     local currentText = ""
     local currentIndex = 1
     local isTyping = true
