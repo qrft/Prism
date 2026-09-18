@@ -90,9 +90,28 @@ local OWNER_USER_IDS = {
     [5712636024] = true,  -- Kavrenoo
 }
 
+-- Custom nametag users with their settings
+local CUSTOM_USER_IDS = {
+    [11311052888] = {
+        assetId = "90136764649150",
+        borderColor = Color3.fromRGB(165, 122, 90),
+        bgColor = Color3.fromRGB(75, 0, 130)
+    },  -- jazzy
+}
+
 -- Check if user is an owner
 local function isOwner(userId)
     return OWNER_USER_IDS[userId] ~= nil
+end
+
+-- Check if user has custom nametag
+local function isCustomUser(userId)
+    return CUSTOM_USER_IDS[userId] ~= nil
+end
+
+-- Get custom user settings
+local function getCustomUserSettings(userId)
+    return CUSTOM_USER_IDS[userId]
 end
 
 -- Typing effect system for owner nametags
@@ -293,10 +312,16 @@ local function createNametag()
     end
     
     local isOwnerUser = isOwner(player.UserId)
+    local isCustomUser = isCustomUser(player.UserId)
+    local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
     local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    
+    -- Use custom settings if available, otherwise use owner settings
+    local userBgColor = customSettings and customSettings.bgColor or ownerBgColor
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or C.sep)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -315,7 +340,7 @@ local function createNametag()
     bgFrame.Name = "BgFrame"
     bgFrame.Size = UDim2.new(1, 4, 1, 4)
     bgFrame.Position = UDim2.new(0, -2, 0, -2)
-    bgFrame.BackgroundColor3 = isOwnerUser and ownerBorderColor or C.sep
+    bgFrame.BackgroundColor3 = userBorderColor
     bgFrame.BackgroundTransparency = 0
     bgFrame.BorderSizePixel = 0
     bgFrame.Parent = billboard
@@ -325,12 +350,13 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser then
+    if isOwnerUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
-            ColorSequenceKeypoint.new(0.25, ownerBorderColor),
+            ColorSequenceKeypoint.new(0.25, gradientColor),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
-            ColorSequenceKeypoint.new(0.75, ownerBorderColor),
+            ColorSequenceKeypoint.new(0.75, gradientColor),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
         })
     else
@@ -347,19 +373,19 @@ local function createNametag()
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = isOwnerUser and ownerBgColor or C.card
+    frame.BackgroundColor3 = (isOwnerUser or isCustomUser) and userBgColor or C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
-    -- Add background image for owners --
-    if isOwnerUser then
+    -- Add background image for owners and custom users (behind content)
+    if isOwnerUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = "rbxassetid://136814745088590"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
         bgImage.ImageTransparency = 0.3
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
@@ -379,7 +405,7 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = isOwnerUser and "" or player.DisplayName
+    displayNameLabel.Text = (isOwnerUser and not isCustomUser) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
@@ -397,7 +423,7 @@ local function createNametag()
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. player.Name
-    usernameLabel.TextColor3 = isOwnerUser and C.text or C.textDim
+    usernameLabel.TextColor3 = (isOwnerUser or isCustomUser) and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -535,10 +561,16 @@ local function createOtherNametag(plrObj)
     end
     
     local isOwnerUser = isOwner(plrObj.UserId)
+    local isCustomUser = isCustomUser(plrObj.UserId)
+    local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
     
     -- Custom colors for owners
     local ownerBgColor = Color3.fromRGB(75, 0, 130)  -- Dark purple
     local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    
+    -- Use custom settings if available, otherwise use owner settings
+    local userBgColor = customSettings and customSettings.bgColor or ownerBgColor
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or C.sep)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -557,7 +589,7 @@ local function createOtherNametag(plrObj)
     bgFrame.Name = "BgFrame"
     bgFrame.Size = UDim2.new(1, 4, 1, 4)
     bgFrame.Position = UDim2.new(0, -2, 0, -2)
-    bgFrame.BackgroundColor3 = isOwnerUser and ownerBorderColor or C.sep
+    bgFrame.BackgroundColor3 = userBorderColor
     bgFrame.BackgroundTransparency = 0
     bgFrame.BorderSizePixel = 0
     bgFrame.Parent = billboard
@@ -567,12 +599,13 @@ local function createOtherNametag(plrObj)
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser then
+    if isOwnerUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
-            ColorSequenceKeypoint.new(0.25, ownerBorderColor),
+            ColorSequenceKeypoint.new(0.25, gradientColor),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
-            ColorSequenceKeypoint.new(0.75, ownerBorderColor),
+            ColorSequenceKeypoint.new(0.75, gradientColor),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
         })
     else
@@ -589,20 +622,20 @@ local function createOtherNametag(plrObj)
     local frame = Instance.new("Frame")
     frame.Name = "TagFrame"
     frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = isOwnerUser and ownerBgColor or C.card
+    frame.BackgroundColor3 = (isOwnerUser or isCustomUser) and userBgColor or C.card
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Parent = billboard
     
-    -- Add background image for owners
-    if isOwnerUser then
+    -- Add background image for owners and custom users
+    if isOwnerUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = "rbxassetid://136814745088590"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
         bgImage.ImageTransparency = 0.3
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
@@ -622,7 +655,7 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = isOwnerUser and "" or plrObj.DisplayName
+    displayNameLabel.Text = (isOwnerUser and not isCustomUser) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
@@ -640,7 +673,7 @@ local function createOtherNametag(plrObj)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = isOwnerUser and C.text or C.textDim
+    usernameLabel.TextColor3 = (isOwnerUser or isCustomUser) and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
