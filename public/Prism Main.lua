@@ -352,7 +352,7 @@ local function createNametag()
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
-    -- Add background image for owners
+    -- Add background image for owners --
     if isOwnerUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
