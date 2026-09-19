@@ -129,7 +129,7 @@ local CUSTOM_USER_IDS = {
     },
     [1675739196] = {
         assetId = "79000613041903",
-        borderColor = Color3.fromRGB(139, 69, 19),
+        borderColor = Color3.fromRGB(20, 20, 20),
         bgColor = nil
     },
 }
