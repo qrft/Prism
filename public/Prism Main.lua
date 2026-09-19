@@ -144,10 +144,10 @@ local CUSTOM_USER_IDS = {
     --     spriteHeight = 512  -- Height of sprite sheet in pixels
     -- },
     [11620576090] = {
-        assetId = "85772135435796",
+        assetId = "77020003667863",
         borderColor = Color3.fromRGB(0, 0, 0),
         bgColor = nil,
-        hideText = true  -- Hides username and display name
+        hideText = false  -- Hides username and display name
     },
 }
 
