@@ -97,6 +97,31 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(165, 122, 90),
         bgColor = nil
     },  -- jazzy
+    [8880656259] = {
+        assetId = "85139336060701",
+        borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil
+    },
+    [194578] = {
+        assetId = "85139336060701",
+        borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil
+    },
+    [8012850] = {
+        assetId = "85139336060701",
+        borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil
+    },
+    [3441987937] = {
+        assetId = "85139336060701",
+        borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil
+    },
+    [5399716865] = {
+        assetId = "85139336060701",
+        borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil
+    },
 }
 
 -- Check if user is an owner
