@@ -100,26 +100,36 @@ local CUSTOM_USER_IDS = {
     [8880656259] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil
+        bgColor = nil,
+        typingText = "Daddy"
     },
     [194578] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil
+        bgColor = nil,
+        typingText = "Daddy"
     },
     [8012850] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil
+        bgColor = nil,
+        typingText = "Daddy"
     },
     [3441987937] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil
+        bgColor = nil,
+        typingText = "Daddy"
     },
     [5399716865] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
+        bgColor = nil,
+        typingText = "Daddy"
+    },
+    [1675739196] = {
+        assetId = "79000613041903",
+        borderColor = Color3.fromRGB(139, 119, 101),
         bgColor = nil
     },
 }
@@ -142,7 +152,7 @@ end
 -- Typing effect system for owner nametags
 local typingEffectConnections = {}
 
-local function startTypingEffect(textLabel, displayName)
+local function startTypingEffect(textLabel, displayName, typingText)
     -- Stop any existing typing effect for this label
     if typingEffectConnections[textLabel] then
         for _, connection in ipairs(typingEffectConnections[textLabel]) do
@@ -151,7 +161,7 @@ local function startTypingEffect(textLabel, displayName)
     end
     
     local connections = {}
-    local targetText = displayName .. "  Owner" -- Space for the dot
+    local targetText = displayName .. "  " .. (typingText or "Owner") -- Space for the dot
     local dotChar = "•"
     local currentText = ""
     local currentIndex = 1
@@ -430,16 +440,17 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = (isOwnerUser and not isCustomUser) and "" or player.DisplayName
+    displayNameLabel.Text = (isOwnerUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags
-    if isOwnerUser then
-        startTypingEffect(displayNameLabel, player.DisplayName)
+    -- Start typing effect for owner nametags and custom users with typing text
+    if isOwnerUser or (isCustomUser and customSettings and customSettings.typingText) then
+        local typingText = (isCustomUser and customSettings.typingText) or "Owner"
+        startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
     local usernameLabel = Instance.new("TextLabel")
@@ -680,16 +691,17 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = (isOwnerUser and not isCustomUser) and "" or plrObj.DisplayName
+    displayNameLabel.Text = ((isOwnerUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags
-    if isOwnerUser then
-        startTypingEffect(displayNameLabel, plrObj.DisplayName)
+    -- Start typing effect for owner nametags and custom users with typing text
+    if isOwnerUser or (isCustomUser and customSettings and customSettings.typingText) then
+        local typingText = (isCustomUser and customSettings.typingText) or "Owner"
+        startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
     end
     
     local usernameLabel = Instance.new("TextLabel")
