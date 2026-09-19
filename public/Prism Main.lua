@@ -90,6 +90,15 @@ local OWNER_USER_IDS = {
     [5712636024] = true,  -- Kavrenoo
 }
 
+-- Owner animation frames (25 frames at 5fps = 0.2s per frame)
+local OWNER_ANIMATION_FRAMES = {
+    "107046428095144", "75195872918346", "103399408247234", "120900054164602", "129691446263075",
+    "102314175603681", "137831857981915", "87396145145941", "133173470330574", "139077191172990",
+    "82060202002896", "108733263815407", "126014641548693", "73294838222064", "121918890192415",
+    "74934710496109", "75486596800312", "79882411364019", "136875231397760", "130030436224135",
+    "125680445496071", "99745231543300", "99934434998720", "107424778579031", "140189325800054"
+}
+
 -- Custom nametag users with their settings
 local CUSTOM_USER_IDS = {
     [11311052888] = {
@@ -329,6 +338,12 @@ local function clearAllNametags()
         if tagData.connection then
             tagData.connection:Disconnect()
         end
+        -- Stop animation connections
+        if tagData.gui and tagData.gui.AnimationConnections then
+            for _, connection in ipairs(tagData.gui.AnimationConnections) do
+                connection:Disconnect()
+            end
+        end
     end
     otherNametags = {}
     
@@ -369,7 +384,7 @@ local function createNametag()
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    local ownerBorderColor = Color3.fromRGB(40, 40, 45)  -- Dark gray from forest/katana scene
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -405,11 +420,11 @@ local function createNametag()
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 80, 90)),
             ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(30, 30, 35)),
             ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 90)),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -437,7 +452,6 @@ local function createNametag()
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
         bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
@@ -447,37 +461,22 @@ local function createNametag()
         bgCorner.CornerRadius = UDim.new(0, 8)
         bgCorner.Parent = bgImage
         
-        -- Handle sprite sheet animation
-        if isCustomUser and customSettings.isAnimated then
-            local frameCount = customSettings.frameCount or 4
-            local frameSpeed = customSettings.frameSpeed or 0.1
-            local currentFrame = 0
+        -- Handle owner frame-by-frame animation
+        if isOwnerUser then
+            local currentFrame = 1
             local lastFrameTime = tick()
+            local frameSpeed = 0.2 -- 5fps = 0.2s per frame
             
-            -- Sprite sheet dimensions (assuming standard 512x512, adjust if needed)
-            local spriteWidth = customSettings.spriteWidth or 512
-            local spriteHeight = customSettings.spriteHeight or 512
-            local frameWidth = spriteWidth / frameCount
-            
-            -- Setup sprite sheet animation using ImageRectOffset
-            bgImage.ScaleType = Enum.ScaleType.Slice
-            bgImage.SliceCenter = Rect.new(0, 0, 0, 0)
-            
-            -- Set initial image rect
-            bgImage.ImageRectOffset = Vector2.new(0, 0)
-            bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+            -- Set initial image
+            bgImage.Image = "rbxassetid://" .. OWNER_ANIMATION_FRAMES[currentFrame]
             
             -- Animation loop
             local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
                 local now = tick()
                 if now - lastFrameTime >= frameSpeed then
-                    currentFrame = (currentFrame + 1) % frameCount
+                    currentFrame = (currentFrame % #OWNER_ANIMATION_FRAMES) + 1
                     lastFrameTime = now
-                    
-                    -- Calculate image rect for current frame (horizontal sprite sheet)
-                    local xOffset = currentFrame * frameWidth
-                    bgImage.ImageRectOffset = Vector2.new(xOffset, 0)
-                    bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                    bgImage.Image = "rbxassetid://" .. OWNER_ANIMATION_FRAMES[currentFrame]
                 end
             end)
             
@@ -486,6 +485,49 @@ local function createNametag()
                 nametagGui.AnimationConnections = {}
             end
             table.insert(nametagGui.AnimationConnections, animationConnection)
+        elseif isCustomUser then
+            bgImage.Image = "rbxassetid://" .. customSettings.assetId
+            
+            -- Handle sprite sheet animation for custom users
+            if customSettings.isAnimated then
+                local frameCount = customSettings.frameCount or 4
+                local frameSpeed = customSettings.frameSpeed or 0.1
+                local currentFrame = 0
+                local lastFrameTime = tick()
+                
+                -- Sprite sheet dimensions (assuming standard 512x512, adjust if needed)
+                local spriteWidth = customSettings.spriteWidth or 512
+                local spriteHeight = customSettings.spriteHeight or 512
+                local frameWidth = spriteWidth / frameCount
+                
+                -- Setup sprite sheet animation using ImageRectOffset
+                bgImage.ScaleType = Enum.ScaleType.Slice
+                bgImage.SliceCenter = Rect.new(0, 0, 0, 0)
+                
+                -- Set initial image rect
+                bgImage.ImageRectOffset = Vector2.new(0, 0)
+                bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                
+                -- Animation loop
+                local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+                    local now = tick()
+                    if now - lastFrameTime >= frameSpeed then
+                        currentFrame = (currentFrame + 1) % frameCount
+                        lastFrameTime = now
+                        
+                        -- Calculate image rect for current frame (horizontal sprite sheet)
+                        local xOffset = currentFrame * frameWidth
+                        bgImage.ImageRectOffset = Vector2.new(xOffset, 0)
+                        bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                    end
+                end)
+                
+                -- Store connection for cleanup
+                if not nametagGui.AnimationConnections then
+                    nametagGui.AnimationConnections = {}
+                end
+                table.insert(nametagGui.AnimationConnections, animationConnection)
+            end
         end
     end
     
@@ -665,6 +707,12 @@ local function createOtherNametag(plrObj)
         if otherNametags[plrObj.UserId].connection then
             otherNametags[plrObj.UserId].connection:Disconnect()
         end
+        -- Stop animation connections
+        if otherNametags[plrObj.UserId].gui and otherNametags[plrObj.UserId].gui.AnimationConnections then
+            for _, connection in ipairs(otherNametags[plrObj.UserId].gui.AnimationConnections) do
+                connection:Disconnect()
+            end
+        end
         pcall(function() otherNametags[plrObj.UserId].gui:Destroy() end)
         otherNametags[plrObj.UserId] = nil
     end
@@ -681,7 +729,7 @@ local function createOtherNametag(plrObj)
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    local ownerBorderColor = Color3.fromRGB(40, 40, 45)  -- Dark gray from forest/katana scene
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -717,11 +765,11 @@ local function createOtherNametag(plrObj)
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 80, 90)),
             ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(30, 30, 35)),
             ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 90)),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -750,7 +798,6 @@ local function createOtherNametag(plrObj)
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
         bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
@@ -759,6 +806,75 @@ local function createOtherNametag(plrObj)
         local bgCorner = Instance.new("UICorner")
         bgCorner.CornerRadius = UDim.new(0, 8)
         bgCorner.Parent = bgImage
+        
+        -- Handle owner frame-by-frame animation
+        if isOwnerUser then
+            local currentFrame = 1
+            local lastFrameTime = tick()
+            local frameSpeed = 0.2 -- 5fps = 0.2s per frame
+            
+            -- Set initial image
+            bgImage.Image = "rbxassetid://" .. OWNER_ANIMATION_FRAMES[currentFrame]
+            
+            -- Animation loop
+            local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+                local now = tick()
+                if now - lastFrameTime >= frameSpeed then
+                    currentFrame = (currentFrame % #OWNER_ANIMATION_FRAMES) + 1
+                    lastFrameTime = now
+                    bgImage.Image = "rbxassetid://" .. OWNER_ANIMATION_FRAMES[currentFrame]
+                end
+            end)
+            
+            -- Store connection for cleanup
+            if not billboard.AnimationConnections then
+                billboard.AnimationConnections = {}
+            end
+            table.insert(billboard.AnimationConnections, animationConnection)
+        elseif isCustomUser then
+            bgImage.Image = "rbxassetid://" .. customSettings.assetId
+            
+            -- Handle sprite sheet animation for custom users
+            if customSettings.isAnimated then
+                local frameCount = customSettings.frameCount or 4
+                local frameSpeed = customSettings.frameSpeed or 0.1
+                local currentFrame = 0
+                local lastFrameTime = tick()
+                
+                -- Sprite sheet dimensions (assuming standard 512x512, adjust if needed)
+                local spriteWidth = customSettings.spriteWidth or 512
+                local spriteHeight = customSettings.spriteHeight or 512
+                local frameWidth = spriteWidth / frameCount
+                
+                -- Setup sprite sheet animation using ImageRectOffset
+                bgImage.ScaleType = Enum.ScaleType.Slice
+                bgImage.SliceCenter = Rect.new(0, 0, 0, 0)
+                
+                -- Set initial image rect
+                bgImage.ImageRectOffset = Vector2.new(0, 0)
+                bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                
+                -- Animation loop
+                local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+                    local now = tick()
+                    if now - lastFrameTime >= frameSpeed then
+                        currentFrame = (currentFrame + 1) % frameCount
+                        lastFrameTime = now
+                        
+                        -- Calculate image rect for current frame (horizontal sprite sheet)
+                        local xOffset = currentFrame * frameWidth
+                        bgImage.ImageRectOffset = Vector2.new(xOffset, 0)
+                        bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                    end
+                end)
+                
+                -- Store connection for cleanup
+                if not billboard.AnimationConnections then
+                    billboard.AnimationConnections = {}
+                end
+                table.insert(billboard.AnimationConnections, animationConnection)
+            end
+        end
     end
     
     local corner = Instance.new("UICorner")
