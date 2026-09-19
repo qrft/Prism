@@ -132,6 +132,23 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(20, 20, 20),
         bgColor = nil
     },
+    -- Example sprite sheet animation (replace YOUR_USER_ID and assetId)
+    -- [YOUR_USER_ID] = {
+    --     assetId = "YOUR_SPRITE_SHEET_ID",
+    --     borderColor = Color3.fromRGB(128, 64, 192),
+    --     bgColor = nil,
+    --     isAnimated = true,
+    --     frameCount = 4,  -- Number of frames in sprite sheet
+    --     frameSpeed = 0.1,  -- Seconds per frame (0.1 = 10 FPS)
+    --     spriteWidth = 512,  -- Width of sprite sheet in pixels
+    --     spriteHeight = 512  -- Height of sprite sheet in pixels
+    -- },
+    [11620576090] = {
+        assetId = "89867204565280",
+        borderColor = Color3.fromRGB(0, 0, 0),
+        bgColor = nil,
+        hideText = true  -- Hides username and display name
+    },
 }
 
 -- Check if user is an owner
@@ -429,6 +446,47 @@ local function createNametag()
         local bgCorner = Instance.new("UICorner")
         bgCorner.CornerRadius = UDim.new(0, 8)
         bgCorner.Parent = bgImage
+        
+        -- Handle sprite sheet animation
+        if isCustomUser and customSettings.isAnimated then
+            local frameCount = customSettings.frameCount or 4
+            local frameSpeed = customSettings.frameSpeed or 0.1
+            local currentFrame = 0
+            local lastFrameTime = tick()
+            
+            -- Sprite sheet dimensions (assuming standard 512x512, adjust if needed)
+            local spriteWidth = customSettings.spriteWidth or 512
+            local spriteHeight = customSettings.spriteHeight or 512
+            local frameWidth = spriteWidth / frameCount
+            
+            -- Setup sprite sheet animation using ImageRectOffset
+            bgImage.ScaleType = Enum.ScaleType.Slice
+            bgImage.SliceCenter = Rect.new(0, 0, 0, 0)
+            
+            -- Set initial image rect
+            bgImage.ImageRectOffset = Vector2.new(0, 0)
+            bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+            
+            -- Animation loop
+            local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+                local now = tick()
+                if now - lastFrameTime >= frameSpeed then
+                    currentFrame = (currentFrame + 1) % frameCount
+                    lastFrameTime = now
+                    
+                    -- Calculate image rect for current frame (horizontal sprite sheet)
+                    local xOffset = currentFrame * frameWidth
+                    bgImage.ImageRectOffset = Vector2.new(xOffset, 0)
+                    bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                end
+            end)
+            
+            -- Store connection for cleanup
+            if not nametagGui.AnimationConnections then
+                nametagGui.AnimationConnections = {}
+            end
+            table.insert(nametagGui.AnimationConnections, animationConnection)
+        end
     end
     
     local corner = Instance.new("UICorner")
@@ -465,6 +523,12 @@ local function createNametag()
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    -- Hide text if requested
+    if isCustomUser and customSettings and customSettings.hideText then
+        displayNameLabel.Visible = false
+        usernameLabel.Visible = false
+    end
+    
     local smallLabel = Instance.new("TextLabel")
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -477,6 +541,13 @@ local function createNametag()
     smallLabel.TextYAlignment = Enum.TextYAlignment.Center
     smallLabel.Visible = false
     smallLabel.Parent = frame
+    
+    -- Hide text if requested
+    if isCustomUser and customSettings and customSettings.hideText then
+        displayNameLabel.Visible = false
+        usernameLabel.Visible = false
+        smallLabel.Visible = false
+    end
     
     nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
@@ -503,6 +574,14 @@ local function removeNametag()
         local displayNameLabel = nametagGui:FindFirstChild("TagFrame") and nametagGui.TagFrame:FindFirstChild("DisplayName")
         if displayNameLabel then
             stopTypingEffect(displayNameLabel)
+        end
+        
+        -- Stop animation connections
+        if nametagGui.AnimationConnections then
+            for _, connection in ipairs(nametagGui.AnimationConnections) do
+                connection:Disconnect()
+            end
+            nametagGui.AnimationConnections = nil
         end
     end
     
@@ -716,6 +795,12 @@ local function createOtherNametag(plrObj)
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    -- Hide text if requested
+    if isCustomUser and customSettings and customSettings.hideText then
+        displayNameLabel.Visible = false
+        usernameLabel.Visible = false
+    end
+    
     local smallLabel = Instance.new("TextLabel")
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -728,6 +813,11 @@ local function createOtherNametag(plrObj)
     smallLabel.TextYAlignment = Enum.TextYAlignment.Center
     smallLabel.Visible = false
     smallLabel.Parent = frame
+    
+    -- Hide small label if text is hidden
+    if isCustomUser and customSettings and customSettings.hideText then
+        smallLabel.Visible = false
+    end
     
     -- Click to teleport behind target
     frame.InputBegan:Connect(function(input)
@@ -767,9 +857,18 @@ local function createOtherNametag(plrObj)
             local dist = (myHRP.Position - targetHRP.Position).Magnitude
             local isFar = dist > 50
             
-            displayNameLabel.Visible = not isFar
-            usernameLabel.Visible = not isFar
-            smallLabel.Visible = isFar
+            -- Handle visibility based on distance and hideText setting
+            if isCustomUser and customSettings and customSettings.hideText then
+                -- Always hide text labels when hideText is true
+                displayNameLabel.Visible = false
+                usernameLabel.Visible = false
+                smallLabel.Visible = false
+            else
+                -- Normal distance-based visibility
+                displayNameLabel.Visible = not isFar
+                usernameLabel.Visible = not isFar
+                smallLabel.Visible = isFar
+            end
             
             if isFar then
                 PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
