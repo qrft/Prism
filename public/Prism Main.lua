@@ -147,7 +147,7 @@ local CUSTOM_USER_IDS = {
         assetId = "77020003667863",
         borderColor = Color3.fromRGB(0, 0, 0),
         bgColor = nil,
-        hideText = false  -- Hides username and display name
+        hideText = true  -- Hides username and display name
     },
 }
 
