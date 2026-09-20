@@ -432,10 +432,7 @@ local function createNametag()
     local isCustomUser = isCustomUser(player.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
 
-    -- Only create nametag if owner, bypass, or custom user
-    if not isOwnerUser and not isBypassUser and not isCustomUser then
-        return
-    end
+
 
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
@@ -824,10 +821,7 @@ local function createOtherNametag(plrObj)
     local isCustomUser = isCustomUser(plrObj.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
 
-    -- Only create nametag if owner, bypass, or custom user
-    if not isOwnerUser and not isBypassUser and not isCustomUser then
-        return
-    end
+
 
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
