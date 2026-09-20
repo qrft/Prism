@@ -120,6 +120,27 @@ PM.loadImage = function(localPath)
     return nil
 end
 
+-- Download multiple images on startup
+PM.downloadNametagImages = function()
+    local imagesToDownload = {
+        {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png", path = "prism/nametags/ramen.png"},
+        {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png", path = "prism/nametags/kavrenoo.png"},
+    }
+
+    for _, img in ipairs(imagesToDownload) do
+        if not isfile(img.path) then
+            pcall(function()
+                PM.downloadImage(img.url, img.path)
+            end)
+        end
+    end
+end
+
+-- Map user IDs to local image paths
+local USER_IMAGE_PATHS = {
+    [2228948805] = "prism/nametags/ramen.png",  -- ramen
+}
+
 PM.C = {
     bg = Color3.fromRGB(15, 15, 15),
     card = Color3.fromRGB(28, 28, 28),
@@ -203,6 +224,10 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(92, 58, 122),
         bgColor = nil
     },  -- shino
+    [2228948805] = {
+        borderColor = Color3.fromRGB(82, 39, 86),
+        bgColor = nil
+    },  -- ramen
 }
 
 -- Check if user is an owner
@@ -424,7 +449,7 @@ local function createNametag()
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Owner image URL
+    local ownerImagePath = "prism/nametags/kavrenoo.png"  -- Owner image local path
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -459,7 +484,15 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
+        local brightColor
+        if isOwnerUser then
+            brightColor = Color3.fromRGB(255, 230, 210)  -- Owner bright tan
+        elseif userId == 2228948805 then
+            -- Ramen: 1.5x brighter border (82, 39, 86) → (123, 59, 129)
+            brightColor = Color3.fromRGB(123, 59, 129)
+        else
+            brightColor = Color3.fromRGB(230, 180, 220)  -- Default bright purple
+        end
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -495,20 +528,22 @@ local function createNametag()
         bgImage.BackgroundTransparency = 1
 
         -- Check if using imageUrl or assetId
-        if isOwnerUser and ownerImageUrl then
-            -- Download and load owner image from URL
-            local localPath = "prism/nametags/owner.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
+        if isOwnerUser and ownerImagePath then
+            -- Load pre-downloaded owner image
+            local assetId = PM.loadImage(ownerImagePath)
+            if assetId then
+                bgImage.Image = assetId
+            else
+                bgImage.Image = "rbxassetid://97439274483409"
+            end
+        elseif isCustomUser and USER_IMAGE_PATHS[userId] then
+            -- Load pre-downloaded custom user image
+            local assetId = PM.loadImage(USER_IMAGE_PATHS[userId])
+            if assetId then
+                bgImage.Image = assetId
+            else
+                bgImage.Image = "rbxassetid://97439274483409"
+            end
         elseif isCustomUser and customSettings.imageUrl then
             -- Download and load from URL
             local localPath = "prism/nametags/" .. userId .. ".png"
@@ -772,7 +807,7 @@ local function createOtherNametag(plrObj)
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
+    local ownerImagePath = "prism/nametags/kavrenoo.png"  -- Owner image local path
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -807,7 +842,15 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
+        local brightColor
+        if isOwnerUser then
+            brightColor = Color3.fromRGB(255, 230, 210)  -- Owner bright tan
+        elseif userId == 2228948805 then
+            -- Ramen: 1.5x brighter border (82, 39, 86) → (123, 59, 129)
+            brightColor = Color3.fromRGB(123, 59, 129)
+        else
+            brightColor = Color3.fromRGB(230, 180, 220)  -- Default bright purple
+        end
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -844,20 +887,22 @@ local function createOtherNametag(plrObj)
         bgImage.BackgroundTransparency = 1
 
         -- Check if using imageUrl or assetId
-        if isOwnerUser and ownerImageUrl then
-            -- Download and load owner image from URL
-            local localPath = "prism/nametags/owner.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
+        if isOwnerUser and ownerImagePath then
+            -- Load pre-downloaded owner image
+            local assetId = PM.loadImage(ownerImagePath)
+            if assetId then
+                bgImage.Image = assetId
+            else
+                bgImage.Image = "rbxassetid://97439274483409"
+            end
+        elseif isCustomUser and USER_IMAGE_PATHS[userId] then
+            -- Load pre-downloaded custom user image
+            local assetId = PM.loadImage(USER_IMAGE_PATHS[userId])
+            if assetId then
+                bgImage.Image = assetId
+            else
+                bgImage.Image = "rbxassetid://97439274483409"
+            end
         elseif isCustomUser and customSettings.imageUrl then
             -- Download and load from URL
             local localPath = "prism/nametags/" .. userId .. ".png"
@@ -3702,6 +3747,9 @@ PM.PrismNametags = {
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
+
+-- Download nametag images on startup
+task.spawn(PM.downloadNametagImages)
 
 -- Start auto-sync in background
 task.spawn(startAutoSync)
