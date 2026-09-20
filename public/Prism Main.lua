@@ -207,6 +207,11 @@ local CUSTOM_USER_IDS = {
         assetId = "136492923299035",
         borderColor = Color3.fromRGB(92, 58, 122),
         bgColor = nil
+    },
+    [2326644104] = {
+        imageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png",
+        borderColor = Color3.fromRGB(43, 45, 47),
+        bgColor = nil
     },  -- shino
 }
 
@@ -478,7 +483,11 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isBypassUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or userBorderColor)
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or Color3.fromRGB(230, 180, 220))  -- Brighter version
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+            math.floor(customSettings.borderColor.R * 1.5),
+            math.floor(customSettings.borderColor.G * 1.5),
+            math.floor(customSettings.borderColor.B * 1.5)
+        ) or Color3.fromRGB(230, 180, 220)))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -867,7 +876,11 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isBypassUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or userBorderColor)
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or Color3.fromRGB(230, 180, 220))  -- Brighter version
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+            math.floor(customSettings.borderColor.R * 1.5),
+            math.floor(customSettings.borderColor.G * 1.5),
+            math.floor(customSettings.borderColor.B * 1.5)
+        ) or Color3.fromRGB(230, 180, 220)))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
