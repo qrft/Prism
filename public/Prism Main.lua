@@ -203,11 +203,6 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(92, 58, 122),
         bgColor = nil
     },  -- shino
-    [2228948805] = {
-        imageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png",
-        borderColor = Color3.fromRGB(82, 39, 86),
-        bgColor = nil
-    },  -- ramen
 }
 
 -- Check if user is an owner
@@ -429,7 +424,7 @@ local function createNametag()
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
+    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Owner image URL
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -464,11 +459,7 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        -- Calculate brighter version of the color
-        local r = math.min(255, gradientColor.R * 1.5)
-        local g = math.min(255, gradientColor.G * 1.5)
-        local b = math.min(255, gradientColor.B * 1.5)
-        local brightColor = Color3.fromRGB(r, g, b)
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -816,11 +807,7 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        -- Calculate brighter version of the color
-        local r = math.min(255, gradientColor.R * 1.5)
-        local g = math.min(255, gradientColor.G * 1.5)
-        local b = math.min(255, gradientColor.B * 1.5)
-        local brightColor = Color3.fromRGB(r, g, b)
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
