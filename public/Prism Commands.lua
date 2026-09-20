@@ -11,6 +11,7 @@
     add zero delay backpack / headsit / facebang and old method
     fix anti sit
     hamster ball with noclip
+    tp keybinding
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -19,33 +20,18 @@ local PM = getgenv().PrismMain
 
 PM.Commands = PM.Commands or {}
 
--- Admin system
--- Soul: 7275889224
--- Kavrenoo: 5712636024
--- g2s4v: 5399716865
--- alu: 3441987937
--- xxjj: 8012850
--- brokenheart: 194578
--- jazzy: 11311052888
--- larp: 11620576090
--- hairbrush: 8947935964
--- shino: 1196547606
--- phoebee: 1675739196
--- v8w23: 8880656259
-
 PM.Admins = PM.Admins or {}
-PM.Admins[7275889224] = true
-PM.Admins[5712636024] = true
-PM.Admins[5399716865] = true
-PM.Admins[3441987937] = true
-PM.Admins[8012850] = true
-PM.Admins[194578] = true
-PM.Admins[11311052888] = true
-PM.Admins[11620576090] = true
-PM.Admins[8947935964] = true
-PM.Admins[1675739196] = true
-PM.Admins[1196547606] = true
-PM.Admins[8880656259] = true
+PM.Admins[7275889224] = true -- Soul
+PM.Admins[5712636024] = true -- Kavrenoo
+PM.Admins[5399716865] = true -- g2s4v
+PM.Admins[3441987937] = true -- alu
+PM.Admins[8012850] = true -- xxjj
+PM.Admins[194578] = true -- brokenheart
+PM.Admins[11311052888] = true -- jazzy
+PM.Admins[8947935964] = true -- hairbrush
+PM.Admins[1675739196] = true -- phoebee
+PM.Admins[1196547606] = true -- shino
+PM.Admins[8880656259] = true -- v8w23
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
