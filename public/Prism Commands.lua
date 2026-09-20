@@ -1194,7 +1194,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 239, 0, 100)
+    MainFrame.Size = UDim2.new(0, 220, 0, 100)
     MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
     MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     MainFrame.BackgroundTransparency = 0.3
@@ -1306,8 +1306,8 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     ContentFrame.Parent = MainFrame
 
     local isMinimized = savedMinimized
-    local originalSize = UDim2.new(0, 239, 0, 100)
-    local minimizedSize = UDim2.new(0, 239, 0, 36)
+    local originalSize = UDim2.new(0, 220, 0, 100)
+    local minimizedSize = UDim2.new(0, 220, 0, 36)
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
     if isMinimized then
