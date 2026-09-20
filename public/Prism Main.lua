@@ -138,6 +138,11 @@ local CUSTOM_USER_IDS = {
         bgColor = nil,
         hideText = true  -- Hides username and display name
     },
+    [1196547606] = {
+        assetId = "136492923299035",
+        borderColor = Color3.fromRGB(92, 58, 122),
+        bgColor = nil
+    },  -- shino
 }
 
 -- Check if user is an owner
