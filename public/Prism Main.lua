@@ -459,12 +459,13 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
+            ColorSequenceKeypoint.new(0.5, brightColor),
             ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(1, brightColor),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -806,12 +807,13 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 30, 180)),
+            ColorSequenceKeypoint.new(0.5, brightColor),
             ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+            ColorSequenceKeypoint.new(1, brightColor),
         })
     else
         bgGradient.Color = ColorSequence.new({
