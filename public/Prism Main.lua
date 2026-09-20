@@ -157,7 +157,7 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(165, 122, 90),
         bgColor = nil
     },
-    [8880656259] = { --
+    [8880656259] = {
         assetId = "136681110958416",
         borderColor = Color3.fromRGB(128, 64, 192),
         bgColor = nil,
