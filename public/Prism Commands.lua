@@ -1131,6 +1131,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     local CoreGui = game:GetService("CoreGui")
     local UserInputService = game:GetService("UserInputService")
     local TweenService = game:GetService("TweenService")
+    local HttpService = game:GetService("HttpService")
     local VoiceChatService = game:GetService("VoiceChatService")
     local VoiceChatInternal = game:GetService("VoiceChatInternal")
 
@@ -1152,6 +1153,30 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
         return false
     end
 
+    local VCB_GUI_FILE = "prism/prism_vcb_gui_settings.json"
+    local savedVCBGUI = {}
+    pcall(function()
+        if readfile and isfile(VCB_GUI_FILE) then
+            savedVCBGUI = HttpService:JSONDecode(readfile(VCB_GUI_FILE))
+        end
+    end)
+    local savedPos = savedVCBGUI.position or {X = {Scale = 0, Offset = 1142}, Y = {Scale = 0, Offset = 320}}
+    local savedMinimized = savedVCBGUI.minimized or false
+
+    local currentVCBSettings = {
+        position = savedPos,
+        minimized = savedMinimized
+    }
+
+    local function SaveVCBGUISettings()
+        pcall(function()
+            if writefile then
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(VCB_GUI_FILE, HttpService:JSONEncode(currentVCBSettings))
+            end
+        end)
+    end
+
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "Prism_VCBypassGUI"
     ScreenGui.ResetOnSpawn = false
@@ -1169,11 +1194,12 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 220, 0, 88)
-    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -44)
+    MainFrame.Size = UDim2.new(0, 239, 0, 100)
+    MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
     MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     MainFrame.BackgroundTransparency = 0.3
     MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
 
     local MainCorner = Instance.new("UICorner")
@@ -1191,6 +1217,36 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     TitleBar.BackgroundTransparency = 1
     TitleBar.Parent = MainFrame
 
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            currentVCBSettings.position = {
+                X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+            }
+            SaveVCBGUISettings()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Name = "Title"
     TitleLabel.Size = UDim2.new(1, -80, 1, 0)
@@ -1202,6 +1258,23 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     TitleLabel.Font = Enum.Font.GothamBold
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = TitleBar
+
+    local MinBtn = Instance.new("TextButton")
+    MinBtn.Name = "Minimize"
+    MinBtn.Size = UDim2.new(0, 24, 0, 24)
+    MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MinBtn.BackgroundTransparency = 0.4
+    MinBtn.BorderSizePixel = 0
+    MinBtn.Text = "—"
+    MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    MinBtn.TextSize = 11
+    MinBtn.Font = Enum.Font.GothamBold
+    MinBtn.Parent = TitleBar
+
+    local MinCorner = Instance.new("UICorner")
+    MinCorner.CornerRadius = UDim.new(0, 6)
+    MinCorner.Parent = MinBtn
 
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Name = "Close"
@@ -1226,80 +1299,50 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local ContentFrame = Instance.new("Frame")
     ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 0, 44)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 36)
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
     ContentFrame.BackgroundTransparency = 1
+    ContentFrame.ClipsDescendants = true
     ContentFrame.Parent = MainFrame
 
-    local BtnSection = Instance.new("Frame")
-    BtnSection.Name = "BtnSection"
-    BtnSection.Size = UDim2.new(1, 0, 0, 36)
-    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    BtnSection.BackgroundTransparency = 0.4
-    BtnSection.BorderSizePixel = 0
-    BtnSection.Parent = ContentFrame
+    local isMinimized = savedMinimized
+    local originalSize = UDim2.new(0, 239, 0, 100)
+    local minimizedSize = UDim2.new(0, 239, 0, 36)
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-    local BtnSectionPadding = Instance.new("UIPadding")
-    BtnSectionPadding.PaddingTop = UDim.new(0, 4)
-    BtnSectionPadding.PaddingBottom = UDim.new(0, 4)
-    BtnSectionPadding.PaddingLeft = UDim.new(0, 8)
-    BtnSectionPadding.PaddingRight = UDim.new(0, 8)
-    BtnSectionPadding.Parent = BtnSection
+    if isMinimized then
+        MinBtn.Text = "+"
+        MainFrame.Size = minimizedSize
+        ContentFrame.Visible = false
+    end
 
-    local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 14)
-    MainCorner.Parent = MainFrame
-
-    local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(60, 60, 60)
-    MainStroke.Thickness = 1
-    MainStroke.Parent = MainFrame
-
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 36)
-    TitleBar.BackgroundTransparency = 1
-    TitleBar.Parent = MainFrame
-
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Name = "Title"
-    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = "Prism  •  VC Bypass"
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 13
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.Parent = TitleBar
-
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Name = "Close"
-    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    CloseBtn.BackgroundTransparency = 0.4
-    CloseBtn.BorderSizePixel = 0
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    CloseBtn.TextSize = 11
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.Parent = TitleBar
-
-    local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(0, 6)
-    CloseCorner.Parent = CloseBtn
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
+    MinBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        currentVCBSettings.minimized = isMinimized
+        SaveVCBGUISettings()
+        if isMinimized then
+            MinBtn.Text = "+"
+            local tween = TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize})
+            tween:Play()
+            tween.Completed:Connect(function() ContentFrame.Visible = false end)
+        else
+            MinBtn.Text = "—"
+            ContentFrame.Visible = true
+            TweenService:Create(MainFrame, tweenInfo, {Size = originalSize}):Play()
+        end
     end)
 
-    local ContentFrame = Instance.new("Frame")
-    ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 0, 44)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 36)
-    ContentFrame.BackgroundTransparency = 1
-    ContentFrame.Parent = MainFrame
+    local ContentLayout = Instance.new("UIListLayout")
+    ContentLayout.Padding = UDim.new(0, 6)
+    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentLayout.Parent = ContentFrame
+
+    local ContentPadding = Instance.new("UIPadding")
+    ContentPadding.PaddingTop = UDim.new(0, 4)
+    ContentPadding.PaddingBottom = UDim.new(0, 4)
+    ContentPadding.PaddingLeft = UDim.new(0, 8)
+    ContentPadding.PaddingRight = UDim.new(0, 8)
+    ContentPadding.Parent = ContentFrame
 
     local BtnSection = Instance.new("Frame")
     BtnSection.Name = "BtnSection"
@@ -1307,27 +1350,31 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     BtnSection.BackgroundTransparency = 0.4
     BtnSection.BorderSizePixel = 0
+    BtnSection.LayoutOrder = 1
     BtnSection.Parent = ContentFrame
-
-    local BtnSectionPadding = Instance.new("UIPadding")
-    BtnSectionPadding.PaddingTop = UDim.new(0, 4)
-    BtnSectionPadding.PaddingBottom = UDim.new(0, 4)
-    BtnSectionPadding.PaddingLeft = UDim.new(0, 8)
-    BtnSectionPadding.PaddingRight = UDim.new(0, 8)
-    BtnSectionPadding.Parent = BtnSection
 
     local BtnSectionCorner = Instance.new("UICorner")
     BtnSectionCorner.CornerRadius = UDim.new(0, 10)
     BtnSectionCorner.Parent = BtnSection
 
-    local ContentLayout = Instance.new("UIListLayout")
-    ContentLayout.Padding = UDim.new(0, 8)
-    ContentLayout.FillDirection = Enum.FillDirection.Horizontal
-    ContentLayout.Parent = BtnSection
+    local BtnSectionPadding = Instance.new("UIPadding")
+    BtnSectionPadding.PaddingTop = UDim.new(0, 4)
+    BtnSectionPadding.PaddingBottom = UDim.new(0, 4)
+    BtnSectionPadding.PaddingLeft = UDim.new(0, 8)
+    BtnSectionPadding.PaddingRight = UDim.new(0, 8)
+    BtnSectionPadding.Parent = BtnSection
+
+    local BtnLayout = Instance.new("UIListLayout")
+    BtnLayout.FillDirection = Enum.FillDirection.Horizontal
+    BtnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    BtnLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    BtnLayout.Padding = UDim.new(0, 8)
+    BtnLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    BtnLayout.Parent = BtnSection
 
     local V1Btn = Instance.new("TextButton")
     V1Btn.Name = "V1Btn"
-    V1Btn.Size = UDim2.new(0.5, -4, 1, 0)
+    V1Btn.Size = UDim2.new(0, 62, 0, 24)
     V1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V1Btn.BackgroundTransparency = 0.4
     V1Btn.BorderSizePixel = 0
@@ -1339,7 +1386,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     V1Btn.Parent = BtnSection
 
     local V1Corner = Instance.new("UICorner")
-    V1Corner.CornerRadius = UDim.new(0, 10)
+    V1Corner.CornerRadius = UDim.new(0, 6)
     V1Corner.Parent = V1Btn
 
     V1Btn.MouseButton1Click:Connect(function()
@@ -1393,7 +1440,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local V2Btn = Instance.new("TextButton")
     V2Btn.Name = "V2Btn"
-    V2Btn.Size = UDim2.new(0.5, -4, 1, 0)
+    V2Btn.Size = UDim2.new(0, 62, 0, 24)
     V2Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V2Btn.BackgroundTransparency = 0.4
     V2Btn.BorderSizePixel = 0
@@ -1405,7 +1452,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     V2Btn.Parent = BtnSection
 
     local V2Corner = Instance.new("UICorner")
-    V2Corner.CornerRadius = UDim.new(0, 10)
+    V2Corner.CornerRadius = UDim.new(0, 6)
     V2Corner.Parent = V2Btn
 
     local clonereference = cloneref or function(...)
@@ -1509,45 +1556,20 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
         end)
     end)
 
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local btnTweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
     V1Btn.MouseEnter:Connect(function()
-        TweenService:Create(V1Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+        TweenService:Create(V1Btn, btnTweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
     end)
     V1Btn.MouseLeave:Connect(function()
-        TweenService:Create(V1Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+        TweenService:Create(V1Btn, btnTweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
     end)
 
     V2Btn.MouseEnter:Connect(function()
-        TweenService:Create(V2Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+        TweenService:Create(V2Btn, btnTweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
     end)
     V2Btn.MouseLeave:Connect(function()
-        TweenService:Create(V2Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
-    end)
-
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-        end
-    end)
-
-    TitleBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
+        TweenService:Create(V2Btn, btnTweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
     end)
 end, true)
 
