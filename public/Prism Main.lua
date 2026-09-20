@@ -978,7 +978,7 @@ local function createOtherNametag(plrObj)
     displayNameLabel.BackgroundTransparency = 1
     displayNameLabel.Text = ((isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = isBypassUser and 8 or 14
+    displayNameLabel.TextSize = isBypassUser and 12 or 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
