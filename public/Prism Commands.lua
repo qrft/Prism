@@ -5,11 +5,12 @@
     animation cloning
     shaders
     join other prism users
-    better vcbypasser icons / bypass
+    better vcbypasser icons / talking detection
     nametag cleanup on unload and reload
-    custom nametag pictures / gifs
+    custom nametag pictures / gifs (bypass)
     add zero delay backpack / headsit / facebang and old method
     fix anti sit
+    hamster ball with noclip
     
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
@@ -1571,7 +1572,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     V2Btn.MouseLeave:Connect(function()
         TweenService:Create(V2Btn, btnTweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
     end)
-end, true)
+end, false)
 
 
 
