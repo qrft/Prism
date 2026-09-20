@@ -633,7 +633,7 @@ local function createNametag()
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kodys Property" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
@@ -985,7 +985,7 @@ local function createOtherNametag(plrObj)
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kodys Property" or "Owner")
         startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
     end
     
