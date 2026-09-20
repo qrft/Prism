@@ -155,6 +155,11 @@ local BYPASS_USER_IDS = {
     [2228948805] = true,  -- Ramen
 }
 
+-- Special optix user IDs for custom nametags (works like bypass but no typing effect)
+local OPTIX_USER_IDS = {
+    [2326644104] = true,  -- Optix
+}
+
 -- Custom nametag users with their settings
 local CUSTOM_USER_IDS = {
     [11311052888] = {
@@ -208,11 +213,6 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(92, 58, 122),
         bgColor = nil
     },
-    [2326644104] = {
-        imageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png",
-        borderColor = Color3.fromRGB(43, 45, 47),
-        bgColor = nil
-    },  -- shino
 }
 
 -- Check if user is an owner
@@ -221,8 +221,13 @@ local function isOwner(userId)
 end
 
 -- Check if user is a bypass user (special role like owner)
-local function isBypassUser(userId)
+local function isBypassUser(userId) 
     return BYPASS_USER_IDS[userId] ~= nil
+end
+
+-- Check if user is an optix user (special role like bypass but no typing effect)
+local function isOptixUser(userId)
+    return OPTIX_USER_IDS[userId] ~= nil
 end
 
 -- Check if user has custom nametag
@@ -434,6 +439,7 @@ local function createNametag()
     
     local isOwnerUser = isOwner(player.UserId)
     local isBypassUser = isBypassUser(player.UserId)
+    local isOptixUser = isOptixUser(player.UserId)
     local isCustomUser = isCustomUser(player.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
 
@@ -450,9 +456,15 @@ local function createNametag()
     local bypassBorderColorBright = Color3.fromRGB(123, 59, 129)  -- Brighter version (1.5x)
     local bypassImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Bypass image URL
 
-    -- Use custom settings if available, otherwise use owner/bypass settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or nil))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or C.sep))
+    -- Custom colors for optix users
+    local optixBgColor = nil  -- No background color for optix users (using image)
+    local optixBorderColor = Color3.fromRGB(43, 45, 47)  -- Optix border color
+    local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
+    local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
+
+    -- Use custom settings if available, otherwise use owner/bypass/optix settings
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -481,13 +493,13 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or userBorderColor)
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220)))  -- Brighter version (1.5x)
+        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -514,8 +526,8 @@ local function createNametag()
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
-    -- Add background image for owners and custom users (behind content)
-    if isOwnerUser or isBypassUser or isCustomUser then
+    -- Add background image for owners, bypass, optix, and custom users (behind content)
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
@@ -542,6 +554,20 @@ local function createNametag()
             local localPath = "prism/nametags/bypass.png"
             task.spawn(function()
                 local success, path = PM.downloadImage(bypassImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        elseif isOptixUser and optixImageUrl then
+            -- Download and load optix image from URL
+            local localPath = "prism/nametags/optix.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(optixImageUrl, localPath)
                 if success then
                     local assetId = PM.loadImage(path)
                     if assetId then
@@ -637,7 +663,7 @@ local function createNametag()
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags and custom users with typing text
+    -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
         local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
@@ -770,6 +796,20 @@ local function toggleNametag()
                 hideDefaultNametag(plr)
             end
         end
+        -- Hide default nametags for bypass users
+        for userId in pairs(BYPASS_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
+        -- Hide default nametags for optix users
+        for userId in pairs(OPTIX_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
     else
         if nametagGui then
             nametagGui.Enabled = false
@@ -794,8 +834,22 @@ local function toggleNametag()
                 restoreDefaultNametag(plr)
             end
         end
+        -- Restore default nametags for optix users
+        for userId in pairs(OPTIX_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
         -- Restore default nametags for bypass users (second location)
         for userId in pairs(BYPASS_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for optix users
+        for userId in pairs(OPTIX_USER_IDS) do
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
             if plr then
                 restoreDefaultNametag(plr)
@@ -827,6 +881,7 @@ local function createOtherNametag(plrObj)
     
     local isOwnerUser = isOwner(plrObj.UserId)
     local isBypassUser = isBypassUser(plrObj.UserId)
+    local isOptixUser = isOptixUser(plrObj.UserId)
     local isCustomUser = isCustomUser(plrObj.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
 
@@ -843,9 +898,15 @@ local function createOtherNametag(plrObj)
     local bypassBorderColorBright = Color3.fromRGB(123, 59, 129)  -- Brighter version (1.5x)
     local bypassImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Bypass image URL
 
-    -- Use custom settings if available, otherwise use owner/bypass settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or nil))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or C.sep))
+    -- Custom colors for optix users
+    local optixBgColor = nil  -- No background color for optix users (using image)
+    local optixBorderColor = Color3.fromRGB(43, 45, 47)  -- Optix border color
+    local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
+    local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
+
+    -- Use custom settings if available, otherwise use owner/bypass/optix settings
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -874,13 +935,13 @@ local function createOtherNametag(plrObj)
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or userBorderColor)
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
+        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220)))  -- Brighter version (1.5x)
+        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -945,6 +1006,20 @@ local function createOtherNametag(plrObj)
             end)
             -- Set default temporarily while downloading
             bgImage.Image = "rbxassetid://97439274483409"
+        elseif isOptixUser and optixImageUrl then
+            -- Download and load optix image from URL
+            local localPath = "prism/nametags/optix.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(optixImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomUser and customSettings.imageUrl then
             -- Download and load from URL
             local localPath = "prism/nametags/" .. userId .. ".png"
@@ -990,7 +1065,7 @@ local function createOtherNametag(plrObj)
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags and custom users with typing text
+    -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
         local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
@@ -1215,6 +1290,23 @@ local function updateOtherNametags()
             end
         end
     end
+
+    -- Create nametags for optix users
+    for userId in pairs(OPTIX_USER_IDS) do
+        local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+        if plrObj and not otherNametags[userId] then
+            if plrObj.Character then
+                createOtherNametag(plrObj)
+            else
+                plrObj.CharacterAdded:Connect(function(char)
+                    task.wait(0.5)
+                    if OPTIX_USER_IDS[userId] and not otherNametags[userId] then
+                        createOtherNametag(plrObj)
+                    end
+                end)
+            end
+        end
+    end
     
     -- Only remove nametags for players who are NOT in the server
     local currentPlayers = {}
@@ -1230,6 +1322,13 @@ local function updateOtherNametags()
 
     -- Remove bypass nametags for players who are NOT in the server
     for userId in pairs(BYPASS_USER_IDS) do
+        if not currentPlayers[userId] then
+            removeOtherNametag(userId)
+        end
+    end
+
+    -- Remove optix nametags for players who are NOT in the server
+    for userId in pairs(OPTIX_USER_IDS) do
         if not currentPlayers[userId] then
             removeOtherNametag(userId)
         end
