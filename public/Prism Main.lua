@@ -626,14 +626,14 @@ local function createNametag()
     displayNameLabel.BackgroundTransparency = 1
     displayNameLabel.Text = (isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = 9
+    displayNameLabel.TextSize = isBypassUser and 12 or 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kodys Property" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
@@ -978,14 +978,14 @@ local function createOtherNametag(plrObj)
     displayNameLabel.BackgroundTransparency = 1
     displayNameLabel.Text = ((isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = 14
+    displayNameLabel.TextSize = isBypassUser and 8 or 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kodys Property" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
     end
     
