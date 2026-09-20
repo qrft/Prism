@@ -1169,8 +1169,8 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 220, 0, 100)
-    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
+    MainFrame.Size = UDim2.new(0, 220, 0, 88)
+    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -44)
     MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     MainFrame.BackgroundTransparency = 0.3
     MainFrame.BorderSizePixel = 0
@@ -1226,25 +1226,95 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local ContentFrame = Instance.new("Frame")
     ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.Size = UDim2.new(1, 0, 0, 44)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 36)
     ContentFrame.BackgroundTransparency = 1
     ContentFrame.Parent = MainFrame
 
-    local ContentPadding = Instance.new("UIPadding")
-    ContentPadding.PaddingTop = UDim.new(0, 4)
-    ContentPadding.PaddingBottom = UDim.new(0, 4)
-    ContentPadding.PaddingLeft = UDim.new(0, 8)
-    ContentPadding.PaddingRight = UDim.new(0, 8)
-    ContentPadding.Parent = ContentFrame
-
     local BtnSection = Instance.new("Frame")
     BtnSection.Name = "BtnSection"
-    BtnSection.Size = UDim2.new(1, 0, 1, 0)
+    BtnSection.Size = UDim2.new(1, 0, 0, 36)
     BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     BtnSection.BackgroundTransparency = 0.4
     BtnSection.BorderSizePixel = 0
     BtnSection.Parent = ContentFrame
+
+    local BtnSectionPadding = Instance.new("UIPadding")
+    BtnSectionPadding.PaddingTop = UDim.new(0, 4)
+    BtnSectionPadding.PaddingBottom = UDim.new(0, 4)
+    BtnSectionPadding.PaddingLeft = UDim.new(0, 8)
+    BtnSectionPadding.PaddingRight = UDim.new(0, 8)
+    BtnSectionPadding.Parent = BtnSection
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "Title"
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "Prism  •  VC Bypass"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Name = "Close"
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 0, 44)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 36)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+
+    local BtnSection = Instance.new("Frame")
+    BtnSection.Name = "BtnSection"
+    BtnSection.Size = UDim2.new(1, 0, 0, 36)
+    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BtnSection.BackgroundTransparency = 0.4
+    BtnSection.BorderSizePixel = 0
+    BtnSection.Parent = ContentFrame
+
+    local BtnSectionPadding = Instance.new("UIPadding")
+    BtnSectionPadding.PaddingTop = UDim.new(0, 4)
+    BtnSectionPadding.PaddingBottom = UDim.new(0, 4)
+    BtnSectionPadding.PaddingLeft = UDim.new(0, 8)
+    BtnSectionPadding.PaddingRight = UDim.new(0, 8)
+    BtnSectionPadding.Parent = BtnSection
 
     local BtnSectionCorner = Instance.new("UICorner")
     BtnSectionCorner.CornerRadius = UDim.new(0, 10)
@@ -1263,7 +1333,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     V1Btn.BorderSizePixel = 0
     V1Btn.Text = "V1"
     V1Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    V1Btn.TextSize = 12
+    V1Btn.TextSize = 11
     V1Btn.Font = Enum.Font.GothamBold
     V1Btn.LayoutOrder = 1
     V1Btn.Parent = BtnSection
@@ -1329,7 +1399,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     V2Btn.BorderSizePixel = 0
     V2Btn.Text = "V2"
     V2Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    V2Btn.TextSize = 12
+    V2Btn.TextSize = 11
     V2Btn.Font = Enum.Font.GothamBold
     V2Btn.LayoutOrder = 2
     V2Btn.Parent = BtnSection
@@ -1408,7 +1478,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
             task.wait(0.1)
         end
 
-        task.wait(1)
+        task.wait(4)
 
         createMuteButton()
         setupButtonClick()
