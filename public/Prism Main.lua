@@ -442,6 +442,7 @@ local function createNametag()
     local isOptixUser = isOptixUser(player.UserId)
     local isCustomUser = isCustomUser(player.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
+    local userId = player.UserId
 
 
 
@@ -884,6 +885,7 @@ local function createOtherNametag(plrObj)
     local isOptixUser = isOptixUser(plrObj.UserId)
     local isCustomUser = isCustomUser(plrObj.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
+    local userId = plrObj.UserId
 
 
 
@@ -969,8 +971,8 @@ local function createOtherNametag(plrObj)
     frame.Active = true
     frame.Parent = billboard
     
-    -- Add background image for owners and custom users
-    if isOwnerUser or isBypassUser or isCustomUser then
+    -- Add background image for owners, bypass, optix, and custom users
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
