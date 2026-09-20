@@ -33,6 +33,7 @@ PM.Admins[1675739196] = true -- phoebee
 PM.Admins[1196547606] = true -- shino
 PM.Admins[8880656259] = true -- v8w23
 PM.Admins[2326644104] = true -- 4xoptix
+PM.Admins[11620576090] = true -- preday
 
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
