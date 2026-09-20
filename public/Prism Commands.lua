@@ -1374,7 +1374,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local V1Btn = Instance.new("TextButton")
     V1Btn.Name = "V1Btn"
-    V1Btn.Size = UDim2.new(0, 62, 0, 24)
+    V1Btn.Size = UDim2.new(0, 80, 0, 24)
     V1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V1Btn.BackgroundTransparency = 0.4
     V1Btn.BorderSizePixel = 0
@@ -1440,7 +1440,7 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local V2Btn = Instance.new("TextButton")
     V2Btn.Name = "V2Btn"
-    V2Btn.Size = UDim2.new(0, 62, 0, 24)
+    V2Btn.Size = UDim2.new(0, 80, 0, 24)
     V2Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V2Btn.BackgroundTransparency = 0.4
     V2Btn.BorderSizePixel = 0
