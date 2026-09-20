@@ -358,7 +358,7 @@ local function createNametag()
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    local ownerBorderColor = Color3.fromRGB(0, 0, 0)  -- Black border
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -670,7 +670,7 @@ local function createOtherNametag(plrObj)
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(88, 15, 88)  -- Average dark purple from image
+    local ownerBorderColor = Color3.fromRGB(0, 0, 0)  -- Black border
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
