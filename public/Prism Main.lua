@@ -633,7 +633,7 @@ local function createNametag()
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Bypass" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
@@ -659,7 +659,7 @@ local function createNametag()
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = isOwnerUser and "O" or (isBypassUser and "B" or "P")
+    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
@@ -782,6 +782,13 @@ local function toggleNametag()
             end
         end
         -- Restore default nametags for bypass users
+        for userId in pairs(BYPASS_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for bypass users (second location)
         for userId in pairs(BYPASS_USER_IDS) do
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
             if plr then
@@ -978,7 +985,7 @@ local function createOtherNametag(plrObj)
     
     -- Start typing effect for owner nametags and custom users with typing text
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Bypass" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
     end
     
@@ -1004,7 +1011,7 @@ local function createOtherNametag(plrObj)
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = isOwnerUser and "O" or (isBypassUser and "B" or "P")
+    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
