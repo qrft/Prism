@@ -1144,22 +1144,12 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     end
     if guiExists("Prism_VCBypassGUI") then return end
 
-    -- Check if already active
-    if PM.VCBypasser.active then
-        return
-    end
-
-    -- Check unmute state before allowing
     local function isMicUnmuted()
         local adi = getPlayerAudioInput(LP)
         if adi then
             return adi.Active == true and adi.Muted == false
         end
         return false
-    end
-
-    if not isMicUnmuted() then
-        return
     end
 
     local ScreenGui = Instance.new("ScreenGui")
@@ -1179,8 +1169,8 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 200, 0, 130)
-    MainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
+    MainFrame.Size = UDim2.new(0, 220, 0, 100)
+    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     MainFrame.BackgroundTransparency = 0.3
     MainFrame.BorderSizePixel = 0
@@ -1203,13 +1193,14 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
 
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Name = "Title"
-    TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
     TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = "VC Bypass"
+    TitleLabel.Text = "Prism  •  VC Bypass"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 14
+    TitleLabel.TextSize = 13
     TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = TitleBar
 
     local CloseBtn = Instance.new("TextButton")
@@ -1241,30 +1232,44 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     ContentFrame.Parent = MainFrame
 
     local ContentPadding = Instance.new("UIPadding")
-    ContentPadding.PaddingTop = UDim.new(0, 8)
-    ContentPadding.PaddingBottom = UDim.new(0, 8)
+    ContentPadding.PaddingTop = UDim.new(0, 4)
+    ContentPadding.PaddingBottom = UDim.new(0, 4)
     ContentPadding.PaddingLeft = UDim.new(0, 8)
     ContentPadding.PaddingRight = UDim.new(0, 8)
     ContentPadding.Parent = ContentFrame
 
+    local BtnSection = Instance.new("Frame")
+    BtnSection.Name = "BtnSection"
+    BtnSection.Size = UDim2.new(1, 0, 1, 0)
+    BtnSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BtnSection.BackgroundTransparency = 0.4
+    BtnSection.BorderSizePixel = 0
+    BtnSection.Parent = ContentFrame
+
+    local BtnSectionCorner = Instance.new("UICorner")
+    BtnSectionCorner.CornerRadius = UDim.new(0, 10)
+    BtnSectionCorner.Parent = BtnSection
+
     local ContentLayout = Instance.new("UIListLayout")
     ContentLayout.Padding = UDim.new(0, 8)
-    ContentLayout.Parent = ContentFrame
+    ContentLayout.FillDirection = Enum.FillDirection.Horizontal
+    ContentLayout.Parent = BtnSection
 
     local V1Btn = Instance.new("TextButton")
     V1Btn.Name = "V1Btn"
-    V1Btn.Size = UDim2.new(1, 0, 0, 36)
+    V1Btn.Size = UDim2.new(0.5, -4, 1, 0)
     V1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V1Btn.BackgroundTransparency = 0.4
     V1Btn.BorderSizePixel = 0
-    V1Btn.Text = "Run V1"
+    V1Btn.Text = "V1"
     V1Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     V1Btn.TextSize = 12
     V1Btn.Font = Enum.Font.GothamBold
-    V1Btn.Parent = ContentFrame
+    V1Btn.LayoutOrder = 1
+    V1Btn.Parent = BtnSection
 
     local V1Corner = Instance.new("UICorner")
-    V1Corner.CornerRadius = UDim.new(0, 8)
+    V1Corner.CornerRadius = UDim.new(0, 10)
     V1Corner.Parent = V1Btn
 
     V1Btn.MouseButton1Click:Connect(function()
@@ -1314,24 +1319,23 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
         PM.VCBypasser.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
             removePlayerOverlay(p)
         end)
-
-        ScreenGui:Destroy()
     end)
 
     local V2Btn = Instance.new("TextButton")
     V2Btn.Name = "V2Btn"
-    V2Btn.Size = UDim2.new(1, 0, 0, 36)
+    V2Btn.Size = UDim2.new(0.5, -4, 1, 0)
     V2Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     V2Btn.BackgroundTransparency = 0.4
     V2Btn.BorderSizePixel = 0
-    V2Btn.Text = "Run V2"
+    V2Btn.Text = "V2"
     V2Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     V2Btn.TextSize = 12
     V2Btn.Font = Enum.Font.GothamBold
-    V2Btn.Parent = ContentFrame
+    V2Btn.LayoutOrder = 2
+    V2Btn.Parent = BtnSection
 
     local V2Corner = Instance.new("UICorner")
-    V2Corner.CornerRadius = UDim.new(0, 8)
+    V2Corner.CornerRadius = UDim.new(0, 10)
     V2Corner.Parent = V2Btn
 
     local clonereference = cloneref or function(...)
@@ -1410,7 +1414,29 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
         setupButtonClick()
         setupSizeMonitor()
 
-        ScreenGui:Destroy()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                task.spawn(function()
+                    waitForCharacterReady(p)
+                    setupTalkingDetection(p)
+                    createPlayerOverlay(p)
+                end)
+            end
+        end
+
+        PM.VCBypasser.playerAddedConn = Players.PlayerAdded:Connect(function(p)
+            if p ~= LP then
+                task.spawn(function()
+                    waitForCharacterReady(p)
+                    setupTalkingDetection(p)
+                    createPlayerOverlay(p)
+                end)
+            end
+        end)
+
+        PM.VCBypasser.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
+            removePlayerOverlay(p)
+        end)
     end)
 
     local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
