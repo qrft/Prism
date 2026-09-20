@@ -132,17 +132,6 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(20, 20, 20),
         bgColor = nil
     },
-    -- Example sprite sheet animation (replace YOUR_USER_ID and assetId)
-    -- [YOUR_USER_ID] = {
-    --     assetId = "YOUR_SPRITE_SHEET_ID",
-    --     borderColor = Color3.fromRGB(128, 64, 192),
-    --     bgColor = nil,
-    --     isAnimated = true,
-    --     frameCount = 4,  -- Number of frames in sprite sheet
-    --     frameSpeed = 0.1,  -- Seconds per frame (0.1 = 10 FPS)
-    --     spriteWidth = 512,  -- Width of sprite sheet in pixels
-    --     spriteHeight = 512  -- Height of sprite sheet in pixels
-    -- },
     [11620576090] = {
         assetId = "84178544959286",
         borderColor = Color3.fromRGB(0, 0, 0),
@@ -437,10 +426,9 @@ local function createNametag()
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://81487439997829"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
         bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Fit
-        bgImage.ResampleMode = Enum.ResamplerMode.Pixelated
+        bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
         
@@ -751,10 +739,9 @@ local function createOtherNametag(plrObj)
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://81487439997829"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
         bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Fit
-        bgImage.ResampleMode = Enum.ResamplerMode.Pixelated
+        bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
         
