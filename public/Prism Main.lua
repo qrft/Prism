@@ -93,7 +93,7 @@ local OWNER_USER_IDS = {
 -- Custom nametag users with their settings
 local CUSTOM_USER_IDS = {
     [11311052888] = {
-        assetId = "90136764649150",
+        assetId = "81487439997829",
         borderColor = Color3.fromRGB(165, 122, 90),
         bgColor = nil
     },  -- jazzy
@@ -144,7 +144,7 @@ local CUSTOM_USER_IDS = {
     --     spriteHeight = 512  -- Height of sprite sheet in pixels
     -- },
     [11620576090] = {
-        assetId = "77020003667863",
+        assetId = "84178544959286",
         borderColor = Color3.fromRGB(0, 0, 0),
         bgColor = nil,
         hideText = true  -- Hides username and display name
@@ -437,9 +437,10 @@ local function createNametag()
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://81487439997829"
         bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ScaleType = Enum.ScaleType.Fit
+        bgImage.ResampleMode = Enum.ResamplerMode.Pixelated
         bgImage.ZIndex = -1
         bgImage.Parent = frame
         
@@ -750,9 +751,10 @@ local function createOtherNametag(plrObj)
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://136814745088590"
+        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://81487439997829"
         bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ScaleType = Enum.ScaleType.Fit
+        bgImage.ResampleMode = Enum.ResamplerMode.Pixelated
         bgImage.ZIndex = -1
         bgImage.Parent = frame
         
