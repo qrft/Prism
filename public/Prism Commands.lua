@@ -168,22 +168,10 @@ local function createPlayerOverlay(plr)
     bill.Active = true
     bill.AlwaysOnTop = true
     bill.Size = UDim2.fromOffset(40, 40)
-
-    -- Check if nametags are enabled to adjust height
-    local PMMain = getgenv().PrismMain
-    local nametagsEnabled = PMMain and PMMain.PrismNametags and PMMain.PrismNametags.isEnabled and PMMain.PrismNametags.isEnabled()
-    local vcbypassActive = PM.VCBypasser.active
-
-    -- Use higher offset if nametags are enabled and vcbypass is active
-    local baseOffset = (nametagsEnabled and vcbypassActive) and 5 or 3
-    bill.StudsOffsetWorldSpace = Vector3.new(0, baseOffset, 0)
+    bill.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
     bill.Adornee = head
     bill.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     bill.MaxDistance = 100
-
-    -- Store initial settings for dynamic updates
-    bill:SetAttribute("nametagsEnabled", tostring(nametagsEnabled))
-    bill:SetAttribute("vcbypassActive", tostring(vcbypassActive))
 
     -- Parent to CoreGui if possible, otherwise PlayerGui
     local CoreGui = game:GetService("CoreGui")
@@ -256,27 +244,6 @@ local function createPlayerOverlay(plr)
         -- Update adornee
         if plr.Character and plr.Character:FindFirstChild("Head") then
             bill.Adornee = plr.Character.Head
-        end
-
-        -- Dynamic height adjustment based on camera angle (when nametags enabled)
-        local PMMain = getgenv().PrismMain
-        local currentNametagsEnabled = PMMain and PMMain.PrismNametags and PMMain.PrismNametags.isEnabled and PMMain.PrismNametags.isEnabled()
-        local currentVcbypassActive = PM.VCBypasser.active
-
-        if currentNametagsEnabled and currentVcbypassActive then
-            local camera = workspace.CurrentCamera
-            if camera then
-                local lookVector = camera.CFrame.LookVector
-                -- If looking up (negative Y component), increase offset
-                local lookUp = lookVector.Y < -0.3
-                local angleOffset = lookUp and 2 or 0
-                local baseOffsetDynamic = 5  -- Higher base offset when nametags enabled
-                local newOffset = baseOffsetDynamic + angleOffset
-                bill.StudsOffsetWorldSpace = Vector3.new(0, newOffset, 0)
-            end
-        else
-            -- Restore to normal height when nametags off or vcbypass off
-            bill.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
         end
 
         -- Distance check - only show within 50 studs

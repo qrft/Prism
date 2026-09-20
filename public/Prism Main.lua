@@ -144,44 +144,6 @@ local autoSyncEnabled = true
 local autoSyncInterval = 2
 local originalDisplayTypes = {}
 
--- Image cache for preloaded assets
-local imageCache = {}
-
--- Preload images before nametag system starts
-local function preloadImages()
-    print("[Prism] Preloading nametag images...")
-
-    -- Preload owner image
-    if ownerImageUrl then
-        local localPath = "prism/nametags/owner.png"
-        local success, path = PM.downloadImage(ownerImageUrl, localPath)
-        if success then
-            local assetId = PM.loadImage(path)
-            if assetId then
-                imageCache["owner"] = assetId
-                print("[Prism] Owner image preloaded")
-            end
-        end
-    end
-
-    -- Preload custom user images with imageUrl
-    for userId, settings in pairs(CUSTOM_USER_IDS) do
-        if settings.imageUrl then
-            local localPath = "prism/nametags/" .. userId .. ".png"
-            local success, path = PM.downloadImage(settings.imageUrl, localPath)
-            if success then
-                local assetId = PM.loadImage(path)
-                if assetId then
-                    imageCache[userId] = assetId
-                    print("[Prism] Image preloaded for user:", userId)
-                end
-            end
-        end
-    end
-
-    print("[Prism] Image preload complete")
-end
-
 -- Special owner user IDs for custom nametags
 local OWNER_USER_IDS = {
     [7275889224] = true,  -- Soul / Tampon
@@ -534,45 +496,33 @@ local function createNametag()
 
         -- Check if using imageUrl or assetId
         if isOwnerUser and ownerImageUrl then
-            -- Use cached owner image if available
-            if imageCache["owner"] then
-                bgImage.Image = imageCache["owner"]
-            else
-                -- Download and load owner image from URL
-                local localPath = "prism/nametags/owner.png"
-                task.spawn(function()
-                    local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                    if success then
-                        local assetId = PM.loadImage(path)
-                        if assetId then
-                            imageCache["owner"] = assetId
-                            bgImage.Image = assetId
-                        end
+            -- Download and load owner image from URL
+            local localPath = "prism/nametags/owner.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(ownerImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
                     end
-                end)
-                -- Set default temporarily while downloading
-                bgImage.Image = "rbxassetid://97439274483409"
-            end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomUser and customSettings.imageUrl then
-            -- Use cached image if available
-            if imageCache[userId] then
-                bgImage.Image = imageCache[userId]
-            else
-                -- Download and load from URL
-                local localPath = "prism/nametags/" .. userId .. ".png"
-                task.spawn(function()
-                    local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
-                    if success then
-                        local assetId = PM.loadImage(path)
-                        if assetId then
-                            imageCache[userId] = assetId
-                            bgImage.Image = assetId
-                        end
+            -- Download and load from URL
+            local localPath = "prism/nametags/" .. userId .. ".png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
                     end
-                end)
-                -- Set default temporarily while downloading
-                bgImage.Image = "rbxassetid://97439274483409"
-            end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         else
             -- Use assetId
             bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
@@ -756,10 +706,6 @@ end
 local function toggleNametag()
     nametagEnabled = not nametagEnabled
     if nametagEnabled then
-        -- Preload images before creating nametags
-        if #imageCache == 0 then
-            preloadImages()
-        end
         if nametagGui then
             nametagGui.Enabled = true
         else
@@ -899,45 +845,33 @@ local function createOtherNametag(plrObj)
 
         -- Check if using imageUrl or assetId
         if isOwnerUser and ownerImageUrl then
-            -- Use cached owner image if available
-            if imageCache["owner"] then
-                bgImage.Image = imageCache["owner"]
-            else
-                -- Download and load owner image from URL
-                local localPath = "prism/nametags/owner.png"
-                task.spawn(function()
-                    local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                    if success then
-                        local assetId = PM.loadImage(path)
-                        if assetId then
-                            imageCache["owner"] = assetId
-                            bgImage.Image = assetId
-                        end
+            -- Download and load owner image from URL
+            local localPath = "prism/nametags/owner.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(ownerImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
                     end
-                end)
-                -- Set default temporarily while downloading
-                bgImage.Image = "rbxassetid://97439274483409"
-            end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomUser and customSettings.imageUrl then
-            -- Use cached image if available
-            if imageCache[userId] then
-                bgImage.Image = imageCache[userId]
-            else
-                -- Download and load from URL
-                local localPath = "prism/nametags/" .. userId .. ".png"
-                task.spawn(function()
-                    local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
-                    if success then
-                        local assetId = PM.loadImage(path)
-                        if assetId then
-                            imageCache[userId] = assetId
-                            bgImage.Image = assetId
-                        end
+            -- Download and load from URL
+            local localPath = "prism/nametags/" .. userId .. ".png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
                     end
-                end)
-                -- Set default temporarily while downloading
-                bgImage.Image = "rbxassetid://97439274483409"
-            end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         else
             -- Use assetId
             bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
