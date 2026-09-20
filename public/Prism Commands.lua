@@ -1127,57 +1127,331 @@ local function setupButtonClick()
     end
 end
 
-registerCommand("vcbypasser", "Bypass voice chat restrictions", {}, function(args)
+registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, function(args)
+    local CoreGui = game:GetService("CoreGui")
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
     local VoiceChatService = game:GetService("VoiceChatService")
     local VoiceChatInternal = game:GetService("VoiceChatInternal")
 
-    pcall(function()
-        VoiceChatService:rejoinVoice()
-    end)
-
-    task.wait(0.02)
-
-    pcall(function()
-        for _, connection in pairs(getconnections(VoiceChatInternal.StateChanged)) do
-            connection:Disable()
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if gethui then
+            if gethui():FindFirstChild(guiName) then return true end
         end
-    end)
+        return false
+    end
+    if guiExists("Prism_VCBypassGUI") then return end
 
-    PM.VCBypasser.active = true
-
-    -- Wait for UI to recreate
-    task.wait(1)
-
-    -- Create the button
-    createMuteButton()
-    setupButtonClick()
-    setupSizeMonitor()
-
-    -- Setup player overlays and talking detection for all current players
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            task.spawn(function()
-                waitForCharacterReady(p)
-                setupTalkingDetection(p)
-                createPlayerOverlay(p)
-            end)
-        end
+    -- Check if already active
+    if PM.VCBypasser.active then
+        return
     end
 
-    -- Setup for new players
-    PM.VCBypasser.playerAddedConn = Players.PlayerAdded:Connect(function(p)
-        if p ~= LP then
-            task.spawn(function()
-                waitForCharacterReady(p)
-                setupTalkingDetection(p)
-                createPlayerOverlay(p)
-            end)
+    -- Check unmute state before allowing
+    local function isMicUnmuted()
+        local adi = getPlayerAudioInput(LP)
+        if adi then
+            return adi.Active == true and adi.Muted == false
+        end
+        return false
+    end
+
+    if not isMicUnmuted() then
+        return
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Prism_VCBypassGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 200, 0, 130)
+    MainFrame.Position = UDim2.new(0.5, -100, 0.5, -65)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "Title"
+    TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "VC Bypass"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 14
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TitleLabel.Parent = TitleBar
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Name = "Close"
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+
+    local ContentPadding = Instance.new("UIPadding")
+    ContentPadding.PaddingTop = UDim.new(0, 8)
+    ContentPadding.PaddingBottom = UDim.new(0, 8)
+    ContentPadding.PaddingLeft = UDim.new(0, 8)
+    ContentPadding.PaddingRight = UDim.new(0, 8)
+    ContentPadding.Parent = ContentFrame
+
+    local ContentLayout = Instance.new("UIListLayout")
+    ContentLayout.Padding = UDim.new(0, 8)
+    ContentLayout.Parent = ContentFrame
+
+    local V1Btn = Instance.new("TextButton")
+    V1Btn.Name = "V1Btn"
+    V1Btn.Size = UDim2.new(1, 0, 0, 36)
+    V1Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    V1Btn.BackgroundTransparency = 0.4
+    V1Btn.BorderSizePixel = 0
+    V1Btn.Text = "Run V1"
+    V1Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    V1Btn.TextSize = 12
+    V1Btn.Font = Enum.Font.GothamBold
+    V1Btn.Parent = ContentFrame
+
+    local V1Corner = Instance.new("UICorner")
+    V1Corner.CornerRadius = UDim.new(0, 8)
+    V1Corner.Parent = V1Btn
+
+    V1Btn.MouseButton1Click:Connect(function()
+        if PM.VCBypasser.active then return end
+        if not isMicUnmuted() then return end
+
+        PM.VCBypasser.active = true
+
+        pcall(function()
+            VoiceChatService:rejoinVoice()
+        end)
+
+        task.wait(0.02)
+
+        pcall(function()
+            for _, connection in pairs(getconnections(VoiceChatInternal.StateChanged)) do
+                connection:Disable()
+            end
+        end)
+
+        task.wait(1)
+
+        createMuteButton()
+        setupButtonClick()
+        setupSizeMonitor()
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                task.spawn(function()
+                    waitForCharacterReady(p)
+                    setupTalkingDetection(p)
+                    createPlayerOverlay(p)
+                end)
+            end
+        end
+
+        PM.VCBypasser.playerAddedConn = Players.PlayerAdded:Connect(function(p)
+            if p ~= LP then
+                task.spawn(function()
+                    waitForCharacterReady(p)
+                    setupTalkingDetection(p)
+                    createPlayerOverlay(p)
+                end)
+            end
+        end)
+
+        PM.VCBypasser.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
+            removePlayerOverlay(p)
+        end)
+
+        ScreenGui:Destroy()
+    end)
+
+    local V2Btn = Instance.new("TextButton")
+    V2Btn.Name = "V2Btn"
+    V2Btn.Size = UDim2.new(1, 0, 0, 36)
+    V2Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    V2Btn.BackgroundTransparency = 0.4
+    V2Btn.BorderSizePixel = 0
+    V2Btn.Text = "Run V2"
+    V2Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    V2Btn.TextSize = 12
+    V2Btn.Font = Enum.Font.GothamBold
+    V2Btn.Parent = ContentFrame
+
+    local V2Corner = Instance.new("UICorner")
+    V2Corner.CornerRadius = UDim.new(0, 8)
+    V2Corner.Parent = V2Btn
+
+    local clonereference = cloneref or function(...)
+        return ...
+    end
+    local clonefunction = clonefunction or function(...)
+        return ...
+    end
+
+    local voicechatservice, voicechatinternal
+    pcall(function()
+        voicechatservice = clonereference(game:GetService("VoiceChatService"))
+    end)
+    pcall(function()
+        voicechatinternal = clonereference(game:GetService("VoiceChatInternal"))
+    end)
+
+    local getconnectionsfunc = nil
+    pcall(function()
+        if getconnections then
+            getconnectionsfunc = clonefunction(getconnections)
         end
     end)
 
-    -- Cleanup on leave
-    PM.VCBypasser.playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
-        removePlayerOverlay(p)
+    V2Btn.MouseButton1Click:Connect(function()
+        if PM.VCBypasser.active then return end
+        if not isMicUnmuted() then return end
+
+        PM.VCBypasser.active = true
+
+        pcall(function()
+            VoiceChatService:rejoinVoice()
+        end)
+
+        task.wait(0.02)
+
+        pcall(function()
+            for _, connection in pairs(getconnections(VoiceChatInternal.StateChanged)) do
+                connection:Disable()
+            end
+        end)
+
+        task.wait(1)
+
+        pcall(function()
+            if not getconnectionsfunc or not voicechatinternal then
+                return
+            end
+            local connections = getconnectionsfunc(voicechatinternal.StateChanged)
+            for i = 7, #connections do
+                if connections[i] then
+                    pcall(function()
+                        connections[i]:Disable()
+                    end)
+                end
+            end
+        end)
+
+        task.wait(2)
+
+        local joinDone, joinOk = false, false
+        local joinWait = tick()
+        task.spawn(function()
+            joinOk = pcall(function()
+                voicechatservice:joinVoice()
+            end)
+            joinDone = true
+        end)
+        while not joinDone and tick() - joinWait < 8 do
+            task.wait(0.1)
+        end
+
+        task.wait(1)
+
+        createMuteButton()
+        setupButtonClick()
+        setupSizeMonitor()
+
+        ScreenGui:Destroy()
+    end)
+
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    V1Btn.MouseEnter:Connect(function()
+        TweenService:Create(V1Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    V1Btn.MouseLeave:Connect(function()
+        TweenService:Create(V1Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    V2Btn.MouseEnter:Connect(function()
+        TweenService:Create(V2Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    V2Btn.MouseLeave:Connect(function()
+        TweenService:Create(V2Btn, tweenInfo, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
     end)
 end, true)
 
