@@ -626,7 +626,7 @@ local function createNametag()
     displayNameLabel.BackgroundTransparency = 1
     displayNameLabel.Text = (isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = 12
+    displayNameLabel.TextSize = 9
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
