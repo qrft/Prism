@@ -60,6 +60,66 @@ PM.tween = function(obj, time, props, style)
     return PM.Svc.TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quad), props):Play()
 end
 
+-- Image download and loading utilities (Infinite Yield method)
+local httprequest = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
+local waxgetcustomasset = getcustomasset or getsynasset
+
+PM.downloadImage = function(url, localPath)
+    -- Download image using executor HTTP with binary mode
+    local success, imageData
+    if httprequest then
+        success, imageData = pcall(function()
+            local response = httprequest({
+                Url = url,
+                Method = "GET",
+                Headers = {
+                    ["Content-Type"] = "application/octet-stream"
+                }
+            })
+            return response.Body or response
+        end)
+    else
+        -- Fallback to game:HttpGet
+        success, imageData = pcall(function()
+            return game:HttpGet(url)
+        end)
+    end
+
+    if not success or not imageData or imageData == "" then
+        return false, imageData
+    end
+
+    -- Create folders if needed
+    local folderPath = localPath:match("^(.-)/[^/]+$")
+    if folderPath and makefolder and not isfolder(folderPath) then
+        makefolder(folderPath)
+    end
+
+    -- Save to file
+    local successWrite = pcall(function()
+        writefile(localPath, imageData)
+    end)
+
+    if not successWrite then
+        return false, "Failed to write file"
+    end
+
+    return true, localPath
+end
+
+PM.loadImage = function(localPath)
+    -- Load using getcustomasset (executor-specific)
+    if waxgetcustomasset then
+        local success, result = pcall(function()
+            return waxgetcustomasset(localPath)
+        end)
+        if success and result and result ~= "" then
+            return result
+        end
+    end
+    return nil
+end
+
 PM.C = {
     bg = Color3.fromRGB(15, 15, 15),
     card = Color3.fromRGB(28, 28, 28),
@@ -363,7 +423,8 @@ local function createNametag()
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(0, 0, 0)  -- Black border
+    local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
+    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -431,7 +492,41 @@ local function createNametag()
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
+
+        -- Check if using imageUrl or assetId
+        if isOwnerUser and ownerImageUrl then
+            -- Download and load owner image from URL
+            local localPath = "prism/nametags/owner.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(ownerImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        elseif isCustomUser and customSettings.imageUrl then
+            -- Download and load from URL
+            local localPath = "prism/nametags/" .. userId .. ".png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        else
+            -- Use assetId
+            bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
+        end
+
         bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
@@ -675,7 +770,8 @@ local function createOtherNametag(plrObj)
     
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(0, 0, 0)  -- Black border
+    local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
+    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
     
     -- Use custom settings if available, otherwise use owner settings
     local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or nil)
@@ -744,12 +840,46 @@ local function createOtherNametag(plrObj)
         bgImage.Size = UDim2.new(1, 0, 1, 0)
         bgImage.Position = UDim2.new(0, 0, 0, 0)
         bgImage.BackgroundTransparency = 1
-        bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
+
+        -- Check if using imageUrl or assetId
+        if isOwnerUser and ownerImageUrl then
+            -- Download and load owner image from URL
+            local localPath = "prism/nametags/owner.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(ownerImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        elseif isCustomUser and customSettings.imageUrl then
+            -- Download and load from URL
+            local localPath = "prism/nametags/" .. userId .. ".png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        else
+            -- Use assetId
+            bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
+        end
+
         bgImage.ImageTransparency = 0
         bgImage.ScaleType = Enum.ScaleType.Stretch
         bgImage.ZIndex = -1
         bgImage.Parent = frame
-        
+
         local bgCorner = Instance.new("UICorner")
         bgCorner.CornerRadius = UDim.new(0, 8)
         bgCorner.Parent = bgImage
