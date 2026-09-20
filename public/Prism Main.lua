@@ -203,6 +203,11 @@ local CUSTOM_USER_IDS = {
         borderColor = Color3.fromRGB(92, 58, 122),
         bgColor = nil
     },  -- shino
+    [2228948805] = {
+        imageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png",
+        borderColor = Color3.fromRGB(82, 39, 86),
+        bgColor = nil
+    },  -- ramen
 }
 
 -- Check if user is an owner
@@ -459,7 +464,11 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
+        -- Calculate brighter version of the color
+        local r = math.min(255, gradientColor.R * 1.5)
+        local g = math.min(255, gradientColor.G * 1.5)
+        local b = math.min(255, gradientColor.B * 1.5)
+        local brightColor = Color3.fromRGB(r, g, b)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -807,7 +816,11 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or userBorderColor
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or Color3.fromRGB(230, 180, 220)  -- Brighter version
+        -- Calculate brighter version of the color
+        local r = math.min(255, gradientColor.R * 1.5)
+        local g = math.min(255, gradientColor.G * 1.5)
+        local b = math.min(255, gradientColor.B * 1.5)
+        local brightColor = Color3.fromRGB(r, g, b)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
