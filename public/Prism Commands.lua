@@ -35,18 +35,11 @@ PM.Admins[8880656259] = true -- v8w23
 PM.Admins[2326644104] = true -- 4xoptix
 PM.Admins[11620576090] = true -- preday
 
--- Store original game state for freeze/unfreeze
-PM.FrozenStates = PM.FrozenStates or {}
-
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
 end
 
-local function isOwner(plr)
-    return plr.UserId == 7275889224 or plr.UserId == 5712636024  -- Soul or Kavrenoo
-end
-
-local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec, adminOnly, ownerOnly)
+local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec, adminOnly)
     PM.Commands[name:lower()] = {
         name = name,
         desc = desc,
@@ -54,7 +47,6 @@ local function registerCommand(name, desc, aliases, execute, excludeFromAutoExec
         execute = execute,
         excludeFromAutoExec = excludeFromAutoExec or false,
         adminOnly = adminOnly or false,
-        ownerOnly = ownerOnly or false,
     }
 end
 
@@ -322,8 +314,8 @@ local function onChat(msg)
     local cmdName = parts[1]:lower()
     table.remove(parts, 1)
 
-    -- Bring/freeze/unfreeze commands are handled by cross-script chat monitoring, not local execution
-    if cmdName == "bring" or cmdName == "freeze" or cmdName == "unfreeze" then return end
+    -- Bring commands are handled by cross-script chat monitoring, not local execution
+    if cmdName == "bring" then return end
 
     -- Find and execute command
     local cmd = PM.Commands[cmdName]
@@ -344,14 +336,11 @@ local function onChat(msg)
         if cmd.adminOnly and not isAdmin(LP) then
             return
         end
-        if cmd.ownerOnly and not isOwner(LP) then
-            return
-        end
         pcall(function() cmd.execute(parts) end)
     end
 end
 
--- Monitor all chat for cross-script bring/freeze commands
+-- Monitor all chat for cross-script bring commands
 local function onAnyChat(speaker, msg)
     if not msg:sub(1, 1) == ChatPrefix then return end
 
@@ -367,14 +356,9 @@ local function onAnyChat(speaker, msg)
     local cmdName = parts[1]:lower()
     table.remove(parts, 1)
 
-    -- Only handle bring/freeze/unfreeze commands from admins
-    if cmdName ~= "bring" and cmdName ~= "freeze" and cmdName ~= "unfreeze" then return end
-    if cmdName == "bring" then
-        if not isAdmin(speaker) then return end
-    else
-        -- freeze/unfreeze are owner-only
-        if not isOwner(speaker) then return end
-    end
+    -- Only handle bring commands from admins
+    if cmdName ~= "bring" then return end
+    if not isAdmin(speaker) then return end
 
     local targetName = parts[1] or ""
     if targetName == "" then return end
@@ -383,67 +367,17 @@ local function onAnyChat(speaker, msg)
 
     -- Check if "all" or if I'm the target
     if q == "all" then
-        if cmdName == "bring" then
-            -- Teleport to the speaker
-            local speakerChar = speaker.Character
-            local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
-            if not speakerHRP then return end
+        -- Teleport to the speaker
+        local speakerChar = speaker.Character
+        local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
+        if not speakerHRP then return end
 
-            local myChar = LP.Character
-            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if not myHRP then return end
+        local myChar = LP.Character
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if not myHRP then return end
 
-            local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
-            myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
-        elseif cmdName == "freeze" then
-            -- Freeze in place
-            local myChar = LP.Character
-            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if not myHRP then return end
-
-            -- Store original states
-            PM.FrozenStates[LP.UserId] = PM.FrozenStates[LP.UserId] or {}
-            for _, part in ipairs(myChar:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    PM.FrozenStates[LP.UserId][part] = {
-                        Anchored = part.Anchored,
-                        CanCollide = part.CanCollide
-                    }
-                    part.Anchored = true
-                    part.CanCollide = false  -- Disable collision to prevent aura
-                end
-            end
-        elseif cmdName == "unfreeze" then
-            -- Unfreeze
-            local myChar = LP.Character
-            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if not myHRP then return end
-
-            -- Restore original states
-            local savedStates = PM.FrozenStates[LP.UserId]
-            if savedStates then
-                for _, part in ipairs(myChar:GetDescendants()) do
-                    if part:IsA("BasePart") and savedStates[part] then
-                        part.Anchored = savedStates[part].Anchored
-                        part.CanCollide = savedStates[part].CanCollide
-                    end
-                end
-                PM.FrozenStates[LP.UserId] = nil
-            else
-                -- Fallback if no saved states
-                for _, part in ipairs(myChar:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Anchored = false
-                        -- Restore CanCollide for HumanoidRootPart only (allow walking through body parts)
-                        if part.Name == "HumanoidRootPart" then
-                            part.CanCollide = true
-                        else
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end
-        end
+        local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
+        myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
         return
     end
 
@@ -459,67 +393,17 @@ local function onAnyChat(speaker, msg)
 
     if not isTarget then return end
 
-    if cmdName == "bring" then
-        -- Teleport to the speaker
-        local speakerChar = speaker.Character
-        local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
-        if not speakerHRP then return end
+    -- Teleport to the speaker
+    local speakerChar = speaker.Character
+    local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
+    if not speakerHRP then return end
 
-        local myChar = LP.Character
-        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if not myHRP then return end
+    local myChar = LP.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
 
-        local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
-        myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
-    elseif cmdName == "freeze" then
-        -- Freeze in place
-        local myChar = LP.Character
-        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if not myHRP then return end
-
-        -- Store original states
-        PM.FrozenStates[LP.UserId] = PM.FrozenStates[LP.UserId] or {}
-        for _, part in ipairs(myChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                PM.FrozenStates[LP.UserId][part] = {
-                    Anchored = part.Anchored,
-                    CanCollide = part.CanCollide
-                }
-                part.Anchored = true
-                part.CanCollide = false  -- Disable collision to prevent aura
-            end
-        end
-    elseif cmdName == "unfreeze" then
-        -- Unfreeze
-        local myChar = LP.Character
-        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if not myHRP then return end
-
-        -- Restore original states
-        local savedStates = PM.FrozenStates[LP.UserId]
-        if savedStates then
-            for _, part in ipairs(myChar:GetDescendants()) do
-                if part:IsA("BasePart") and savedStates[part] then
-                    part.Anchored = savedStates[part].Anchored
-                    part.CanCollide = savedStates[part].CanCollide
-                end
-            end
-            PM.FrozenStates[LP.UserId] = nil
-        else
-            -- Fallback if no saved states
-            for _, part in ipairs(myChar:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Anchored = false
-                    -- Restore CanCollide for HumanoidRootPart only (allow walking through body parts)
-                    if part.Name == "HumanoidRootPart" then
-                        part.CanCollide = true
-                    else
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end
-    end
+    local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
+    myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
 end
 
 -- Connect to local chat
@@ -736,24 +620,6 @@ local function cleanupPrism()
         if PM.Invis.keyConnection then pcall(function() PM.Invis.keyConnection:Disconnect() end) end
         if PM.Invis.charAddedConn then pcall(function() PM.Invis.charAddedConn:Disconnect() end) end
         if PM.Invis.EndInvis then pcall(function() PM.Invis.EndInvis() end) end
-    end
-
-    -- Cleanup Frozen States
-    if PM.FrozenStates then
-        for userId, savedStates in pairs(PM.FrozenStates) do
-            local plr = Players:GetPlayerByUserId(userId)
-            if plr and plr.Character then
-                for part, state in pairs(savedStates) do
-                    if part and part.Parent then
-                        pcall(function()
-                            part.Anchored = state.Anchored
-                            part.CanCollide = state.CanCollide
-                        end)
-                    end
-                end
-            end
-        end
-        PM.FrozenStates = {}
     end
 
     -- Cleanup Move While Emoting
@@ -1816,17 +1682,7 @@ end, true)
 registerCommand("bring", "Bring a player to you", {}, function(args)
     -- This command is handled by cross-script chat monitoring
     -- When you type it in chat, other script users will detect it and teleport themselves to you
-end, true, true, false)
-
-registerCommand("freeze", "Freeze a player in place", {}, function(args)
-    -- This command is handled by cross-script chat monitoring
-    -- When you type it in chat, other script users will detect it and freeze themselves
-end, true, true, true)
-
-registerCommand("unfreeze", "Unfreeze a player", {}, function(args)
-    -- This command is handled by cross-script chat monitoring
-    -- When you type it in chat, other script users will detect it and unfreeze themselves
-end, true, true, true)
+end, true, true)
 
 registerCommand("inspect", "Inspect a player", {}, function(args)
     local targetName = args[1] or ""
