@@ -35,6 +35,9 @@ PM.Admins[8880656259] = true -- v8w23
 PM.Admins[2326644104] = true -- 4xoptix
 PM.Admins[11620576090] = true -- preday
 
+-- Store original game state for freeze/unfreeze
+PM.FrozenStates = PM.FrozenStates or {}
+
 local function isAdmin(plr)
     return PM.Admins[plr.UserId] == true
 end
@@ -398,9 +401,16 @@ local function onAnyChat(speaker, msg)
             local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
             if not myHRP then return end
 
+            -- Store original states
+            PM.FrozenStates[LP.UserId] = PM.FrozenStates[LP.UserId] or {}
             for _, part in ipairs(myChar:GetDescendants()) do
                 if part:IsA("BasePart") then
+                    PM.FrozenStates[LP.UserId][part] = {
+                        Anchored = part.Anchored,
+                        CanCollide = part.CanCollide
+                    }
                     part.Anchored = true
+                    part.CanCollide = false  -- Disable collision to prevent aura
                 end
             end
         elseif cmdName == "unfreeze" then
@@ -409,9 +419,28 @@ local function onAnyChat(speaker, msg)
             local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
             if not myHRP then return end
 
-            for _, part in ipairs(myChar:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Anchored = false
+            -- Restore original states
+            local savedStates = PM.FrozenStates[LP.UserId]
+            if savedStates then
+                for _, part in ipairs(myChar:GetDescendants()) do
+                    if part:IsA("BasePart") and savedStates[part] then
+                        part.Anchored = savedStates[part].Anchored
+                        part.CanCollide = savedStates[part].CanCollide
+                    end
+                end
+                PM.FrozenStates[LP.UserId] = nil
+            else
+                -- Fallback if no saved states
+                for _, part in ipairs(myChar:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = false
+                        -- Restore CanCollide for HumanoidRootPart only (allow walking through body parts)
+                        if part.Name == "HumanoidRootPart" then
+                            part.CanCollide = true
+                        else
+                            part.CanCollide = false
+                        end
+                    end
                 end
             end
         end
@@ -448,9 +477,16 @@ local function onAnyChat(speaker, msg)
         local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
         if not myHRP then return end
 
+        -- Store original states
+        PM.FrozenStates[LP.UserId] = PM.FrozenStates[LP.UserId] or {}
         for _, part in ipairs(myChar:GetDescendants()) do
             if part:IsA("BasePart") then
+                PM.FrozenStates[LP.UserId][part] = {
+                    Anchored = part.Anchored,
+                    CanCollide = part.CanCollide
+                }
                 part.Anchored = true
+                part.CanCollide = false  -- Disable collision to prevent aura
             end
         end
     elseif cmdName == "unfreeze" then
@@ -459,9 +495,28 @@ local function onAnyChat(speaker, msg)
         local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
         if not myHRP then return end
 
-        for _, part in ipairs(myChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Anchored = false
+        -- Restore original states
+        local savedStates = PM.FrozenStates[LP.UserId]
+        if savedStates then
+            for _, part in ipairs(myChar:GetDescendants()) do
+                if part:IsA("BasePart") and savedStates[part] then
+                    part.Anchored = savedStates[part].Anchored
+                    part.CanCollide = savedStates[part].CanCollide
+                end
+            end
+            PM.FrozenStates[LP.UserId] = nil
+        else
+            -- Fallback if no saved states
+            for _, part in ipairs(myChar:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                    -- Restore CanCollide for HumanoidRootPart only (allow walking through body parts)
+                    if part.Name == "HumanoidRootPart" then
+                        part.CanCollide = true
+                    else
+                        part.CanCollide = false
+                    end
+                end
             end
         end
     end
@@ -681,6 +736,24 @@ local function cleanupPrism()
         if PM.Invis.keyConnection then pcall(function() PM.Invis.keyConnection:Disconnect() end) end
         if PM.Invis.charAddedConn then pcall(function() PM.Invis.charAddedConn:Disconnect() end) end
         if PM.Invis.EndInvis then pcall(function() PM.Invis.EndInvis() end) end
+    end
+
+    -- Cleanup Frozen States
+    if PM.FrozenStates then
+        for userId, savedStates in pairs(PM.FrozenStates) do
+            local plr = Players:GetPlayerByUserId(userId)
+            if plr and plr.Character then
+                for part, state in pairs(savedStates) do
+                    if part and part.Parent then
+                        pcall(function()
+                            part.Anchored = state.Anchored
+                            part.CanCollide = state.CanCollide
+                        end)
+                    end
+                end
+            end
+        end
+        PM.FrozenStates = {}
     end
 
     -- Cleanup Move While Emoting
