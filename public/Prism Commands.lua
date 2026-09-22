@@ -657,28 +657,27 @@ local function cleanupPrism()
         end
     end
 
-    -- Cleanup Backpack
-    if PM.Backpack then
-        PM.Backpack.active = false
-        if PM.Backpack.connection then PM.Backpack.connection:Disconnect(); PM.Backpack.connection = nil end
-        if PM.Backpack.charAddedConn then PM.Backpack.charAddedConn:Disconnect(); PM.Backpack.charAddedConn = nil end
-        PM.Backpack.target = nil
-        local char = LP.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
-                if root:FindFirstChild("BreakVelocity") then
-                    root.BreakVelocity:Destroy()
-                end
-            end
-            -- Restore original Seated state
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and PM.Backpack.origSeatedEnabled ~= nil then
-                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
-            end
-            PM.Backpack.origSeatedEnabled = nil
-        end
+    -- Cleanup ZDW (attach command)
+    ZDW.tgl = false
+    if ZDW.connection then
+        pcall(function() ZDW.connection:Disconnect() end)
+        ZDW.connection = nil
+    end
+    if ZDW.charAddedConn then
+        pcall(function() ZDW.charAddedConn:Disconnect() end)
+        ZDW.charAddedConn = nil
+    end
+    ZDW.ta = nil
+    ZDW.tp = nil
+    if ZDW.rp then
+        pcall(function() sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil) end)
+    end
+    if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
+        ZDW.hr.BreakVelocity:Destroy()
+    end
+    if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
+        pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
+        ZDW.origSeatedEnabled = nil
     end
 
     -- Clear state objects
@@ -3123,181 +3122,175 @@ registerCommand("tptool", "Click to teleport tool", {}, function(args)
 end)
 
 -- Backpack state management
-PM.Backpack = {
-    active = false,
-    target = nil,
+-- ZeroDelayWeld state
+local ZDW = {
+    ch = nil,
+    hm = nil,
+    rp = nil,
+    hr = nil,
+    tp = nil,
+    ta = nil,
+    tgl = true,
+    tid = 0,
+    origSeatedEnabled = nil,
     connection = nil,
-    charAddedConn = nil,
-    origSeatedEnabled = nil
+    charAddedConn = nil
 }
 
-registerCommand("backpack", "Attach to player's back", {}, function(args)
+-- Initialize ZDW character refs
+ZDW.ch = LP.Character or LP.CharacterAdded:Wait()
+ZDW.hm = ZDW.ch:WaitForChild("Humanoid")
+ZDW.rp = ZDW.hm.RootPart or ZDW.ch:WaitForChild("HumanoidRootPart")
+ZDW.hr = ZDW.rp
+
+local function zdwRep()
+    task.spawn(function()
+        while task.wait() do
+            if LP.Character == ZDW.ch and ZDW.tgl then
+                if ZDW.ta and ZDW.ta.Character and ZDW.ta.Character:FindFirstChild("Head") then
+                    ZDW.tp = ZDW.ta.Character.Head
+                end
+                if ZDW.rp and ZDW.tp then
+                    sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", ZDW.tp)
+                end
+            else
+                if ZDW.rp then
+                    sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
+                end
+                break
+            end
+        end
+    end)
+end
+
+local function zdwGp(n)
+    n = n:lower():gsub("%s", "")
+    for _, x in next, Players:GetPlayers() do
+        if x ~= LP and (x.Name:lower():match(n) or x.DisplayName:lower():match("^" .. n)) then
+            return x
+        end
+    end
+end
+
+registerCommand("attach", "ZeroDelayWeld attachment", {}, function(args)
     local targetName = table.concat(args, " ")
     if targetName == "" then
         -- Toggle off if active
-        if PM.Backpack.active then
-            PM.Backpack.active = false
-            if PM.Backpack.connection then
-                pcall(function() PM.Backpack.connection:Disconnect() end)
-                PM.Backpack.connection = nil
+        if ZDW.tgl then
+            ZDW.tgl = false
+            if ZDW.connection then
+                pcall(function() ZDW.connection:Disconnect() end)
+                ZDW.connection = nil
             end
-            if PM.Backpack.charAddedConn then
-                pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
-                PM.Backpack.charAddedConn = nil
+            if ZDW.charAddedConn then
+                pcall(function() ZDW.charAddedConn:Disconnect() end)
+                ZDW.charAddedConn = nil
             end
-            PM.Backpack.target = nil
-            -- Cleanup
-            local char = LP.Character
-            if char then
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
-                    if root:FindFirstChild("BreakVelocity") then
-                        root.BreakVelocity:Destroy()
-                    end
-                end
-                -- Restore original Seated state
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum and PM.Backpack.origSeatedEnabled ~= nil then
-                    pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
-                    PM.Backpack.origSeatedEnabled = nil
-                end
+            ZDW.ta = nil
+            ZDW.tp = nil
+            if ZDW.rp then
+                sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
+            end
+            if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
+                ZDW.hr.BreakVelocity:Destroy()
+            end
+            if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
+                pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
+                ZDW.origSeatedEnabled = nil
             end
         end
         return
     end
 
     -- Find target
-    local q = targetName:lower()
-    local target = nil
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            if p.Name:lower() == q or p.DisplayName:lower() == q then
-                target = p
-                break
-            end
-        end
-    end
-    if not target then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
-                    target = p
-                    break
-                end
-            end
-        end
-    end
-    if not target then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
-                    target = p
-                    break
-                end
-            end
-        end
-    end
+    local target = zdwGp(targetName)
     if not target then return end
 
     -- Toggle off if same target
-    if PM.Backpack.active and PM.Backpack.target == target then
-        PM.Backpack.active = false
-        if PM.Backpack.connection then
-            pcall(function() PM.Backpack.connection:Disconnect() end)
-            PM.Backpack.connection = nil
+    if ZDW.tgl and ZDW.ta == target then
+        ZDW.tgl = false
+        if ZDW.connection then
+            pcall(function() ZDW.connection:Disconnect() end)
+            ZDW.connection = nil
         end
-        if PM.Backpack.charAddedConn then
-            pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
-            PM.Backpack.charAddedConn = nil
+        if ZDW.charAddedConn then
+            pcall(function() ZDW.charAddedConn:Disconnect() end)
+            ZDW.charAddedConn = nil
         end
-        PM.Backpack.target = nil
-        local char = LP.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
-                if root:FindFirstChild("BreakVelocity") then
-                    root.BreakVelocity:Destroy()
-                end
-            end
-            -- Restore original Seated state
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum and PM.Backpack.origSeatedEnabled ~= nil then
-                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
-            end
-            PM.Backpack.origSeatedEnabled = nil
+        ZDW.ta = nil
+        ZDW.tp = nil
+        if ZDW.rp then
+            sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
+        end
+        if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
+            ZDW.hr.BreakVelocity:Destroy()
+        end
+        if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
+            pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
+            ZDW.origSeatedEnabled = nil
         end
         return
     end
 
     -- Clean up previous
-    if PM.Backpack.connection then
-        pcall(function() PM.Backpack.connection:Disconnect() end)
-        PM.Backpack.connection = nil
+    if ZDW.connection then
+        pcall(function() ZDW.connection:Disconnect() end)
+        ZDW.connection = nil
     end
-    if PM.Backpack.charAddedConn then
-        pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
-        PM.Backpack.charAddedConn = nil
+    if ZDW.charAddedConn then
+        pcall(function() ZDW.charAddedConn:Disconnect() end)
+        ZDW.charAddedConn = nil
     end
 
-    PM.Backpack.active = true
-    PM.Backpack.target = target
+    ZDW.ta = target
+    if target and target.Character then
+        ZDW.tp = target.Character:FindFirstChild("Head")
+    end
+
+    ZDW.tgl = true
+    ZDW.tid = ZDW.tid + 1
+    local cid = ZDW.tid
 
     -- Store and temporarily enable Seated state for antisit compatibility
-    local char = LP.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            PM.Backpack.origSeatedEnabled = hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
-            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
-        end
+    if ZDW.hm then
+        ZDW.origSeatedEnabled = ZDW.hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+        pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
     end
 
-    local tid = 0
-    tid = tid + 1
-    local cid = tid
+    zdwRep()
 
-    PM.Backpack.connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not PM.Backpack.active then return end
-        if not PM.Backpack.target then return end
+    ZDW.connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not ZDW.tgl then return end
+        if not ZDW.ta then return end
 
-        local char = LP.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum then return end
-
-        local targetChar = PM.Backpack.target.Character
-        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-            pcall(function()
-                if not root:FindFirstChild("BreakVelocity") then
+        pcall(function()
+            if ZDW.ta and ZDW.ta.Character and ZDW.ta.Character:FindFirstChild("HumanoidRootPart") and ZDW.hr then
+                if not ZDW.hr:FindFirstChild("BreakVelocity") then
                     local TempV = Instance.new("BodyVelocity")
                     TempV.Name = "BreakVelocity"
                     TempV.Velocity = Vector3.new(0, 0, 0)
                     TempV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                    TempV.Parent = root
+                    TempV.Parent = ZDW.hr
                 end
-                hum.Sit = true
-                root.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -3, 0)
-                root.Velocity = Vector3.new(0, 0, 0)
-            end)
-        end
+                if ZDW.hm then
+                    ZDW.hm.Sit = true
+                end
+                ZDW.hr.CFrame = ZDW.ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -3, 0)
+                ZDW.hr.Velocity = Vector3.new(0, 0, 0)
+            end
+        end)
     end)
 
     -- Handle respawn
-    PM.Backpack.charAddedConn = LP.CharacterAdded:Connect(function(newChar)
-        task.wait(0.5)
-        if PM.Backpack.active then
-            -- Re-enable Seated state on respawn
-            local hum = newChar:FindFirstChildOfClass("Humanoid")
-            if hum then
-                PM.Backpack.origSeatedEnabled = hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
-                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
-            end
-            tid = tid + 1
-            cid = tid
+    ZDW.charAddedConn = LP.CharacterAdded:Connect(function(nc)
+        ZDW.ch, ZDW.hm = nc, nc:WaitForChild("Humanoid")
+        ZDW.hr = nc:WaitForChild("HumanoidRootPart")
+        ZDW.rp = ZDW.hr
+        if ZDW.tgl then
+            ZDW.origSeatedEnabled = ZDW.hm:GetStateEnabled(Enum.HumanoidStateType.Seated)
+            pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
+            task.wait(0.5)
+            zdwRep()
         end
     end)
 end, true)
