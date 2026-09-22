@@ -678,19 +678,9 @@ local function cleanupPrism()
         pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
         ZDW.origSeatedEnabled = nil
     end
-    -- Force humanoid to stand up (SystemBroken method)
-    local char = LP.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                char.Animate.Disabled = false
-                local animtrack = hum:GetPlayingAnimationTracks()
-                for i, track in pairs(animtrack) do
-                    track:Stop()
-                end
-            end)
-        end
+    -- Force humanoid to stand up
+    if ZDW.hm then
+        pcall(function() ZDW.hm.Sit = false end)
     end
 
     -- Clear state objects
@@ -3219,19 +3209,9 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
             pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
             ZDW.origSeatedEnabled = nil
         end
-        -- Force humanoid to stand up (SystemBroken method)
-        local char = LP.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                pcall(function()
-                    char.Animate.Disabled = false
-                    local animtrack = hum:GetPlayingAnimationTracks()
-                    for i, track in pairs(animtrack) do
-                        track:Stop()
-                    end
-                end)
-            end
+        -- Force humanoid to stand up
+        if ZDW.hm then
+            pcall(function() ZDW.hm.Sit = false end)
         end
         return
     end
@@ -3321,19 +3301,9 @@ registerCommand("unbackpack", "Detach and stop sitting", {}, function(args)
         pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
         ZDW.origSeatedEnabled = nil
     end
-    -- Force humanoid to stand up (SystemBroken method)
-    local char = LP.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                char.Animate.Disabled = false
-                local animtrack = hum:GetPlayingAnimationTracks()
-                for i, track in pairs(animtrack) do
-                    track:Stop()
-                end
-            end)
-        end
+    -- Force humanoid to stand up
+    if ZDW.hm then
+        pcall(function() ZDW.hm.Sit = false end)
     end
 end, true)
 
