@@ -643,7 +643,7 @@ local function cleanupPrism()
             end
         end
     end
-    
+
     -- Cleanup View
     if PM.View then
         if PM.View.connection then PM.View.connection:Disconnect(); PM.View.connection = nil end
@@ -656,7 +656,31 @@ local function cleanupPrism()
             camera.CameraSubject = char.Humanoid
         end
     end
-    
+
+    -- Cleanup Backpack
+    if PM.Backpack then
+        PM.Backpack.active = false
+        if PM.Backpack.connection then PM.Backpack.connection:Disconnect(); PM.Backpack.connection = nil end
+        if PM.Backpack.charAddedConn then PM.Backpack.charAddedConn:Disconnect(); PM.Backpack.charAddedConn = nil end
+        PM.Backpack.target = nil
+        local char = LP.Character
+        if char then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
+                if root:FindFirstChild("BreakVelocity") then
+                    root.BreakVelocity:Destroy()
+                end
+            end
+            -- Restore original Seated state
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and PM.Backpack.origSeatedEnabled ~= nil then
+                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
+            end
+            PM.Backpack.origSeatedEnabled = nil
+        end
+    end
+
     -- Clear state objects
     PM.Fly = nil
     PM.Jump = nil
@@ -3097,6 +3121,186 @@ registerCommand("tptool", "Click to teleport tool", {}, function(args)
         giveTool()
     end)
 end)
+
+-- Backpack state management
+PM.Backpack = {
+    active = false,
+    target = nil,
+    connection = nil,
+    charAddedConn = nil,
+    origSeatedEnabled = nil
+}
+
+registerCommand("backpack", "Attach to player's back", {}, function(args)
+    local targetName = table.concat(args, " ")
+    if targetName == "" then
+        -- Toggle off if active
+        if PM.Backpack.active then
+            PM.Backpack.active = false
+            if PM.Backpack.connection then
+                pcall(function() PM.Backpack.connection:Disconnect() end)
+                PM.Backpack.connection = nil
+            end
+            if PM.Backpack.charAddedConn then
+                pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
+                PM.Backpack.charAddedConn = nil
+            end
+            PM.Backpack.target = nil
+            -- Cleanup
+            local char = LP.Character
+            if char then
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
+                    if root:FindFirstChild("BreakVelocity") then
+                        root.BreakVelocity:Destroy()
+                    end
+                end
+                -- Restore original Seated state
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum and PM.Backpack.origSeatedEnabled ~= nil then
+                    pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
+                    PM.Backpack.origSeatedEnabled = nil
+                end
+            end
+        end
+        return
+    end
+
+    -- Find target
+    local q = targetName:lower()
+    local target = nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            if p.Name:lower() == q or p.DisplayName:lower() == q then
+                target = p
+                break
+            end
+        end
+    end
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():sub(1, #q) == q or p.DisplayName:lower():sub(1, #q) == q then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+    if not target then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                if p.Name:lower():find(q, 1, true) or p.DisplayName:lower():find(q, 1, true) then
+                    target = p
+                    break
+                end
+            end
+        end
+    end
+    if not target then return end
+
+    -- Toggle off if same target
+    if PM.Backpack.active and PM.Backpack.target == target then
+        PM.Backpack.active = false
+        if PM.Backpack.connection then
+            pcall(function() PM.Backpack.connection:Disconnect() end)
+            PM.Backpack.connection = nil
+        end
+        if PM.Backpack.charAddedConn then
+            pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
+            PM.Backpack.charAddedConn = nil
+        end
+        PM.Backpack.target = nil
+        local char = LP.Character
+        if char then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                pcall(function() sethiddenproperty(root, "PhysicsRepRootPart", nil) end)
+                if root:FindFirstChild("BreakVelocity") then
+                    root.BreakVelocity:Destroy()
+                end
+            end
+            -- Restore original Seated state
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and PM.Backpack.origSeatedEnabled ~= nil then
+                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, PM.Backpack.origSeatedEnabled) end)
+            end
+            PM.Backpack.origSeatedEnabled = nil
+        end
+        return
+    end
+
+    -- Clean up previous
+    if PM.Backpack.connection then
+        pcall(function() PM.Backpack.connection:Disconnect() end)
+        PM.Backpack.connection = nil
+    end
+    if PM.Backpack.charAddedConn then
+        pcall(function() PM.Backpack.charAddedConn:Disconnect() end)
+        PM.Backpack.charAddedConn = nil
+    end
+
+    PM.Backpack.active = true
+    PM.Backpack.target = target
+
+    -- Store and temporarily enable Seated state for antisit compatibility
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            PM.Backpack.origSeatedEnabled = hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
+            pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
+        end
+    end
+
+    local tid = 0
+    tid = tid + 1
+    local cid = tid
+
+    PM.Backpack.connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not PM.Backpack.active then return end
+        if not PM.Backpack.target then return end
+
+        local char = LP.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+
+        local targetChar = PM.Backpack.target.Character
+        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            pcall(function()
+                if not root:FindFirstChild("BreakVelocity") then
+                    local TempV = Instance.new("BodyVelocity")
+                    TempV.Name = "BreakVelocity"
+                    TempV.Velocity = Vector3.new(0, 0, 0)
+                    TempV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    TempV.Parent = root
+                end
+                hum.Sit = true
+                root.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -3, 0)
+                root.Velocity = Vector3.new(0, 0, 0)
+            end)
+        end
+    end)
+
+    -- Handle respawn
+    PM.Backpack.charAddedConn = LP.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5)
+        if PM.Backpack.active then
+            -- Re-enable Seated state on respawn
+            local hum = newChar:FindFirstChildOfClass("Humanoid")
+            if hum then
+                PM.Backpack.origSeatedEnabled = hum:GetStateEnabled(Enum.HumanoidStateType.Seated)
+                pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
+            end
+            tid = tid + 1
+            cid = tid
+        end
+    end)
+end, true)
 
 registerCommand("jerk", "Jerk tool", {}, function(args)
     if PM.JerkActive then
