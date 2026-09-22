@@ -666,6 +666,10 @@ local function cleanupPrism()
         pcall(function() ZDW.charAddedConn:Disconnect() end)
         ZDW.charAddedConn = nil
     end
+    if ZDW.leavingConnection then
+        pcall(function() ZDW.leavingConnection:Disconnect() end)
+        ZDW.leavingConnection = nil
+    end
     ZDW.ta = nil
     ZDW.tp = nil
     if ZDW.rp then
@@ -3137,7 +3141,8 @@ local ZDW = {
     tid = 0,
     origSeatedEnabled = nil,
     connection = nil,
-    charAddedConn = nil
+    charAddedConn = nil,
+    leavingConnection = nil
 }
 
 -- Initialize ZDW character refs
@@ -3197,6 +3202,10 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
             pcall(function() ZDW.charAddedConn:Disconnect() end)
             ZDW.charAddedConn = nil
         end
+        if ZDW.leavingConnection then
+            pcall(function() ZDW.leavingConnection:Disconnect() end)
+            ZDW.leavingConnection = nil
+        end
         ZDW.ta = nil
         ZDW.tp = nil
         if ZDW.rp then
@@ -3224,6 +3233,10 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
     if ZDW.charAddedConn then
         pcall(function() ZDW.charAddedConn:Disconnect() end)
         ZDW.charAddedConn = nil
+    end
+    if ZDW.leavingConnection then
+        pcall(function() ZDW.leavingConnection:Disconnect() end)
+        ZDW.leavingConnection = nil
     end
 
     ZDW.ta = target
@@ -3277,6 +3290,26 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
             zdwRep()
         end
     end)
+
+    -- Auto-detach if target leaves
+    ZDW.leavingConnection = target.CharacterRemoving:Connect(function()
+        ZDW.tgl = false
+        ZDW.ta = nil
+        ZDW.tp = nil
+        if ZDW.rp then
+            sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
+        end
+        if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
+            ZDW.hr.BreakVelocity:Destroy()
+        end
+        if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
+            pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
+            ZDW.origSeatedEnabled = nil
+        end
+        if ZDW.hm then
+            pcall(function() ZDW.hm.Sit = false end)
+        end
+    end)
 end, true)
 
 registerCommand("unbackpack", "Detach and stop sitting", {}, function(args)
@@ -3288,6 +3321,10 @@ registerCommand("unbackpack", "Detach and stop sitting", {}, function(args)
     if ZDW.charAddedConn then
         pcall(function() ZDW.charAddedConn:Disconnect() end)
         ZDW.charAddedConn = nil
+    end
+    if ZDW.leavingConnection then
+        pcall(function() ZDW.leavingConnection:Disconnect() end)
+        ZDW.leavingConnection = nil
     end
     ZDW.ta = nil
     ZDW.tp = nil
