@@ -9,10 +9,9 @@
     nametag cleanup on unload and reload
     custom nametag gifs (bypass)
     add zero delay backpack / headsit / facebang and old method
-    fix anti sit
     hamster ball with noclip
     tp keybinding
-    
+
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
 repeat task.wait() until getgenv().PrismMain
@@ -657,7 +656,7 @@ local function cleanupPrism()
         end
     end
 
-    -- Cleanup ZDW (attach command)
+    -- Cleanup ZDW (backpack command)
     ZDW.tgl = false
     if ZDW.connection then
         pcall(function() ZDW.connection:Disconnect() end)
@@ -678,6 +677,20 @@ local function cleanupPrism()
     if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
         pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
         ZDW.origSeatedEnabled = nil
+    end
+    -- Force humanoid to stand up (SystemBroken method)
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                char.Animate.Disabled = false
+                local animtrack = hum:GetPlayingAnimationTracks()
+                for i, track in pairs(animtrack) do
+                    track:Stop()
+                end
+            end)
+        end
     end
 
     -- Clear state objects
@@ -3172,33 +3185,10 @@ local function zdwGp(n)
     end
 end
 
-registerCommand("attach", "ZeroDelayWeld attachment", {}, function(args)
+registerCommand("backpack", "Attach to player's back", {}, function(args)
     local targetName = table.concat(args, " ")
     if targetName == "" then
-        -- Toggle off if active
-        if ZDW.tgl then
-            ZDW.tgl = false
-            if ZDW.connection then
-                pcall(function() ZDW.connection:Disconnect() end)
-                ZDW.connection = nil
-            end
-            if ZDW.charAddedConn then
-                pcall(function() ZDW.charAddedConn:Disconnect() end)
-                ZDW.charAddedConn = nil
-            end
-            ZDW.ta = nil
-            ZDW.tp = nil
-            if ZDW.rp then
-                sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
-            end
-            if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
-                ZDW.hr.BreakVelocity:Destroy()
-            end
-            if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
-                pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
-                ZDW.origSeatedEnabled = nil
-            end
-        end
+        -- Just return if no target, don't toggle off
         return
     end
 
@@ -3228,6 +3218,20 @@ registerCommand("attach", "ZeroDelayWeld attachment", {}, function(args)
         if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
             pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
             ZDW.origSeatedEnabled = nil
+        end
+        -- Force humanoid to stand up (SystemBroken method)
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                pcall(function()
+                    char.Animate.Disabled = false
+                    local animtrack = hum:GetPlayingAnimationTracks()
+                    for i, track in pairs(animtrack) do
+                        track:Stop()
+                    end
+                end)
+            end
         end
         return
     end
@@ -3293,6 +3297,44 @@ registerCommand("attach", "ZeroDelayWeld attachment", {}, function(args)
             zdwRep()
         end
     end)
+end, true)
+
+registerCommand("unbackpack", "Detach and stop sitting", {}, function(args)
+    ZDW.tgl = false
+    if ZDW.connection then
+        pcall(function() ZDW.connection:Disconnect() end)
+        ZDW.connection = nil
+    end
+    if ZDW.charAddedConn then
+        pcall(function() ZDW.charAddedConn:Disconnect() end)
+        ZDW.charAddedConn = nil
+    end
+    ZDW.ta = nil
+    ZDW.tp = nil
+    if ZDW.rp then
+        sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", nil)
+    end
+    if ZDW.hr and ZDW.hr:FindFirstChild("BreakVelocity") then
+        ZDW.hr.BreakVelocity:Destroy()
+    end
+    if ZDW.hm and ZDW.origSeatedEnabled ~= nil then
+        pcall(function() ZDW.hm:SetStateEnabled(Enum.HumanoidStateType.Seated, ZDW.origSeatedEnabled) end)
+        ZDW.origSeatedEnabled = nil
+    end
+    -- Force humanoid to stand up (SystemBroken method)
+    local char = LP.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                char.Animate.Disabled = false
+                local animtrack = hum:GetPlayingAnimationTracks()
+                for i, track in pairs(animtrack) do
+                    track:Stop()
+                end
+            end)
+        end
+    end
 end, true)
 
 registerCommand("jerk", "Jerk tool", {}, function(args)
