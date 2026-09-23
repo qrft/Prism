@@ -496,7 +496,7 @@ local function createNametag()
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
@@ -939,7 +939,7 @@ local function createOtherNametag(plrObj)
     local bgGradient = Instance.new("UIGradient")
     if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
         local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(255, 230, 210) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
