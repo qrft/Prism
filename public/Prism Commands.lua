@@ -8,9 +8,10 @@
     better vcbypasser icons / talking detection
     nametag cleanup on unload and reload
     custom nametag gifs (bypass)
-    add zero delay backpack / headsit / facebang and old method
+    add zero delay headsit / facebang and old method
     hamster ball with noclip
     tp keybinding
+    easy edit for nametags
 
 ]]
 -- Wait for PrismMain to be initialized by Main.lua
