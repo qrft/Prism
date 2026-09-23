@@ -659,6 +659,7 @@ local function cleanupPrism()
 
     -- Cleanup ZDW (backpack command)
     ZDW.tgl = false
+    ZDW.tid = ZDW.tid + 1  -- Kill any CFrame loops
     if ZDW.connection then
         pcall(function() ZDW.connection:Disconnect() end)
         ZDW.connection = nil
@@ -3138,12 +3139,13 @@ local ZDW = {
     hr = nil,
     tp = nil,
     ta = nil,
-    tgl = true,
+    tgl = false,  -- Changed to false - only enable when command is used
     tid = 0,
     origSeatedEnabled = nil,
     connection = nil,
     charAddedConn = nil,
-    leavingConnection = nil
+    leavingConnection = nil,
+    cframeLoop = nil  -- Track the CFrame update loop separately
 }
 
 -- Initialize ZDW character refs
@@ -3195,6 +3197,7 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
     -- Toggle off if same target
     if ZDW.tgl and ZDW.ta == target then
         ZDW.tgl = false
+        ZDW.tid = ZDW.tid + 1  -- Kill any CFrame loops
         if ZDW.connection then
             pcall(function() ZDW.connection:Disconnect() end)
             ZDW.connection = nil
@@ -3223,6 +3226,8 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
         if ZDW.hm then
             pcall(function() ZDW.hm.Sit = false end)
         end
+        -- Increment tid to kill any old CFrame loops
+        ZDW.tid = ZDW.tid + 1
         return
     end
 
@@ -3257,24 +3262,39 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
 
     zdwRep()
 
+    -- Separate CFrame loop with tid tracking (like ZeroDelayWeld)
+    task.spawn(function()
+        while ZDW.tgl and cid == ZDW.tid and task.wait() do
+            if ZDW.ta and ZDW.ta.Character and ZDW.ta.Character:FindFirstChild("HumanoidRootPart") and ZDW.hr then
+                pcall(function()
+                    if not ZDW.hr:FindFirstChild("BreakVelocity") then
+                        local TempV = Instance.new("BodyVelocity")
+                        TempV.Name = "BreakVelocity"
+                        TempV.Velocity = Vector3.new(0, 0, 0)
+                        TempV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                        TempV.Parent = ZDW.hr
+                    end
+                    if ZDW.hm then
+                        ZDW.hm.Sit = true
+                    end
+                    ZDW.hr.CFrame = ZDW.ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -3, 0)
+                    ZDW.hr.Velocity = Vector3.new(0, 0, 0)
+                end)
+            end
+        end
+    end)
+
     ZDW.connection = game:GetService("RunService").Heartbeat:Connect(function()
         if not ZDW.tgl then return end
         if not ZDW.ta then return end
 
+        -- Update PhysicsRepRootPart target
         pcall(function()
-            if ZDW.ta and ZDW.ta.Character and ZDW.ta.Character:FindFirstChild("HumanoidRootPart") and ZDW.hr then
-                if not ZDW.hr:FindFirstChild("BreakVelocity") then
-                    local TempV = Instance.new("BodyVelocity")
-                    TempV.Name = "BreakVelocity"
-                    TempV.Velocity = Vector3.new(0, 0, 0)
-                    TempV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                    TempV.Parent = ZDW.hr
-                end
-                if ZDW.hm then
-                    ZDW.hm.Sit = true
-                end
-                ZDW.hr.CFrame = ZDW.ta.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.2) * CFrame.Angles(0, -3, 0)
-                ZDW.hr.Velocity = Vector3.new(0, 0, 0)
+            if ZDW.ta and ZDW.ta.Character and ZDW.ta.Character:FindFirstChild("Head") then
+                ZDW.tp = ZDW.ta.Character.Head
+            end
+            if ZDW.rp and ZDW.tp then
+                sethiddenproperty(ZDW.rp, "PhysicsRepRootPart", ZDW.tp)
             end
         end)
     end)
@@ -3295,6 +3315,7 @@ registerCommand("backpack", "Attach to player's back", {}, function(args)
     -- Auto-detach if target leaves
     ZDW.leavingConnection = target.CharacterRemoving:Connect(function()
         ZDW.tgl = false
+        ZDW.tid = ZDW.tid + 1  -- Kill any CFrame loops
         ZDW.ta = nil
         ZDW.tp = nil
         if ZDW.rp then
@@ -3315,6 +3336,7 @@ end, true)
 
 registerCommand("unbackpack", "Detach and stop sitting", {}, function(args)
     ZDW.tgl = false
+    ZDW.tid = ZDW.tid + 1  -- Kill any CFrame loops
     if ZDW.connection then
         pcall(function() ZDW.connection:Disconnect() end)
         ZDW.connection = nil
