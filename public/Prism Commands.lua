@@ -875,31 +875,34 @@ local function getMicPath()
     local CoreGui = game:GetService("CoreGui")
     local TopBarApp = CoreGui:FindFirstChild("TopBarApp")
     if not TopBarApp then return nil end
-    
+
     local TopBarApp2 = TopBarApp:FindFirstChild("TopBarApp")
     if not TopBarApp2 then return nil end
-    
+
     local UnibarLeftFrame = TopBarApp2:FindFirstChild("UnibarLeftFrame")
     if not UnibarLeftFrame then return nil end
-    
+
     local UnibarMenu = UnibarLeftFrame:FindFirstChild("UnibarMenu")
     if not UnibarMenu then return nil end
-    
+
     local frame2 = UnibarMenu:FindFirstChild("2")
     if not frame2 then return nil end
-    
-    local frame3 = frame2:FindFirstChild("3")
+
+    local unibar = frame2:FindFirstChild("Unibar")
+    if not unibar then return nil end
+
+    local frame3 = unibar:FindFirstChild("3")
     if not frame3 then return nil end
-    
-    return frame2, frame3
+
+    return unibar, frame3
 end
 
 local function createMuteButton()
-    local frame2, frame3 = getMicPath()
-    if not frame2 or not frame3 then return false end
-    
-    -- Resize UnibarMenu - 2
-    frame2.Size = UDim2.new(0, 140, 0, 44)
+    local unibar, frame3 = getMicPath()
+    if not unibar or not frame3 then return false end
+
+    -- Resize Unibar
+    unibar.Size = UDim2.new(0, 140, 0, 44)
     
     -- Remove existing button if present
     local existing = frame3:FindFirstChild("toggle_mic_mute")
@@ -1041,19 +1044,19 @@ local function applyUnmuteUI()
 end
 
 local function setupSizeMonitor()
-    local frame2, _ = getMicPath()
-    if not frame2 then return end
+    local unibar, _ = getMicPath()
+    if not unibar then return end
 
     local targetSize = UDim2.new(0, 140, 0, 44)
     local RunService = game:GetService("RunService")
 
     PM.VCBypasser.sizeMonitorConn = RunService.RenderStepped:Connect(function()
         if not PM.VCBypasser.active then return end
-        if not frame2 or not frame2.Parent then return end
+        if not unibar or not unibar.Parent then return end
 
-        if frame2.Size.X.Offset < 140 or frame2.Size.Y.Offset < 44 then
+        if unibar.Size.X.Offset < 140 or unibar.Size.Y.Offset < 44 then
             pcall(function()
-                frame2.Size = targetSize
+                unibar.Size = targetSize
             end)
         end
     end)
