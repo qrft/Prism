@@ -797,18 +797,22 @@ local function toggleNametag()
                 hideDefaultNametag(plr)
             end
         end
-        -- Hide default nametags for bypass users
+        -- Hide default nametags for bypass users (only if they have prism nametags)
         for userId in pairs(BYPASS_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                hideDefaultNametag(plr)
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    hideDefaultNametag(plr)
+                end
             end
         end
-        -- Hide default nametags for optix users
+        -- Hide default nametags for optix users (only if they have prism nametags)
         for userId in pairs(OPTIX_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                hideDefaultNametag(plr)
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    hideDefaultNametag(plr)
+                end
             end
         end
     else
@@ -828,32 +832,22 @@ local function toggleNametag()
                 restoreDefaultNametag(plr)
             end
         end
-        -- Restore default nametags for bypass users
+        -- Restore default nametags for bypass users (only if they had prism nametags)
         for userId in pairs(BYPASS_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                restoreDefaultNametag(plr)
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
             end
         end
-        -- Restore default nametags for optix users
+        -- Restore default nametags for optix users (only if they had prism nametags)
         for userId in pairs(OPTIX_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                restoreDefaultNametag(plr)
-            end
-        end
-        -- Restore default nametags for bypass users (second location)
-        for userId in pairs(BYPASS_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                restoreDefaultNametag(plr)
-            end
-        end
-        -- Restore default nametags for optix users
-        for userId in pairs(OPTIX_USER_IDS) do
-            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plr then
-                restoreDefaultNametag(plr)
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
             end
         end
     end
@@ -1276,36 +1270,40 @@ local function updateOtherNametags()
         end
     end
 
-    -- Create nametags for bypass users
+    -- Create nametags for bypass users (only if in API)
     for userId in pairs(BYPASS_USER_IDS) do
-        local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
-        if plrObj and not otherNametags[userId] then
-            if plrObj.Character then
-                createOtherNametag(plrObj)
-            else
-                plrObj.CharacterAdded:Connect(function(char)
-                    task.wait(0.5)
-                    if BYPASS_USER_IDS[userId] and not otherNametags[userId] then
-                        createOtherNametag(plrObj)
-                    end
-                end)
+        if prismUsers[userId] then
+            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plrObj and not otherNametags[userId] then
+                if plrObj.Character then
+                    createOtherNametag(plrObj)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if BYPASS_USER_IDS[userId] and prismUsers[userId] and not otherNametags[userId] then
+                            createOtherNametag(plrObj)
+                        end
+                    end)
+                end
             end
         end
     end
 
-    -- Create nametags for optix users
+    -- Create nametags for optix users (only if in API)
     for userId in pairs(OPTIX_USER_IDS) do
-        local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
-        if plrObj and not otherNametags[userId] then
-            if plrObj.Character then
-                createOtherNametag(plrObj)
-            else
-                plrObj.CharacterAdded:Connect(function(char)
-                    task.wait(0.5)
-                    if OPTIX_USER_IDS[userId] and not otherNametags[userId] then
-                        createOtherNametag(plrObj)
-                    end
-                end)
+        if prismUsers[userId] then
+            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plrObj and not otherNametags[userId] then
+                if plrObj.Character then
+                    createOtherNametag(plrObj)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if OPTIX_USER_IDS[userId] and prismUsers[userId] and not otherNametags[userId] then
+                            createOtherNametag(plrObj)
+                        end
+                    end)
+                end
             end
         end
     end
@@ -1317,20 +1315,6 @@ local function updateOtherNametags()
     end
 
     for userId, tagData in pairs(otherNametags) do
-        if not currentPlayers[userId] then
-            removeOtherNametag(userId)
-        end
-    end
-
-    -- Remove bypass nametags for players who are NOT in the server
-    for userId in pairs(BYPASS_USER_IDS) do
-        if not currentPlayers[userId] then
-            removeOtherNametag(userId)
-        end
-    end
-
-    -- Remove optix nametags for players who are NOT in the server
-    for userId in pairs(OPTIX_USER_IDS) do
         if not currentPlayers[userId] then
             removeOtherNametag(userId)
         end
@@ -1506,6 +1490,24 @@ PM.PrismNametags = {
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
             if plr then
                 restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for bypass users (only if they had prism nametags)
+        for userId in pairs(BYPASS_USER_IDS) do
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
+            end
+        end
+        -- Restore default nametags for optix users (only if they had prism nametags)
+        for userId in pairs(OPTIX_USER_IDS) do
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
             end
         end
         
