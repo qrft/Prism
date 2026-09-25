@@ -3473,7 +3473,24 @@ registerCommand("walkonair", "Walk on invisible platform with height control", {
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -4374,7 +4391,24 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -5226,7 +5260,24 @@ registerCommand("animations", "Animation Replacer", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -5737,7 +5788,27 @@ registerCommand("emotes", "All Emotes On Roblox", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                -- Calculate new position
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                -- Clamp position to keep frame within screen bounds
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                -- Allow some margin (20 pixels) from edges
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -7577,7 +7648,24 @@ registerCommand("trip", "Trip your character", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -7946,7 +8034,24 @@ registerCommand("fakeout", "Fake out below void", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -8347,7 +8452,24 @@ registerCommand("gravity", "Control gravity", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -9736,7 +9858,24 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -10216,7 +10355,24 @@ registerCommand("spin", "Spin your character", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -10685,7 +10841,24 @@ registerCommand("camera", "Camera controls", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -11153,7 +11326,24 @@ registerCommand("respawnlastlocation", "Respawn to last location with toggle", {
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
@@ -11497,7 +11687,24 @@ registerCommand("fly", "Fly around", {}, function(args)
         UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = input.Position - dragStart
-                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+
+                local newX = startPos.X.Offset + delta.X
+                local newY = startPos.Y.Offset + delta.Y
+
+                local frameWidth = MainFrame.AbsoluteSize.X
+                local frameHeight = MainFrame.AbsoluteSize.Y
+
+                local margin = 20
+                local minX = margin
+                local maxX = viewportSize.X - frameWidth - margin
+                local minY = margin
+                local maxY = viewportSize.Y - frameHeight - margin
+
+                newX = math.clamp(newX, minX, maxX)
+                newY = math.clamp(newY, minY, maxY)
+
+                MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
 
