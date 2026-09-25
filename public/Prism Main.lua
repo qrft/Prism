@@ -456,11 +456,18 @@ local function createNametag(apiData)
     local userId = player.UserId
 
     -- API check: only show special roles if user is in API
+    if isOwnerUser and not isUserInAPI(userId, apiData) then
+        isOwnerUser = false
+    end
     if isBypassUser and not isUserInAPI(userId, apiData) then
         isBypassUser = false
     end
     if isOptixUser and not isUserInAPI(userId, apiData) then
         isOptixUser = false
+    end
+    if isCustomUser and not isUserInAPI(userId, apiData) then
+        isCustomUser = false
+        customSettings = nil
     end
 
 
@@ -792,7 +799,7 @@ local function restoreDefaultNametag(plr)
 end
 
 local function isSpecialUser(userId)
-    return isOwner(userId) or isBypassUser(userId) or isCustomUser(userId)
+    return isOwner(userId) or isBypassUser(userId) or isOptixUser(userId) or isCustomUser(userId)
 end
 
 local function toggleNametag()
@@ -817,6 +824,34 @@ local function toggleNametag()
                 hideDefaultNametag(plr)
             end
         end
+        -- Hide default nametags for owner users
+        for userId in pairs(OWNER_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
+        -- Hide default nametags for bypass users
+        for userId in pairs(BYPASS_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
+        -- Hide default nametags for optix users
+        for userId in pairs(OPTIX_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
+        -- Hide default nametags for custom users
+        for userId in pairs(CUSTOM_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                hideDefaultNametag(plr)
+            end
+        end
     else
         if nametagGui then
             nametagGui.Enabled = false
@@ -829,6 +864,34 @@ local function toggleNametag()
         -- Restore default nametags for prism users
         restoreDefaultNametag(PM.Svc.Players.LocalPlayer)
         for userId, tagData in pairs(otherNametags) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for owner users
+        for userId in pairs(OWNER_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for bypass users
+        for userId in pairs(BYPASS_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for optix users
+        for userId in pairs(OPTIX_USER_IDS) do
+            local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plr then
+                restoreDefaultNametag(plr)
+            end
+        end
+        -- Restore default nametags for custom users
+        for userId in pairs(CUSTOM_USER_IDS) do
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
             if plr then
                 restoreDefaultNametag(plr)
@@ -866,11 +929,18 @@ local function createOtherNametag(plrObj, apiData)
     local userId = plrObj.UserId
 
     -- API check: only show special roles if user is in API
+    if isOwnerUser and not isUserInAPI(userId, apiData) then
+        isOwnerUser = false
+    end
     if isBypassUser and not isUserInAPI(userId, apiData) then
         isBypassUser = false
     end
     if isOptixUser and not isUserInAPI(userId, apiData) then
         isOptixUser = false
+    end
+    if isCustomUser and not isUserInAPI(userId, apiData) then
+        isCustomUser = false
+        customSettings = nil
     end
 
 
@@ -1262,9 +1332,27 @@ local function updateOtherNametags()
         end
     end
 
+    -- Create nametags for owner users (only if in API)
+    for userId in pairs(OWNER_USER_IDS) do
+        if isUserInAPI(userId, data) then
+            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plrObj and not otherNametags[userId] then
+                if plrObj.Character then
+                    createOtherNametag(plrObj, data)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if OWNER_USER_IDS[userId] and not otherNametags[userId] then
+                            createOtherNametag(plrObj, data)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
     -- Create nametags for bypass users (only if in API)
     for userId in pairs(BYPASS_USER_IDS) do
-        -- Check if user is in API first
         if isUserInAPI(userId, data) then
             local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
             if plrObj and not otherNametags[userId] then
@@ -1284,7 +1372,6 @@ local function updateOtherNametags()
 
     -- Create nametags for optix users (only if in API)
     for userId in pairs(OPTIX_USER_IDS) do
-        -- Check if user is in API first
         if isUserInAPI(userId, data) then
             local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
             if plrObj and not otherNametags[userId] then
@@ -1301,6 +1388,25 @@ local function updateOtherNametags()
             end
         end
     end
+
+    -- Create nametags for custom users (only if in API)
+    for userId in pairs(CUSTOM_USER_IDS) do
+        if isUserInAPI(userId, data) then
+            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plrObj and not otherNametags[userId] then
+                if plrObj.Character then
+                    createOtherNametag(plrObj, data)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if CUSTOM_USER_IDS[userId] and not otherNametags[userId] then
+                            createOtherNametag(plrObj, data)
+                        end
+                    end)
+                end
+            end
+        end
+    end
     
     -- Only remove nametags for players who are NOT in the server
     local currentPlayers = {}
@@ -1309,6 +1415,28 @@ local function updateOtherNametags()
     end
 
     for userId, tagData in pairs(otherNametags) do
+        if not currentPlayers[userId] then
+            removeOtherNametag(userId)
+        end
+    end
+
+    -- Remove nametags for special users who left
+    for userId in pairs(OWNER_USER_IDS) do
+        if not currentPlayers[userId] then
+            removeOtherNametag(userId)
+        end
+    end
+    for userId in pairs(BYPASS_USER_IDS) do
+        if not currentPlayers[userId] then
+            removeOtherNametag(userId)
+        end
+    end
+    for userId in pairs(OPTIX_USER_IDS) do
+        if not currentPlayers[userId] then
+            removeOtherNametag(userId)
+        end
+    end
+    for userId in pairs(CUSTOM_USER_IDS) do
         if not currentPlayers[userId] then
             removeOtherNametag(userId)
         end
