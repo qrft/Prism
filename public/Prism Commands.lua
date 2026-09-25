@@ -3481,11 +3481,10 @@ registerCommand("walkonair", "Walk on invisible platform with height control", {
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -4399,11 +4398,10 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -5268,11 +5266,10 @@ registerCommand("animations", "Animation Replacer", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -7656,11 +7653,10 @@ registerCommand("trip", "Trip your character", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -8042,11 +8038,10 @@ registerCommand("fakeout", "Fake out below void", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -8460,11 +8455,10 @@ registerCommand("gravity", "Control gravity", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -9866,11 +9860,10 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -10363,11 +10356,10 @@ registerCommand("spin", "Spin your character", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -10849,11 +10841,10 @@ registerCommand("camera", "Camera controls", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -11334,11 +11325,10 @@ registerCommand("respawnlastlocation", "Respawn to last location with toggle", {
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
@@ -11695,11 +11685,10 @@ registerCommand("fly", "Fly around", {}, function(args)
                 local frameWidth = MainFrame.AbsoluteSize.X
                 local frameHeight = MainFrame.AbsoluteSize.Y
 
-                local margin = 20
-                local minX = margin
-                local maxX = viewportSize.X - frameWidth - margin
-                local minY = margin
-                local maxY = viewportSize.Y - frameHeight - margin
+                local minX = 0
+                local maxX = viewportSize.X - frameWidth
+                local minY = 0
+                local maxY = viewportSize.Y - frameHeight
 
                 newX = math.clamp(newX, minX, maxX)
                 newY = math.clamp(newY, minY, maxY)
