@@ -789,14 +789,16 @@ local function isSpecialUser(userId)
     return isOwner(userId) or isBypassUser(userId) or isCustomUser(userId)
 end
 
-local function toggleNametag()
+local function toggleNametag(apiData)
+    if not apiData then
+        apiData = readFromAPI()
+    end
     nametagEnabled = not nametagEnabled
     if nametagEnabled then
         if nametagGui then
             nametagGui.Enabled = true
         else
-            local data = readFromAPI()
-            createNametag(data)
+            createNametag(apiData)
         end
         for userId, tagData in pairs(otherNametags) do
             if tagData.gui then
@@ -1863,7 +1865,8 @@ PM.createMainGUI = function()
             PM.isNameTagsEnabled = false
             button.MouseButton1Click:Connect(function()
                 PM.playClickSound()
-                PM.isNameTagsEnabled = PM.PrismNametags.toggle()
+                local data = readFromAPI()
+                PM.isNameTagsEnabled = PM.PrismNametags.toggle(data)
                 if PM.isTerminalOpen then
                     PM.isTerminalOpen = false
                     PM.hideTerminalPanel()
@@ -3985,11 +3988,6 @@ task.spawn(function()
         end)
     end
 end)
-
--- Expose nametag toggle function for the UI button
-PM.PrismNametags = {
-    toggle = toggleNametag
-}
 
 -- Send initial data IMMEDIATELY on execute
 sendNametagData()
