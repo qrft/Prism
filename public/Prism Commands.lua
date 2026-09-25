@@ -340,7 +340,7 @@ local function onChat(msg)
     end
 end
 
--- Monitor all chat for cross-script bring commands
+-- Monitor all chat for cross-script bring/freeze/unfreeze commands
 local function onAnyChat(speaker, msg)
     if not msg:sub(1, 1) == ChatPrefix then return end
 
@@ -356,17 +356,43 @@ local function onAnyChat(speaker, msg)
     local cmdName = parts[1]:lower()
     table.remove(parts, 1)
 
-    -- Only handle bring commands from admins
-    if cmdName ~= "bring" then return end
-    if not isAdmin(speaker) then return end
+    -- Handle bring command (admin and owner)
+    if cmdName == "bring" then
+        if not isAdmin(speaker) and not isOwner(speaker) then return end
 
-    local targetName = parts[1] or ""
-    if targetName == "" then return end
+        local targetName = parts[1] or ""
+        if targetName == "" then return end
 
-    local q = targetName:lower()
+        local q = targetName:lower()
 
-    -- Check if "all" or if I'm the target
-    if q == "all" then
+        -- Check if "all" or if I'm the target
+        if q == "all" then
+            -- Teleport to the speaker
+            local speakerChar = speaker.Character
+            local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
+            if not speakerHRP then return end
+
+            local myChar = LP.Character
+            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if not myHRP then return end
+
+            local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
+            myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
+            return
+        end
+
+        -- Check if the target matches me
+        local isTarget = false
+        if LP.Name:lower() == q or LP.DisplayName:lower() == q then
+            isTarget = true
+        elseif LP.Name:lower():sub(1, #q) == q or LP.DisplayName:lower():sub(1, #q) == q then
+            isTarget = true
+        elseif LP.Name:lower():find(q, 1, true) or LP.DisplayName:lower():find(q, 1, true) then
+            isTarget = true
+        end
+
+        if not isTarget then return end
+
         -- Teleport to the speaker
         local speakerChar = speaker.Character
         local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
@@ -381,29 +407,153 @@ local function onAnyChat(speaker, msg)
         return
     end
 
-    -- Check if the target matches me
-    local isTarget = false
-    if LP.Name:lower() == q or LP.DisplayName:lower() == q then
-        isTarget = true
-    elseif LP.Name:lower():sub(1, #q) == q or LP.DisplayName:lower():sub(1, #q) == q then
-        isTarget = true
-    elseif LP.Name:lower():find(q, 1, true) or LP.DisplayName:lower():find(q, 1, true) then
-        isTarget = true
+    -- Handle freeze command (owner only)
+    if cmdName == "freeze" then
+        if not isOwner(speaker) then return end
+
+        local targetName = parts[1] or ""
+        if targetName == "" then return end
+
+        local q = targetName:lower()
+
+        -- Check if "all" or if I'm the target
+        if q == "all" then
+            -- Freeze myself
+            local myChar = LP.Character
+            if not myChar then return end
+
+            local savedStates = {}
+            for _, part in ipairs(myChar:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function()
+                        savedStates[part] = part.Anchored
+                        part.Anchored = true
+                    end)
+                end
+            end
+
+            local conn = LP.CharacterAdded:Connect(function(char)
+                task.wait(0.1)
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        pcall(function()
+                            savedStates[part] = part.Anchored
+                            part.Anchored = true
+                        end)
+                    end
+                end
+            end)
+
+            PM.FrozenPlayers[LP.UserId] = { connection = conn, savedStates = savedStates }
+            return
+        end
+
+        -- Check if the target matches me
+        local isTarget = false
+        if LP.Name:lower() == q or LP.DisplayName:lower() == q then
+            isTarget = true
+        elseif LP.Name:lower():sub(1, #q) == q or LP.DisplayName:lower():sub(1, #q) == q then
+            isTarget = true
+        elseif LP.Name:lower():find(q, 1, true) or LP.DisplayName:lower():find(q, 1, true) then
+            isTarget = true
+        end
+
+        if not isTarget then return end
+
+        -- Freeze myself
+        local myChar = LP.Character
+        if not myChar then return end
+
+        local savedStates = {}
+        for _, part in ipairs(myChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                pcall(function()
+                    savedStates[part] = part.Anchored
+                    part.Anchored = true
+                end)
+            end
+        end
+
+        local conn = LP.CharacterAdded:Connect(function(char)
+            task.wait(0.1)
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function()
+                        savedStates[part] = part.Anchored
+                        part.Anchored = true
+                    end)
+                end
+            end
+        end)
+
+        PM.FrozenPlayers[LP.UserId] = { connection = conn, savedStates = savedStates }
+        return
     end
 
-    if not isTarget then return end
+    -- Handle unfreeze command (owner only)
+    if cmdName == "unfreeze" then
+        if not isOwner(speaker) then return end
 
-    -- Teleport to the speaker
-    local speakerChar = speaker.Character
-    local speakerHRP = speakerChar and speakerChar:FindFirstChild("HumanoidRootPart")
-    if not speakerHRP then return end
+        local targetName = parts[1] or ""
+        if targetName == "" then return end
 
-    local myChar = LP.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
+        local q = targetName:lower()
 
-    local targetPos = speakerHRP.CFrame.Position + speakerHRP.CFrame.LookVector * 3
-    myHRP.CFrame = CFrame.new(targetPos, speakerHRP.Position)
+        -- Check if "all" or if I'm the target
+        if q == "all" then
+            -- Unfreeze myself
+            if not PM.FrozenPlayers[LP.UserId] then return end
+
+            local data = PM.FrozenPlayers[LP.UserId]
+            if data.connection then pcall(function() data.connection:Disconnect() end) end
+
+            local myChar = LP.Character
+            if myChar and data.savedStates then
+                for part, originalState in pairs(data.savedStates) do
+                    if part and part.Parent then
+                        pcall(function()
+                            part.Anchored = originalState
+                        end)
+                    end
+                end
+            end
+
+            PM.FrozenPlayers[LP.UserId] = nil
+            return
+        end
+
+        -- Check if the target matches me
+        local isTarget = false
+        if LP.Name:lower() == q or LP.DisplayName:lower() == q then
+            isTarget = true
+        elseif LP.Name:lower():sub(1, #q) == q or LP.DisplayName:lower():sub(1, #q) == q then
+            isTarget = true
+        elseif LP.Name:lower():find(q, 1, true) or LP.DisplayName:lower():find(q, 1, true) then
+            isTarget = true
+        end
+
+        if not isTarget then return end
+
+        -- Unfreeze myself
+        if not PM.FrozenPlayers[LP.UserId] then return end
+
+        local data = PM.FrozenPlayers[LP.UserId]
+        if data.connection then pcall(function() data.connection:Disconnect() end) end
+
+        local myChar = LP.Character
+        if myChar and data.savedStates then
+            for part, originalState in pairs(data.savedStates) do
+                if part and part.Parent then
+                    pcall(function()
+                        part.Anchored = originalState
+                    end)
+                end
+            end
+        end
+
+        PM.FrozenPlayers[LP.UserId] = nil
+        return
+    end
 end
 
 -- Connect to local chat
@@ -1685,10 +1835,10 @@ registerCommand("unview", "Stop viewing a player", {}, function(args)
     end
 end, true)
 
-registerCommand("bring", "Bring a player to you", {}, function(args)
+registerCommand("bring", "Bring a player to you (admin and owner, chat monitored)", {}, function(args)
     -- This command is handled by cross-script chat monitoring
-    -- When you type it in chat, other script users will detect it and teleport themselves to you
-end, true, true)
+    -- When an admin or owner types it in chat, the target's client detects it and teleports themselves
+end, true)
 
 registerCommand("inspect", "Inspect a player", {}, function(args)
     local targetName = args[1] or ""
@@ -2280,6 +2430,29 @@ registerCommand("unmuteall", "Unmute all players", {}, function(args)
     end
     PM.MutedPlayers = {}
 end, true)
+
+-- Frozen players state (for local freeze effect when targeted by owner)
+PM.FrozenPlayers = {}
+
+-- Owner user IDs (must match Prism Main.lua)
+local OWNER_USER_IDS = {
+    [7275889224] = true,  -- Soul / Tampon
+    [5712636024] = true,  -- Kavrenoo
+}
+
+local function isOwner(plr)
+    return OWNER_USER_IDS[plr.UserId] == true
+end
+
+registerCommand("freeze", "Freeze a player (chat monitored)", {}, function(args)
+    -- This command is handled by cross-script chat monitoring
+    -- When an owner types it in chat, the target's client detects it and freezes themselves
+end, true, true)
+
+registerCommand("unfreeze", "Unfreeze a player (chat monitored)", {}, function(args)
+    -- This command is handled by cross-script chat monitoring
+    -- When an owner types it in chat, the target's client detects it and unfreezes themselves
+end, true, true)
 
 -- Invisibility state
 PM.Invis = {
