@@ -444,20 +444,6 @@ local function createNametag()
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
     local userId = player.UserId
 
-    -- API check: only show special roles if user is in API
-    if isOwnerUser and not isUserInAPI(userId, apiData) then
-        isOwnerUser = false
-    end
-    if isBypassUser and not isUserInAPI(userId, apiData) then
-        isBypassUser = false
-    end
-    if isOptixUser and not isUserInAPI(userId, apiData) then
-        isOptixUser = false
-    end
-    if isCustomUser and not isUserInAPI(userId, apiData) then
-        isCustomUser = false
-        customSettings = nil
-    end
 
 
     -- Custom colors for owners
