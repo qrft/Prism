@@ -3478,8 +3478,17 @@ registerCommand("walkonair", "Walk on invisible platform with height control", {
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -4395,8 +4404,17 @@ registerCommand("antiall", "Anti Everything", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -5263,8 +5281,17 @@ registerCommand("animations", "Animation Replacer", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -7650,8 +7677,17 @@ registerCommand("trip", "Trip your character", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -8035,8 +8071,17 @@ registerCommand("fakeout", "Fake out below void", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -8452,8 +8497,17 @@ registerCommand("gravity", "Control gravity", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -9857,8 +9911,17 @@ registerCommand("speed", "WalkSpeed and CFrame speed control", {}, function(args
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -10353,8 +10416,17 @@ registerCommand("spin", "Spin your character", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -10838,8 +10910,17 @@ registerCommand("camera", "Camera controls", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -11322,8 +11403,17 @@ registerCommand("respawnlastlocation", "Respawn to last location with toggle", {
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
@@ -11682,8 +11772,17 @@ registerCommand("fly", "Fly around", {}, function(args)
                 local newX = startPos.X.Offset + delta.X
                 local newY = startPos.Y.Offset + delta.Y
 
-                local frameWidth = MainFrame.AbsoluteSize.X
-                local frameHeight = MainFrame.AbsoluteSize.Y
+                -- Use frame's defined size (not AbsoluteSize which may be inaccurate)
+                local frameWidth = MainFrame.Size.X.Offset
+                local frameHeight = MainFrame.Size.Y.Offset
+
+                -- If using scale, get approximate size from viewport
+                if frameWidth == 0 then
+                    frameWidth = viewportSize.X * MainFrame.Size.X.Scale
+                end
+                if frameHeight == 0 then
+                    frameHeight = viewportSize.Y * MainFrame.Size.Y.Scale
+                end
 
                 local minX = 0
                 local maxX = viewportSize.X - frameWidth
