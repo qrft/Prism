@@ -1141,11 +1141,54 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
     if guiExists("Prism_VCBypassGUI") then return end
 
     local function isMicUnmuted()
+        -- Method 1: Property-based detection
         local adi = getPlayerAudioInput(LP)
+        local propertyCheck = false
         if adi then
-            return adi.Active == true and adi.Muted == false
+            propertyCheck = adi.Active == true and adi.Muted == false
         end
-        return false
+
+        -- Method 2: Image-based detection
+        local imageCheck = false
+        local CoreGui = game:GetService("CoreGui")
+        local TopBarApp = CoreGui:FindFirstChild("TopBarApp")
+        if TopBarApp then
+            local path = TopBarApp:FindFirstChild("TopBarApp")
+            if path then
+                local unibarLeft = path:FindFirstChild("UnibarLeftFrame")
+                if unibarLeft then
+                    local unibarMenu = unibarLeft:FindFirstChild("UnibarMenu")
+                    if unibarMenu then
+                        local two = unibarMenu:FindFirstChild("2")
+                        if two then
+                            local unibar = two:FindFirstChild("Unibar")
+                            if unibar then
+                                local three = unibar:FindFirstChild("3")
+                                if three then
+                                    local toggle = three:FindFirstChild("toggle_mic_mute")
+                                    if toggle then
+                                        local iconFrame = toggle:FindFirstChild("IntegrationIconFrame")
+                                        if iconFrame then
+                                            local icon = iconFrame:FindFirstChild("IntegrationIcon")
+                                            if icon then
+                                                local image = icon:FindFirstChild("1")
+                                                if image and image:IsA("ImageLabel") then
+                                                    local imagePath = image.Image
+                                                    imageCheck = imagePath == "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Either method passes for bypass to run (image is fallback)
+        return propertyCheck or imageCheck
     end
 
     local VCB_GUI_FILE = "prism/prism_vcb_gui_settings.json"
