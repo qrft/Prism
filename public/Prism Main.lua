@@ -160,42 +160,18 @@ local OPTIX_USER_IDS = {
     [2326644104] = true,  -- Optix
 }
 
+-- Special custom user IDs for custom nametags (works like bypass user)
+local CUSTOM_ROLE_USER_IDS = {
+    [5399716865] = true,  -- g2s4v
+    [8880656259] = true,  -- v8w23
+}
+
 -- Custom nametag users with their settings
 local CUSTOM_USER_IDS = {
     [11311052888] = {
         assetId = "81487439997829",
         borderColor = Color3.fromRGB(165, 122, 90),
         bgColor = nil
-    },  -- jazzy
-    [8880656259] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [194578] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [8012850] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [3441987937] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [5399716865] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
     },
     [1675739196] = {
         assetId = "79000613041903",
@@ -206,7 +182,7 @@ local CUSTOM_USER_IDS = {
         assetId = "84178544959286",
         borderColor = Color3.fromRGB(0, 0, 0),
         bgColor = nil,
-        hideText = true  -- Hides username and display name
+        hideText = true
     },
     [1196547606] = {
         assetId = "136492923299035",
@@ -228,6 +204,11 @@ end
 -- Check if user is an optix user (special role like bypass but no typing effect)
 local function isOptixUser(userId)
     return OPTIX_USER_IDS[userId] ~= nil
+end
+
+-- Check if user is a custom role user (special role like bypass user)
+local function isCustomRoleUser(userId)
+    return CUSTOM_ROLE_USER_IDS[userId] ~= nil
 end
 
 -- Check if user has custom nametag
@@ -440,6 +421,7 @@ local function createNametag()
     local isOwnerUser = isOwner(player.UserId)
     local isBypassUser = isBypassUser(player.UserId)
     local isOptixUser = isOptixUser(player.UserId)
+    local isCustomRoleUser = isCustomRoleUser(player.UserId)
     local isCustomUser = isCustomUser(player.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
     local userId = player.UserId
@@ -463,9 +445,15 @@ local function createNametag()
     local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
     local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
 
-    -- Use custom settings if available, otherwise use owner/bypass/optix settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
+    -- Custom colors for custom role users
+    local customRoleBgColor = nil  -- No background color for custom role users (using image)
+    local customRoleBorderColor = Color3.fromRGB(201, 190, 186)  -- Custom role border color
+    local customRoleBorderColorBright = Color3.fromRGB(302, 285, 279)  -- Brighter version (1.5x)
+    local customRoleImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/67.png"  -- Custom role image URL
+
+    -- Use custom settings if available, otherwise use owner/bypass/optix/custom role settings
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or (isCustomRoleUser and customRoleBgColor or nil))))
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or (isCustomRoleUser and customRoleBorderColor or C.sep))))
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -494,13 +482,13 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomRoleUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or (isCustomRoleUser and customRoleBorderColor or userBorderColor)))
+        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (isCustomRoleUser and customRoleBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
+        ) or Color3.fromRGB(230, 180, 220)))))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -527,8 +515,8 @@ local function createNametag()
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
-    -- Add background image for owners, bypass, optix, and custom users (behind content)
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
+    -- Add background image for owners, bypass, optix, custom role, and custom users (behind content)
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomRoleUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
@@ -569,6 +557,20 @@ local function createNametag()
             local localPath = "prism/nametags/optix.png"
             task.spawn(function()
                 local success, path = PM.downloadImage(optixImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
+        elseif isCustomRoleUser and customRoleImageUrl then
+            -- Download and load custom role image from URL
+            local localPath = "prism/nametags/customrole.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customRoleImageUrl, localPath)
                 if success then
                     local assetId = PM.loadImage(path)
                     if assetId then
@@ -657,7 +659,7 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = (isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
+    displayNameLabel.Text = (isOwnerUser or isBypassUser or isCustomRoleUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = isBypassUser and 12 or 14
     displayNameLabel.Font = Enum.Font.GothamBold
@@ -665,8 +667,8 @@ local function createNametag()
     displayNameLabel.Parent = frame
     
     -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
-    if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
+    if isOwnerUser or isBypassUser or isCustomRoleUser or (isCustomUser and customSettings and customSettings.typingText) then
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property") or (isCustomRoleUser and "Daddy" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
@@ -676,7 +678,7 @@ local function createNametag()
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. player.Name
-    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomUser) and C.text or C.textDim
+    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomRoleUser or isCustomUser) and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -692,7 +694,7 @@ local function createNametag()
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
+    smallLabel.Text = "P"  -- Always "P" for owner, bypass, custom role, and custom users
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
@@ -773,7 +775,7 @@ local function restoreDefaultNametag(plr)
 end
 
 local function isSpecialUser(userId)
-    return isOwner(userId) or isBypassUser(userId) or isCustomUser(userId)
+    return isOwner(userId) or isBypassUser(userId) or isCustomRoleUser(userId) or isCustomUser(userId)
 end
 
 local function toggleNametag()
@@ -808,6 +810,15 @@ local function toggleNametag()
         end
         -- Hide default nametags for optix users (only if they have prism nametags)
         for userId in pairs(OPTIX_USER_IDS) do
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    hideDefaultNametag(plr)
+                end
+            end
+        end
+        -- Hide default nametags for custom role users (only if they have prism nametags)
+        for userId in pairs(CUSTOM_ROLE_USER_IDS) do
             if otherNametags[userId] then
                 local plr = PM.Svc.Players:GetPlayerByUserId(userId)
                 if plr then
@@ -850,6 +861,15 @@ local function toggleNametag()
                 end
             end
         end
+        -- Restore default nametags for custom role users (only if they had prism nametags)
+        for userId in pairs(CUSTOM_ROLE_USER_IDS) do
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
+            end
+        end
     end
     return nametagEnabled
 end
@@ -877,6 +897,7 @@ local function createOtherNametag(plrObj)
     local isOwnerUser = isOwner(plrObj.UserId)
     local isBypassUser = isBypassUser(plrObj.UserId)
     local isOptixUser = isOptixUser(plrObj.UserId)
+    local isCustomRoleUser = isCustomRoleUser(plrObj.UserId)
     local isCustomUser = isCustomUser(plrObj.UserId)
     local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
     local userId = plrObj.UserId
@@ -900,9 +921,15 @@ local function createOtherNametag(plrObj)
     local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
     local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
 
-    -- Use custom settings if available, otherwise use owner/bypass/optix settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
+    -- Custom colors for custom role users
+    local customRoleBgColor = nil  -- No background color for custom role users (using image)
+    local customRoleBorderColor = Color3.fromRGB(201, 190, 186)  -- Custom role border color
+    local customRoleBorderColorBright = Color3.fromRGB(302, 285, 279)  -- Brighter version (1.5x)
+    local customRoleImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/67.png"  -- Custom role image URL
+
+    -- Use custom settings if available, otherwise use owner/bypass/optix/custom role settings
+    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or (isCustomRoleUser and customRoleBgColor or nil))))
+    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or (isCustomRoleUser and customRoleBorderColor or C.sep))))
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -931,13 +958,13 @@ local function createOtherNametag(plrObj)
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomRoleUser or isCustomUser then
+        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or (isCustomRoleUser and customRoleBorderColor or userBorderColor)))
+        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (isCustomRoleUser and customRoleBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
             math.floor(customSettings.borderColor.R * 1.5),
             math.floor(customSettings.borderColor.G * 1.5),
             math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
+        ) or Color3.fromRGB(230, 180, 220)))))  -- Brighter version (1.5x)
         bgGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, brightColor),
             ColorSequenceKeypoint.new(0.25, gradientColor),
@@ -965,8 +992,8 @@ local function createOtherNametag(plrObj)
     frame.Active = true
     frame.Parent = billboard
     
-    -- Add background image for owners, bypass, optix, and custom users
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
+    -- Add background image for owners, bypass, optix, custom role, and custom users
+    if isOwnerUser or isBypassUser or isOptixUser or isCustomRoleUser or isCustomUser then
         local bgImage = Instance.new("ImageLabel")
         bgImage.Name = "BgImage"
         bgImage.Size = UDim2.new(1, 0, 1, 0)
@@ -1016,6 +1043,20 @@ local function createOtherNametag(plrObj)
             end)
             -- Set default temporarily while downloading
             bgImage.Image = "rbxassetid://97439274483409"
+        elseif isCustomRoleUser and customRoleImageUrl then
+            -- Download and load custom role image from URL
+            local localPath = "prism/nametags/customrole.png"
+            task.spawn(function()
+                local success, path = PM.downloadImage(customRoleImageUrl, localPath)
+                if success then
+                    local assetId = PM.loadImage(path)
+                    if assetId then
+                        bgImage.Image = assetId
+                    end
+                end
+            end)
+            -- Set default temporarily while downloading
+            bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomUser and customSettings.imageUrl then
             -- Download and load from URL
             local localPath = "prism/nametags/" .. userId .. ".png"
@@ -1054,7 +1095,7 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = ((isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
+    displayNameLabel.Text = ((isOwnerUser or isBypassUser or isCustomRoleUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = isBypassUser and 12 or 14
     displayNameLabel.Font = Enum.Font.GothamBold
@@ -1062,8 +1103,8 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Parent = frame
     
     -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
-    if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
+    if isOwnerUser or isBypassUser or isCustomRoleUser or (isCustomUser and customSettings and customSettings.typingText) then
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property") or (isCustomRoleUser and "Daddy" or "Owner")
         startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
     end
     
@@ -1073,7 +1114,7 @@ local function createOtherNametag(plrObj)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomUser) and C.text or C.textDim
+    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomRoleUser or isCustomUser) and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -1089,7 +1130,7 @@ local function createOtherNametag(plrObj)
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
+    smallLabel.Text = "P"  -- Always "P" for owner, bypass, custom role, and custom users
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
@@ -1307,6 +1348,25 @@ local function updateOtherNametags()
             end
         end
     end
+
+    -- Create nametags for custom role users (only if in API)
+    for userId in pairs(CUSTOM_ROLE_USER_IDS) do
+        if prismUsers[userId] then
+            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
+            if plrObj and not otherNametags[userId] then
+                if plrObj.Character then
+                    createOtherNametag(plrObj)
+                else
+                    plrObj.CharacterAdded:Connect(function(char)
+                        task.wait(0.5)
+                        if CUSTOM_ROLE_USER_IDS[userId] and prismUsers[userId] and not otherNametags[userId] then
+                            createOtherNametag(plrObj)
+                        end
+                    end)
+                end
+            end
+        end
+    end
     
     -- Only remove nametags for players who are NOT in the server
     local currentPlayers = {}
@@ -1503,6 +1563,15 @@ PM.PrismNametags = {
         end
         -- Restore default nametags for optix users (only if they had prism nametags)
         for userId in pairs(OPTIX_USER_IDS) do
+            if otherNametags[userId] then
+                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
+                if plr then
+                    restoreDefaultNametag(plr)
+                end
+            end
+        end
+        -- Restore default nametags for custom role users (only if they had prism nametags)
+        for userId in pairs(CUSTOM_ROLE_USER_IDS) do
             if otherNametags[userId] then
                 local plr = PM.Svc.Players:GetPlayerByUserId(userId)
                 if plr then
