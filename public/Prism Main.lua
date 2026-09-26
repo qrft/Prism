@@ -252,7 +252,7 @@ local function startTypingEffect(textLabel, displayName, typingText)
     end
     
     local connections = {}
-    local targetText = displayName .. "  " .. (typingText or "Владелец") -- Space for the dot
+    local targetText = displayName .. "  " .. (typingText or "Owner") -- Space for the dot
     local dotChar = "•"
     local currentText = ""
     local currentIndex = 1
@@ -666,7 +666,7 @@ local function createNametag()
     
     -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Владелец")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
