@@ -162,7 +162,6 @@ local OPTIX_USER_IDS = {
 
 -- Special custom user IDs for custom nametags (works like bypass user)
 local CUSTOM_ROLE_USER_IDS = {
-    [5399716865] = true,  -- g2s4v
     [8880656259] = true,  -- v8w23
 }
 
@@ -568,7 +567,7 @@ local function createNametag()
             bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomRoleUser and customRoleImageUrl then
             -- Download and load custom role image from URL
-            local localPath = "prism/nametags/customrole.png"
+            local localPath = "prism/nametags/67.png"
             task.spawn(function()
                 local success, path = PM.downloadImage(customRoleImageUrl, localPath)
                 if success then
@@ -1045,7 +1044,7 @@ local function createOtherNametag(plrObj)
             bgImage.Image = "rbxassetid://97439274483409"
         elseif isCustomRoleUser and customRoleImageUrl then
             -- Download and load custom role image from URL
-            local localPath = "prism/nametags/customrole.png"
+            local localPath = "prism/nametags/67.png"
             task.spawn(function()
                 local success, path = PM.downloadImage(customRoleImageUrl, localPath)
                 if success then
