@@ -666,7 +666,7 @@ local function createNametag()
     
     -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
     if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Владелец")
+        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
         startTypingEffect(displayNameLabel, player.DisplayName, typingText)
     end
     
