@@ -1171,10 +1171,13 @@ registerCommand("vcbypasser", "VC Bypass GUI with V1 and V2 options", {}, functi
                                         if iconFrame then
                                             local icon = iconFrame:FindFirstChild("IntegrationIcon")
                                             if icon then
-                                                local image = icon:FindFirstChild("1")
-                                                if image and image:IsA("ImageLabel") then
-                                                    local imagePath = image.Image
-                                                    imageCheck = imagePath == "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+                                                -- Check all children for ImageButton or ImageLabel
+                                                for _, child in ipairs(icon:GetChildren()) do
+                                                    if child:IsA("ImageButton") or child:IsA("ImageLabel") then
+                                                        local imagePath = child.Image
+                                                        imageCheck = imagePath == "rbxasset://textures/ui/VoiceChat/MicLight/Unmuted0.png"
+                                                        if imageCheck then break end
+                                                    end
                                                 end
                                             end
                                         end
