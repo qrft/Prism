@@ -431,7 +431,7 @@ local function createNametag()
     -- Custom colors for owners
     local ownerBgColor = nil  -- No background color for owners (using image)
     local ownerBorderColor = Color3.fromRGB(255, 255, 255)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/67.png"  -- Owner image URL
+    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
 
     -- Custom colors for bypass users
     local bypassBgColor = nil  -- No background color for bypass users (using image)
