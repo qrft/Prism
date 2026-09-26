@@ -252,7 +252,7 @@ local function startTypingEffect(textLabel, displayName, typingText)
     end
     
     local connections = {}
-    local targetText = displayName .. "  " .. (typingText or "Owner") -- Space for the dot
+    local targetText = displayName .. "  " .. (typingText or "Владелец") -- Space for the dot
     local dotChar = "•"
     local currentText = ""
     local currentIndex = 1
