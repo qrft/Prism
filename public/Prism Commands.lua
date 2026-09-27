@@ -4226,6 +4226,8 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
         if on then
             if ijConn then ijConn:Disconnect() end
             ijConn = UserInputService.JumpRequest:Connect(function()
+                -- Skip if hamster ball is active (it has its own jump logic)
+                if PM.HB and PM.HB.active then return end
                 local c = LP.Character
                 local h = c and c:FindFirstChildOfClass("Humanoid")
                 if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
@@ -4248,6 +4250,8 @@ registerCommand("jump", "Jump power control with infinite jump", {}, function(ar
         if ijOn then
             if ijConn then ijConn:Disconnect() end
             ijConn = UserInputService.JumpRequest:Connect(function()
+                -- Skip if hamster ball is active (it has its own jump logic)
+                if PM.HB and PM.HB.active then return end
                 local c2 = LP.Character
                 local h2 = c2 and c2:FindFirstChildOfClass("Humanoid")
                 if h2 then h2:ChangeState(Enum.HumanoidStateType.Jumping) end
@@ -7198,6 +7202,11 @@ registerCommand("hamsterball", "Roll around in a ball", {}, function(args)
         if h then h.PlatformStand = false end
         local cam = workspace.CurrentCamera
         if HB.origCamSubj and cam then pcall(function() cam.CameraSubject = HB.origCamSubj end) end
+        -- Restore infinite jump state if it was active before
+        if PM.Jump and PM.Jump.originalInfinite ~= nil then
+            PM.Jump.infinite = PM.Jump.originalInfinite
+            PM.Jump.originalInfinite = nil
+        end
     end
 
     local function StartHamsterBall()
@@ -7227,7 +7236,10 @@ registerCommand("hamsterball", "Roll around in a ball", {}, function(args)
         root.Size = Vector3.new(HB.ballSize, HB.ballSize, HB.ballSize)
         root.Transparency = 1
         root.CanCollide = true
-        if h then h.PlatformStand = true end
+        -- Only set PlatformStand if fly is not active (fly manages its own PlatformStand)
+        if h and not (PM.Fly and PM.Fly.enabled) then
+            h.PlatformStand = true
+        end
         if cam then cam.CameraSubject = root end
         local params = RaycastParams.new()
         params.FilterType = Enum.RaycastFilterType.Exclude
@@ -7254,6 +7266,11 @@ registerCommand("hamsterball", "Roll around in a ball", {}, function(args)
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 50, r.AssemblyLinearVelocity.Z)
             end
         end)
+        -- Disable infinite jump while hamster ball is active (it has its own jump)
+        if PM.Jump and PM.Jump.infinite then
+            PM.Jump.originalInfinite = PM.Jump.infinite
+            PM.Jump.infinite = false
+        end
         HB.active = true
     end
 
@@ -9483,7 +9500,13 @@ registerCommand("noclip", "Noclip with keybind", {}, function(args)
             local c = LocalPlayer.Character
             if not c then return end
             for _, part in ipairs(c:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") then
+                    -- Skip HumanoidRootPart if hamster ball is active (it needs collision)
+                    if PM.HB and PM.HB.active and part.Name == "HumanoidRootPart" then
+                        continue
+                    end
+                    part.CanCollide = false
+                end
             end
         end)
         ncOn = true
@@ -9565,7 +9588,13 @@ if PM.Noclip.active then
             local c = LP.Character
             if not c then return end
             for _, part in ipairs(c:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") then
+                    -- Skip HumanoidRootPart if hamster ball is active (it needs collision)
+                    if PM.HB and PM.HB.active and part.Name == "HumanoidRootPart" then
+                        continue
+                    end
+                    part.CanCollide = false
+                end
             end
         end)
     end
@@ -11607,6 +11636,10 @@ registerCommand("fly", "Fly around", {}, function(args)
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 if not hum or not root then return end
+                -- Skip PlatformStand and physics if hamster ball is active (it manages its own)
+                if PM.HB and PM.HB.active then
+                    return
+                end
                 if hum.PlatformStand ~= true then
                     hum.PlatformStand = true
                 end
