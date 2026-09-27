@@ -10,7 +10,6 @@
     custom nametag gifs (bypass)
     add zero delay headsit / facebang and old method
     hamster ball with noclip
-    tp keybinding
     easy edit for nametags
 
 ]]
@@ -479,11 +478,14 @@ local function cleanupPrism()
     PM.JerkActive = false
     PM.HitlerSaluteActive = false
     
-    -- Cleanup Teleport Tool
-    if PM.TpToolConn then pcall(function() PM.TpToolConn:Disconnect() end); PM.TpToolConn = nil end
-    if PM.TpWatchConn1 then pcall(function() PM.TpWatchConn1:Disconnect() end); PM.TpWatchConn1 = nil end
-    if PM.TpWatchConn2 then pcall(function() PM.TpWatchConn2:Disconnect() end); PM.TpWatchConn2 = nil end
-    PM.TpToolActive = false
+    -- Cleanup tp
+    if PM.TpTool then
+        if PM.TpTool.charAddedConn then pcall(function() PM.TpTool.charAddedConn:Disconnect() end); PM.TpTool.charAddedConn = nil end
+        if PM.TpTool.watchConn1 then pcall(function() PM.TpTool.watchConn1:Disconnect() end); PM.TpTool.watchConn1 = nil end
+        if PM.TpTool.watchConn2 then pcall(function() PM.TpTool.watchConn2:Disconnect() end); PM.TpTool.watchConn2 = nil end
+        if PM.TpTool.keyConnection then pcall(function() PM.TpTool.keyConnection:Disconnect() end); PM.TpTool.keyConnection = nil end
+        PM.TpTool.active = false
+    end
     
     -- Cleanup Jerk Tool
     local jerk = LP.Backpack:FindFirstChild("Jerk")
@@ -721,7 +723,7 @@ local function cleanupPrism()
     
     -- Cleanup Backpack tools
     for _, obj in ipairs(LP.Backpack:GetChildren()) do
-        if obj.Name:find("Prism") or obj.Name == "Teleport Tool" or obj.Name == "Jerk" or obj.Name == "Hitler Salute" then
+        if obj.Name:find("Prism") or obj.Name == "tp" or obj.Name == "Jerk" or obj.Name == "Hitler Salute" then
             pcall(function() obj:Destroy() end)
         end
     end
@@ -729,7 +731,7 @@ local function cleanupPrism()
     -- Cleanup Character tools
     if LP.Character then
         for _, obj in ipairs(LP.Character:GetChildren()) do
-            if obj.Name:find("Prism") or obj.Name == "Teleport Tool" or obj.Name == "Jerk" or obj.Name == "Hitler Salute" then
+            if obj.Name:find("Prism") or obj.Name == "tp" or obj.Name == "Jerk" or obj.Name == "Hitler Salute" then
                 pcall(function() obj:Destroy() end)
             end
         end
@@ -3038,117 +3040,487 @@ registerCommand("tptospawn", "Teleport to spawn", {}, function(args)
     root.CFrame = CFrame.new(0, 10, 0)
 end, true)
 
-registerCommand("tptool", "Click to teleport tool", {}, function(args)
-    if PM.TpToolActive then
-        PM.TpToolActive = false
-        if PM.TpToolConn then pcall(function() PM.TpToolConn:Disconnect() end); PM.TpToolConn = nil end
-        if PM.TpWatchConn1 then pcall(function() PM.TpWatchConn1:Disconnect() end); PM.TpWatchConn1 = nil end
-        if PM.TpWatchConn2 then pcall(function() PM.TpWatchConn2:Disconnect() end); PM.TpWatchConn2 = nil end
-        local tpTool = LP.Backpack:FindFirstChild("Teleport Tool")
-        if tpTool then pcall(function() tpTool:Destroy() end) end
-        local charTp = LP.Character and LP.Character:FindFirstChild("Teleport Tool")
-        if charTp then pcall(function() charTp:Destroy() end) end
-        return
+-- TP Tool state management
+PM.TpTool = {
+    active = false,
+    key = nil,
+    keyConnection = nil,
+    charAddedConn = nil,
+    watchConn1 = nil,
+    watchConn2 = nil
+}
+
+-- Load saved tp tool key and state
+local TP_SAVE_FILE = "prism/prism_tp_settings.json"
+local savedTPSettings = {}
+pcall(function()
+    if readfile and isfile(TP_SAVE_FILE) then
+        savedTPSettings = game:GetService("HttpService"):JSONDecode(readfile(TP_SAVE_FILE))
     end
-    PM.TpToolActive = true
+end)
+if savedTPSettings.key then
+    pcall(function()
+        PM.TpTool.key = Enum.KeyCode[savedTPSettings.key]
+    end)
+end
+PM.TpTool.active = savedTPSettings.enabled or false
+
+local function SaveTPSettings()
+    pcall(function()
+        if writefile then
+            if makefolder and not isfolder("prism") then makefolder("prism") end
+            writefile(TP_SAVE_FILE, game:GetService("HttpService"):JSONEncode({
+                key = PM.TpTool.key and PM.TpTool.key.Name or nil,
+                enabled = PM.TpTool.active
+            }))
+        end
+    end)
+end
+
+local function giveTpTool()
+    local bp = LP.Backpack
+    local char = LP.Character
+    if (bp and bp:FindFirstChild("tp")) or (char and char:FindFirstChild("tp")) then return end
     
-    local function giveTool()
-        local bp = LP.Backpack
-        local char = LP.Character
-        if (bp and bp:FindFirstChild("Teleport Tool")) or (char and char:FindFirstChild("Teleport Tool")) then return end
-        
-        local tool = Instance.new("Tool")
-        tool.Name = "Teleport Tool"
-        tool.RequiresHandle = false
-        tool.ToolTip = "Click to teleport"
-        
-        tool.Activated:Connect(function()
-            local c = LP.Character
-            if not c then return end
-            local h = c:FindFirstChildOfClass("Humanoid")
-            local root = c:FindFirstChild("HumanoidRootPart")
-            if not root then return end
+    local tool = Instance.new("Tool")
+    tool.Name = "tp"
+    tool.RequiresHandle = false
+    tool.ToolTip = "Click to teleport"
+    
+    tool.Activated:Connect(function()
+        local c = LP.Character
+        if not c then return end
+        local h = c:FindFirstChildOfClass("Humanoid")
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if not root then return end
 
-            local mouse = LP:GetMouse()
-            local hipH = h and h.HipHeight or 2.3
-            local hrpHalfHeight = root.Size.Y * 0.5
-            local sinkBuffer = math.max(0.5, hipH * 0.15) + hrpHalfHeight * 0.25
-            local hit = mouse.Hit.Position
+        local mouse = LP:GetMouse()
+        local hipH = h and h.HipHeight or 2.3
+        local hrpHalfHeight = root.Size.Y * 0.5
+        local sinkBuffer = math.max(0.5, hipH * 0.15) + hrpHalfHeight * 0.25
+        local hit = mouse.Hit.Position
 
-            local targetPos
-            if mouse.Target and PM.WOA and PM.WOA.enabled then
-                -- WOA active: confirm real ground below the hit point
-                local rcParams = RaycastParams.new()
-                local excludes = { c }
-                if PM.WOA.platform then table.insert(excludes, PM.WOA.platform) end
-                rcParams.FilterDescendantsInstances = excludes
-                rcParams.FilterType = Enum.RaycastFilterType.Exclude
-                local groundCheck = workspace:Raycast(Vector3.new(hit.X, hit.Y + 0.5, hit.Z), Vector3.new(0, -15000, 0), rcParams)
-                if groundCheck then
-                    targetPos = Vector3.new(hit.X, hit.Y + hipH + sinkBuffer, hit.Z)
-                else
-                    targetPos = Vector3.new(hit.X, PM.WOA.baseY + hipH + 0.5, hit.Z)
-                end
-            elseif PM.WOA and PM.WOA.enabled then
-                -- Aimed at void with WOA: project camera ray onto WOA plane
-                local cam = workspace.CurrentCamera
-                local UIS = game:GetService("UserInputService")
-                local mousePos = UIS:GetMouseLocation()
-                local unitRay = cam:ScreenPointToRay(mousePos.X, mousePos.Y)
-                local planeY = PM.WOA.baseY
-                local dirY = unitRay.Direction.Y
-                local projX, projZ
-                if math.abs(dirY) > 0.0001 then
-                    local t = (planeY - unitRay.Origin.Y) / dirY
-                    local p = unitRay.Origin + unitRay.Direction * math.max(t, 0)
-                    projX, projZ = p.X, p.Z
-                else
-                    projX, projZ = hit.X, hit.Z
-                end
-                targetPos = Vector3.new(projX, PM.WOA.baseY + hipH + 0.5, projZ)
-            else
+        local targetPos
+        if mouse.Target and PM.WOA and PM.WOA.enabled then
+            local rcParams = RaycastParams.new()
+            local excludes = { c }
+            if PM.WOA.platform then table.insert(excludes, PM.WOA.platform) end
+            rcParams.FilterDescendantsInstances = excludes
+            rcParams.FilterType = Enum.RaycastFilterType.Exclude
+            local groundCheck = workspace:Raycast(Vector3.new(hit.X, hit.Y + 0.5, hit.Z), Vector3.new(0, -15000, 0), rcParams)
+            if groundCheck then
                 targetPos = Vector3.new(hit.X, hit.Y + hipH + sinkBuffer, hit.Z)
+            else
+                targetPos = Vector3.new(hit.X, PM.WOA.baseY + hipH + 0.5, hit.Z)
             end
+        elseif PM.WOA and PM.WOA.enabled then
+            local cam = workspace.CurrentCamera
+            local UIS = game:GetService("UserInputService")
+            local mousePos = UIS:GetMouseLocation()
+            local unitRay = cam:ScreenPointToRay(mousePos.X, mousePos.Y)
+            local planeY = PM.WOA.baseY
+            local dirY = unitRay.Direction.Y
+            local projX, projZ
+            if math.abs(dirY) > 0.0001 then
+                local t = (planeY - unitRay.Origin.Y) / dirY
+                local p = unitRay.Origin + unitRay.Direction * math.max(t, 0)
+                projX, projZ = p.X, p.Z
+            else
+                projX, projZ = hit.X, hit.Z
+            end
+            targetPos = Vector3.new(projX, PM.WOA.baseY + hipH + 0.5, projZ)
+        else
+            targetPos = Vector3.new(hit.X, hit.Y + hipH + sinkBuffer, hit.Z)
+        end
 
-            local lookDir = (Vector3.new(targetPos.X, root.Position.Y, targetPos.Z) - root.Position)
-            lookDir = lookDir.Magnitude > 0.01 and lookDir.Unit or root.CFrame.LookVector
-            root.CFrame = CFrame.new(targetPos, targetPos + lookDir)
-            if h then h.Sit = false; h.AutoRotate = true end
-        end)
-        
-        tool.Parent = bp
-        
-        -- Detect removal
-        local function checkGone()
-            local bp2 = LP.Backpack
-            local char2 = LP.Character
-            local inBp = bp2 and bp2:FindFirstChild("Teleport Tool")
-            local inChar = char2 and char2:FindFirstChild("Teleport Tool")
-            if not inBp and not inChar then
-                PM.TpToolActive = false
-                if PM.TpToolConn then pcall(function() PM.TpToolConn:Disconnect() end); PM.TpToolConn = nil end
-                if PM.TpWatchConn1 then pcall(function() PM.TpWatchConn1:Disconnect() end); PM.TpWatchConn1 = nil end
-                if PM.TpWatchConn2 then pcall(function() PM.TpWatchConn2:Disconnect() end); PM.TpWatchConn2 = nil end
-            end
+        local lookDir = (Vector3.new(targetPos.X, root.Position.Y, targetPos.Z) - root.Position)
+        lookDir = lookDir.Magnitude > 0.01 and lookDir.Unit or root.CFrame.LookVector
+        root.CFrame = CFrame.new(targetPos, targetPos + lookDir)
+        if h then h.Sit = false; h.AutoRotate = true end
+    end)
+    
+    tool.Parent = bp
+    
+    local function checkGone()
+        local bp2 = LP.Backpack
+        local char2 = LP.Character
+        local inBp = bp2 and bp2:FindFirstChild("tp")
+        local inChar = char2 and char2:FindFirstChild("tp")
+        if not inBp and not inChar then
+            PM.TpTool.active = false
+            if PM.TpTool.watchConn1 then pcall(function() PM.TpTool.watchConn1:Disconnect() end); PM.TpTool.watchConn1 = nil end
+            if PM.TpTool.watchConn2 then pcall(function() PM.TpTool.watchConn2:Disconnect() end); PM.TpTool.watchConn2 = nil end
+            SaveTPSettings()
         end
-        
-        local function onRemoved(child)
-            if child == tool then task.defer(checkGone) end
-        end
-        
-        if bp then PM.TpWatchConn1 = bp.ChildRemoved:Connect(onRemoved) end
-        if char then PM.TpWatchConn2 = char.ChildRemoved:Connect(onRemoved) end
     end
     
-    giveTool()
+    local function onRemoved(child)
+        if child == tool then task.defer(checkGone) end
+    end
     
-    -- Re-give after respawn
-    if PM.TpToolConn then pcall(function() PM.TpToolConn:Disconnect() end) end
-    PM.TpToolConn = LP.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        giveTool()
+    if bp then PM.TpTool.watchConn1 = bp.ChildRemoved:Connect(onRemoved) end
+    if char then PM.TpTool.watchConn2 = char.ChildRemoved:Connect(onRemoved) end
+end
+
+local function removeTpTool()
+    if PM.TpTool.watchConn1 then pcall(function() PM.TpTool.watchConn1:Disconnect() end); PM.TpTool.watchConn1 = nil end
+    if PM.TpTool.watchConn2 then pcall(function() PM.TpTool.watchConn2:Disconnect() end); PM.TpTool.watchConn2 = nil end
+    local tpTool = LP.Backpack:FindFirstChild("tp")
+    if tpTool then pcall(function() tpTool:Destroy() end) end
+    local charTp = LP.Character and LP.Character:FindFirstChild("tp")
+    if charTp then pcall(function() charTp:Destroy() end) end
+end
+
+local function setTpToolActive(active)
+    if active == PM.TpTool.active then return end
+    PM.TpTool.active = active
+    if active then
+        giveTpTool()
+        if PM.TpTool.charAddedConn then pcall(function() PM.TpTool.charAddedConn:Disconnect() end) end
+        PM.TpTool.charAddedConn = LP.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            if PM.TpTool.active then giveTpTool() end
+        end)
+    else
+        removeTpTool()
+        if PM.TpTool.charAddedConn then pcall(function() PM.TpTool.charAddedConn:Disconnect() end); PM.TpTool.charAddedConn = nil end
+    end
+    SaveTPSettings()
+end
+
+registerCommand("tptool", "Click to teleport tool with keybind", {}, function(args)
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local CoreGui = game:GetService("CoreGui")
+    local LocalPlayer = Players.LocalPlayer
+
+    local function guiExists(guiName)
+        if CoreGui:FindFirstChild(guiName) then return true end
+        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
+        if get_hidden_gui or gethui then
+            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
+        end
+        return false
+    end
+    if guiExists("Prism_TpToolGUI") then return end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Prism_TpToolGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 1000
+
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+
+    local TP_GUI_FILE = "prism/prism_tp_gui_settings.json"
+    local savedTPGUI = {}
+    pcall(function()
+        if readfile and isfile(TP_GUI_FILE) then
+            savedTPGUI = game:GetService("HttpService"):JSONDecode(readfile(TP_GUI_FILE))
+        end
+    end)
+    local savedPos = savedTPGUI.position or {X = {Scale = 0, Offset = 500}, Y = {Scale = 0, Offset = 400}}
+
+    local currentTPSettings = {
+        position = savedPos
+    }
+
+    local function SaveTPGUISettings()
+        pcall(function()
+            if writefile then
+                if makefolder and not isfolder("prism") then makefolder("prism") end
+                writefile(TP_GUI_FILE, game:GetService("HttpService"):JSONEncode(currentTPSettings))
+            end
+        end)
+    end
+
+    local MW, MH = 220, 72
+
+    local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, MW, 0, MH)
+    MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(60, 60, 60)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = MainFrame
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 36)
+    TitleBar.BackgroundTransparency = 1
+    TitleBar.Parent = MainFrame
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    TitleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            currentTPSettings.position = {
+                X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
+                Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
+            }
+            SaveTPGUISettings()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -40, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "Prism  •  TP Tool"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    CloseBtn.BackgroundTransparency = 0.4
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 11
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseBtn
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 4)
+    Padding.PaddingBottom = UDim.new(0, 4)
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 8)
+    Padding.Parent = ContentFrame
+
+    local tpOn = PM.TpTool.active or false
+    local tpKey = PM.TpTool.key
+    local tpCapturing = false
+    local tpCaptureConn = nil
+
+    local BindRow = Instance.new("Frame")
+    BindRow.Name = "BindRow"
+    BindRow.Size = UDim2.new(1, 0, 0, 24)
+    BindRow.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    BindRow.BackgroundTransparency = 0.4
+    BindRow.BorderSizePixel = 0
+    BindRow.Parent = ContentFrame
+
+    local BindRowCorner = Instance.new("UICorner")
+    BindRowCorner.CornerRadius = UDim.new(0, 10)
+    BindRowCorner.Parent = BindRow
+
+    local BindBtn = Instance.new("TextButton")
+    BindBtn.Name = "BindBtn"
+    BindBtn.Size = UDim2.new(1, -12, 0, 24)
+    BindBtn.Position = UDim2.new(0, 6, 0.5, -12)
+    BindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    BindBtn.BackgroundTransparency = 0.4
+    BindBtn.BorderSizePixel = 0
+    BindBtn.Text = "Bind"
+    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    BindBtn.TextSize = 11
+    BindBtn.Font = Enum.Font.GothamBold
+    BindBtn.Parent = BindRow
+
+    local BindCorner = Instance.new("UICorner")
+    BindCorner.CornerRadius = UDim.new(0, 6)
+    BindCorner.Parent = BindBtn
+
+    local ToggleRow = Instance.new("Frame")
+    ToggleRow.Name = "ToggleRow"
+    ToggleRow.Size = UDim2.new(1, 0, 0, 24)
+    ToggleRow.Position = UDim2.new(0, 0, 0, 28)
+    ToggleRow.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    ToggleRow.BackgroundTransparency = 0.4
+    ToggleRow.BorderSizePixel = 0
+    ToggleRow.Parent = ContentFrame
+
+    local ToggleRowCorner = Instance.new("UICorner")
+    ToggleRowCorner.CornerRadius = UDim.new(0, 10)
+    ToggleRowCorner.Parent = ToggleRow
+
+    local TogglePill = Instance.new("TextButton")
+    TogglePill.Name = "TogglePill"
+    TogglePill.Size = UDim2.new(1, -12, 0, 24)
+    TogglePill.Position = UDim2.new(0, 6, 0.5, -12)
+    TogglePill.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    TogglePill.BackgroundTransparency = 0.4
+    TogglePill.BorderSizePixel = 0
+    TogglePill.Text = "tp tool"
+    TogglePill.TextColor3 = Color3.fromRGB(200, 200, 200)
+    TogglePill.TextSize = 11
+    TogglePill.Font = Enum.Font.GothamBold
+    TogglePill.Parent = ToggleRow
+
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 6)
+    ToggleCorner.Parent = TogglePill
+
+    local function UpdateBindDisplay()
+        if tpKey then
+            BindBtn.Text = tpKey.Name
+        else
+            BindBtn.Text = "Bind"
+        end
+    end
+    UpdateBindDisplay()
+
+    local function UpdateToggleDisplay()
+        if tpOn then
+            TogglePill.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
+            TogglePill.Text = "tp tool"
+        else
+            TogglePill.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            TogglePill.Text = "tp tool"
+        end
+    end
+    UpdateToggleDisplay()
+
+    BindBtn.MouseEnter:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    BindBtn.MouseLeave:Connect(function()
+        TweenService:Create(BindBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    TogglePill.MouseEnter:Connect(function()
+        TweenService:Create(TogglePill, TweenInfo.new(0.1), {BackgroundColor3 = tpOn and Color3.fromRGB(50, 140, 50) or Color3.fromRGB(55, 55, 55)}):Play()
+    end)
+    TogglePill.MouseLeave:Connect(function()
+        TweenService:Create(TogglePill, TweenInfo.new(0.1), {BackgroundColor3 = tpOn and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(30, 30, 30)}):Play()
+    end)
+
+    local function SaveTPKey()
+        PM.TpTool.key = tpKey
+        SaveTPSettings()
+    end
+
+    local function CancelCapture()
+        tpCapturing = false
+        tpKey = PM.TpTool.key
+        if tpCaptureConn then tpCaptureConn:Disconnect(); tpCaptureConn = nil end
+        UpdateBindDisplay()
+        SaveTPKey()
+    end
+
+    BindBtn.MouseButton1Click:Connect(function()
+        tpCapturing = true
+        if PM.TpTool.keyConnection then PM.TpTool.keyConnection:Disconnect(); PM.TpTool.keyConnection = nil end
+        BindBtn.Text = "..."
+        BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+        if tpCaptureConn then tpCaptureConn:Disconnect() end
+        tpCaptureConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if not tpCapturing then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                if input.KeyCode == Enum.KeyCode.Backspace then
+                    tpKey = nil
+                    tpCapturing = false
+                    tpCaptureConn:Disconnect(); tpCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveTPKey()
+                else
+                    tpKey = input.KeyCode
+                    tpCapturing = false
+                    tpCaptureConn:Disconnect(); tpCaptureConn = nil
+                    UpdateBindDisplay()
+                    BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    SaveTPKey()
+                end
+            elseif input.UserInputType == Enum.UserInputType.MouseButton1 or
+                   input.UserInputType == Enum.UserInputType.MouseButton2 or
+                   input.UserInputType == Enum.UserInputType.MouseButton3 then
+                CancelCapture()
+                BindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end
+        end)
+    end)
+
+    TogglePill.MouseButton1Click:Connect(function()
+        setTpToolActive(not tpOn)
+        tpOn = PM.TpTool.active
+        UpdateToggleDisplay()
+    end)
+
+    local function EnableGlobalTP()
+        if PM.TpTool.keyConnection then return end
+        PM.TpTool.keyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or tpCapturing then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard and tpKey and input.KeyCode == tpKey then
+                setTpToolActive(not tpOn)
+                tpOn = PM.TpTool.active
+                UpdateToggleDisplay()
+            end
+        end)
+    end
+
+    EnableGlobalTP()
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        tpCapturing = false
+        if tpCaptureConn then tpCaptureConn:Disconnect(); tpCaptureConn = nil end
+        if PM.TpTool.keyConnection then PM.TpTool.keyConnection:Disconnect(); PM.TpTool.keyConnection = nil end
+        setTpToolActive(false)
+        ScreenGui:Destroy()
     end)
 end)
+
+-- Auto-start tp tool if saved as enabled
+if PM.TpTool.active then
+    setTpToolActive(true)
+end
 
 
 
