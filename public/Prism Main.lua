@@ -163,6 +163,20 @@ PM.isDownloaded = function(category, name)
     return isfile(file.path)
 end
 
+-- Auto-download all registered files on execute
+PM.downloadAllFiles = function()
+    for category, files in pairs(PM.FileRegistry) do
+        for name, file in pairs(files) do
+            task.spawn(function()
+                local success, result = PM.downloadFile(category, name)
+                if not success then
+                    warn("Failed to download " .. category .. "/" .. name .. ": " .. tostring(result))
+                end
+            end)
+        end
+    end
+end
+
 PM.C = {
     bg = Color3.fromRGB(15, 15, 15),
     card = Color3.fromRGB(28, 28, 28),
@@ -3343,6 +3357,11 @@ PM.createMainGUI = function()
 end
 
 repeat task.wait() until LP
+
+-- Auto-download all registered files
+task.spawn(function()
+    PM.downloadAllFiles()
+end)
 
 pcall(PM.createMainGUI)
 
