@@ -83,6 +83,30 @@ for i = 1, 67 do
     }
 end
 
+-- Pre-load animation frames into memory cache
+PM.FrameCache = {}
+
+local function preloadAnimationFrames(config)
+    if not config.isAnimated then return end
+
+    local cacheKey = config.frameBasePath
+    if PM.FrameCache[cacheKey] then return end -- Already cached
+
+    PM.FrameCache[cacheKey] = {}
+
+    for i = 1, config.frameCount do
+        local frameNum = string.format("%03d", i)
+        local framePath = config.frameBasePath .. frameNum .. ".png"
+
+        if isfile and isfile(framePath) then
+            local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+            if frameAsset then
+                PM.FrameCache[cacheKey][i] = frameAsset
+            end
+        end
+    end
+end
+
 -- Nametag configuration (grouped by person for easier editing)
 local NAMETAG_CONFIG = {
     kavrenoo = {
@@ -337,6 +361,9 @@ local function startFrameAnimation(imageLabel, config)
         return
     end
 
+    -- Pre-load frames into cache
+    preloadAnimationFrames(config)
+
     -- Stop any existing animation for this image
     if frameAnimationConnections[imageLabel] then
         for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
@@ -350,6 +377,7 @@ local function startFrameAnimation(imageLabel, config)
     local frameCount = config.frameCount or 1
     local frameTime = config.frameTime or 0.1
     local frameBasePath = config.frameBasePath or ""
+    local cacheKey = frameBasePath
 
     local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         local now = tick()
@@ -359,14 +387,10 @@ local function startFrameAnimation(imageLabel, config)
             currentFrame = (currentFrame % frameCount) + 1
             lastFrameUpdate = now
 
-            -- Load the next frame (zero-padded 3-digit format)
-            local frameNumber = string.format("%03d", currentFrame)
-            local framePath = frameBasePath .. frameNumber .. ".png"
-            if isfile and isfile(framePath) then
-                local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
-                if frameAsset then
-                    imageLabel.Image = frameAsset
-                end
+            -- Use pre-loaded frame from cache
+            local frameCache = PM.FrameCache[cacheKey]
+            if frameCache and frameCache[currentFrame] then
+                imageLabel.Image = frameCache[currentFrame]
             end
         end
     end)
