@@ -71,10 +71,29 @@ PM.FileRegistry = {
             url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png",
             path = "prism/nametags/kavrenoo.png"
         },
-        kavrenoo_spritesheet = {
-            url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoogif.png",
-            path = "prism/nametags/kavrenoogif.png"
-        },
+        kavrenoo_frame0 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_0.png", path = "prism/nametags/Kavrenoo/frame_0.png"},
+        kavrenoo_frame1 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_1.png", path = "prism/nametags/Kavrenoo/frame_1.png"},
+        kavrenoo_frame2 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_2.png", path = "prism/nametags/Kavrenoo/frame_2.png"},
+        kavrenoo_frame3 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_3.png", path = "prism/nametags/Kavrenoo/frame_3.png"},
+        kavrenoo_frame4 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_4.png", path = "prism/nametags/Kavrenoo/frame_4.png"},
+        kavrenoo_frame5 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_5.png", path = "prism/nametags/Kavrenoo/frame_5.png"},
+        kavrenoo_frame6 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_6.png", path = "prism/nametags/Kavrenoo/frame_6.png"},
+        kavrenoo_frame7 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_7.png", path = "prism/nametags/Kavrenoo/frame_7.png"},
+        kavrenoo_frame8 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_8.png", path = "prism/nametags/Kavrenoo/frame_8.png"},
+        kavrenoo_frame9 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_9.png", path = "prism/nametags/Kavrenoo/frame_9.png"},
+        kavrenoo_frame10 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_10.png", path = "prism/nametags/Kavrenoo/frame_10.png"},
+        kavrenoo_frame11 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_11.png", path = "prism/nametags/Kavrenoo/frame_11.png"},
+        kavrenoo_frame12 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_12.png", path = "prism/nametags/Kavrenoo/frame_12.png"},
+        kavrenoo_frame13 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_13.png", path = "prism/nametags/Kavrenoo/frame_13.png"},
+        kavrenoo_frame14 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_14.png", path = "prism/nametags/Kavrenoo/frame_14.png"},
+        kavrenoo_frame15 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_15.png", path = "prism/nametags/Kavrenoo/frame_15.png"},
+        kavrenoo_frame16 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_16.png", path = "prism/nametags/Kavrenoo/frame_16.png"},
+        kavrenoo_frame17 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_17.png", path = "prism/nametags/Kavrenoo/frame_17.png"},
+        kavrenoo_frame18 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_18.png", path = "prism/nametags/Kavrenoo/frame_18.png"},
+        kavrenoo_frame19 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_19.png", path = "prism/nametags/Kavrenoo/frame_19.png"},
+        kavrenoo_frame20 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_20.png", path = "prism/nametags/Kavrenoo/frame_20.png"},
+        kavrenoo_frame21 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_21.png", path = "prism/nametags/Kavrenoo/frame_21.png"},
+        kavrenoo_frame22 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_22.png", path = "prism/nametags/Kavrenoo/frame_22.png"},
     },
 }
 
@@ -82,19 +101,17 @@ PM.FileRegistry = {
 local NAMETAG_CONFIG = {
     kavrenoo = {
         userIds = {7275889224, 5712636024},
-        imagePath = "prism/nametags/kavrenoogif.png",  -- Sprite sheet path
+        imagePath = "prism/nametags/kavrenoo.png",  -- Full path to downloaded file
         borderColor = Color3.fromRGB(255, 255, 255),
         gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
         gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
         typingText = "Owner",
         distanceLabel = "P",  -- Letter to show when far away
-        -- Sprite sheet animation settings
+        -- Animated frame settings
         isAnimated = true,
-        isSpriteSheet = true,
+        frameBasePath = "prism/nametags/Kavrenoo/frame_",
         frameCount = 23,
-        frameTime = 0.1,  -- Adjust based on original gif speed
-        framesPerRow = 6,
-        spriteSheetSize = Vector2.new(6144, 1444)  -- Total sprite sheet dimensions (6 frames * 1024px width, 4 rows * 361px height)
+        frameTime = 0.1  -- Time per frame in seconds
     },
 }
 
@@ -342,64 +359,32 @@ local function startFrameAnimation(imageLabel, config)
     end
 
     local connections = {}
-    local currentFrame = 1
+    local currentFrame = 0
     local lastFrameUpdate = tick()
     local frameCount = config.frameCount or 1
     local frameTime = config.frameTime or 0.1
+    local frameBasePath = config.frameBasePath or ""
 
-    -- Sprite sheet animation
-    if config.isSpriteSheet then
-        local framesPerRow = config.framesPerRow or 1
-        local spriteSheetSize = config.spriteSheetSize or Vector2.new(900, 600)
-        local frameWidth = 1024  -- Individual frame width
-        local frameHeight = 361  -- Individual frame height
+    local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        local now = tick()
 
-        -- Set initial frame
-        imageLabel.ImageRectOffset = Vector2.new(0, 0)
-        imageLabel.ImageRectSize = Vector2.new(frameWidth, frameHeight)
+        -- Update frame
+        if now - lastFrameUpdate >= frameTime then
+            currentFrame = (currentFrame + 1) % frameCount
+            lastFrameUpdate = now
 
-        local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
-            local now = tick()
-
-            if now - lastFrameUpdate >= frameTime then
-                currentFrame = (currentFrame % frameCount) + 1
-                lastFrameUpdate = now
-
-                -- Calculate sprite sheet position
-                local col = (currentFrame - 1) % framesPerRow
-                local row = math.floor((currentFrame - 1) / framesPerRow)
-
-                imageLabel.ImageRectOffset = Vector2.new(col * frameWidth, row * frameHeight)
-                imageLabel.ImageRectSize = Vector2.new(frameWidth, frameHeight)
-            end
-        end)
-
-        table.insert(connections, heartbeatConnection)
-    else
-        -- Original frame loading method (fallback)
-        local frameBasePath = config.frameBasePath or ""
-
-        local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
-            local now = tick()
-
-            if now - lastFrameUpdate >= frameTime then
-                currentFrame = (currentFrame % frameCount) + 1
-                lastFrameUpdate = now
-
-                local frameNumber = string.format("%03d", currentFrame)
-                local framePath = frameBasePath .. frameNumber .. ".png"
-                if isfile and isfile(framePath) then
-                    local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
-                    if frameAsset then
-                        imageLabel.Image = frameAsset
-                    end
+            -- Load the next frame
+            local framePath = frameBasePath .. currentFrame .. ".png"
+            if isfile and isfile(framePath) then
+                local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+                if frameAsset then
+                    imageLabel.Image = frameAsset
                 end
             end
-        end)
+        end
+    end)
 
-        table.insert(connections, heartbeatConnection)
-    end
-
+    table.insert(connections, heartbeatConnection)
     frameAnimationConnections[imageLabel] = connections
 end
 
