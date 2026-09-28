@@ -74,6 +74,30 @@ PM.FileRegistry = {
     },
 }
 
+-- Nametag configuration (grouped by person for easier editing)
+local NAMETAG_CONFIG = {
+    kavrenoo = {
+        userIds = {7275889224, 5712636024},
+        assetId = "kavrenoo",  -- References file registry name
+        borderColor = Color3.fromRGB(255, 255, 255),
+        gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
+        gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
+        typingText = "Owner"
+    },
+}
+
+-- Check if user has a custom nametag
+local function getNametagConfig(userId)
+    for personName, config in pairs(NAMETAG_CONFIG) do
+        for _, id in ipairs(config.userIds) do
+            if id == userId then
+                return config
+            end
+        end
+    end
+    return nil
+end
+
 -- Download a single file by category and name
 PM.downloadFile = function(category, name)
     local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
@@ -217,14 +241,11 @@ local function startTypingEffect(textLabel, displayName, typingText)
     local connections = {}
     local targetText = displayName .. "  " .. (typingText or "Owner") -- Space for the dot
     local dotChar = "•"
-    local currentText = ""
-    local currentIndex = 1
-    local isTyping = true
+    local visibleLength = 0
+    local isHiding = false
     local showCursor = true
     local lastCursorToggle = tick()
-    local lastTypingUpdate = tick()
-    local isBackspacing = false
-    local lastBackspaceUpdate = tick()
+    local lastUpdate = tick()
     local lastCycleStart = tick()
     
     -- Find the position where the dot should be (after displayName + space)
@@ -242,48 +263,31 @@ local function startTypingEffect(textLabel, displayName, typingText)
         
         -- Check if we need to start a new cycle (every 5 seconds)
         if now - lastCycleStart >= 5 then
-            isBackspacing = true
+            isHiding = true
             lastCycleStart = now
         end
         
-        -- Handle typing or backspacing
-        if isBackspacing then
-            if now - lastBackspaceUpdate >= 0.05 then -- Backspace speed
-                if #currentText > 0 then
-                    currentText = currentText:sub(1, -2)
+        -- Handle showing or hiding characters
+        if now - lastUpdate >= 0.05 then
+            if isHiding then
+                if visibleLength > 0 then
+                    visibleLength = visibleLength - 1
                 else
-                    isBackspacing = false
-                    currentIndex = 1
+                    isHiding = false
                 end
-                lastBackspaceUpdate = now
-            end
-        else
-            if now - lastTypingUpdate >= 0.08 then -- Typing speed
-                if currentIndex <= #targetText then
-                    currentText = targetText:sub(1, currentIndex)
-                    currentIndex = currentIndex + 1
+            else
+                if visibleLength < #targetText then
+                    visibleLength = visibleLength + 1
                 end
-                lastTypingUpdate = now
             end
+            lastUpdate = now
         end
         
-        -- Insert the dot at the correct position with visibility control
-        local displayText = currentText
-        local dotVisible = false
+        -- Build display text with visible characters
+        local displayText = targetText:sub(1, visibleLength)
         
-        -- Show dot when typing has passed the dot position
-        if not isBackspacing and currentIndex > dotPosition then
-            dotVisible = true
-        -- Hide dot when backspacing has passed the dot position (check actual text length)
-        elseif isBackspacing and #currentText < dotPosition then
-            dotVisible = false
-        -- Keep dot visible if we're in the middle of the text (not backspacing)
-        elseif not isBackspacing and #currentText >= dotPosition then
-            dotVisible = true
-        -- Keep dot visible during backspacing if we haven't reached it yet
-        elseif isBackspacing and #currentText >= dotPosition then
-            dotVisible = true
-        end
+        -- Handle dot visibility
+        local dotVisible = not isHiding and visibleLength >= dotPosition
         
         -- Insert the dot at the correct position
         if dotVisible then
@@ -401,8 +405,13 @@ local function createNametag()
     end
     
     local userId = player.UserId
+    local config = getNametagConfig(userId)
+    local hasCustomTag = config ~= nil
+    
     local userBgColor = nil
-    local userBorderColor = C.sep
+    local userBorderColor = config and config.borderColor or C.sep
+    local userGradientColor = config and config.gradientColor or nil
+    local userGradientSpinColor = config and config.gradientSpinColor or nil
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -431,13 +440,23 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    bgGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.25, C.sep),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
-        ColorSequenceKeypoint.new(0.75, C.sep),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-    })
+    if hasCustomTag and userGradientColor and userGradientSpinColor then
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.25, userGradientColor),
+            ColorSequenceKeypoint.new(0.5, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.75, userGradientColor),
+            ColorSequenceKeypoint.new(1, userGradientSpinColor),
+        })
+    else
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.25, C.sep),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+            ColorSequenceKeypoint.new(0.75, C.sep),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+        })
+    end
     bgGradient.Parent = bgFrame
     
     local frame = Instance.new("Frame")
@@ -448,6 +467,32 @@ local function createNametag()
     frame.BorderSizePixel = 0
     frame.Parent = billboard
     
+    -- Add background image for custom nametags
+    if hasCustomTag and config.assetId then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "BgImage"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        
+        -- Load from file registry
+        local assetId = PM.loadAsset("nametags", config.assetId)
+        if assetId then
+            bgImage.Image = assetId
+        else
+            bgImage.Image = "rbxassetid://97439274483409"
+        end
+        
+        bgImage.ImageTransparency = 0
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = -1
+        bgImage.Parent = frame
+        
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(0, 8)
+        bgCorner.Parent = bgImage
+    end
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
@@ -457,12 +502,17 @@ local function createNametag()
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = player.DisplayName
+    displayNameLabel.Text = (hasCustomTag and config.typingText) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
+    
+    -- Start typing effect for custom nametags with typing text
+    if hasCustomTag and config.typingText then
+        startTypingEffect(displayNameLabel, player.DisplayName, config.typingText)
+    end
     
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
@@ -470,7 +520,7 @@ local function createNametag()
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. player.Name
-    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextColor3 = hasCustomTag and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -603,8 +653,13 @@ local function createOtherNametag(plrObj)
     end
     
     local userId = plrObj.UserId
+    local config = getNametagConfig(userId)
+    local hasCustomTag = config ~= nil
+    
     local userBgColor = nil
-    local userBorderColor = C.sep
+    local userBorderColor = config and config.borderColor or C.sep
+    local userGradientColor = config and config.gradientColor or nil
+    local userGradientSpinColor = config and config.gradientSpinColor or nil
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -633,13 +688,23 @@ local function createOtherNametag(plrObj)
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    bgGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.25, C.sep),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
-        ColorSequenceKeypoint.new(0.75, C.sep),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-    })
+    if hasCustomTag and userGradientColor and userGradientSpinColor then
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.25, userGradientColor),
+            ColorSequenceKeypoint.new(0.5, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.75, userGradientColor),
+            ColorSequenceKeypoint.new(1, userGradientSpinColor),
+        })
+    else
+        bgGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.25, C.sep),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+            ColorSequenceKeypoint.new(0.75, C.sep),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+        })
+    end
     bgGradient.Parent = bgFrame
     
     local frame = Instance.new("Frame")
@@ -651,6 +716,32 @@ local function createOtherNametag(plrObj)
     frame.Active = true
     frame.Parent = billboard
     
+    -- Add background image for custom nametags
+    if hasCustomTag and config.assetId then
+        local bgImage = Instance.new("ImageLabel")
+        bgImage.Name = "BgImage"
+        bgImage.Size = UDim2.new(1, 0, 1, 0)
+        bgImage.Position = UDim2.new(0, 0, 0, 0)
+        bgImage.BackgroundTransparency = 1
+        
+        -- Load from file registry
+        local assetId = PM.loadAsset("nametags", config.assetId)
+        if assetId then
+            bgImage.Image = assetId
+        else
+            bgImage.Image = "rbxassetid://97439274483409"
+        end
+        
+        bgImage.ImageTransparency = 0
+        bgImage.ScaleType = Enum.ScaleType.Stretch
+        bgImage.ZIndex = -1
+        bgImage.Parent = frame
+        
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(0, 8)
+        bgCorner.Parent = bgImage
+    end
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
@@ -660,12 +751,17 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = plrObj.DisplayName
+    displayNameLabel.Text = (hasCustomTag and config.typingText) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
+    
+    -- Start typing effect for custom nametags with typing text
+    if hasCustomTag and config.typingText then
+        startTypingEffect(displayNameLabel, plrObj.DisplayName, config.typingText)
+    end
     
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
@@ -673,7 +769,7 @@ local function createOtherNametag(plrObj)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = C.textDim
+    usernameLabel.TextColor3 = hasCustomTag and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
