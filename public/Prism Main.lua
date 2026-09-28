@@ -552,36 +552,6 @@ local function createNametag()
         else
             billboard.Enabled = false
         end
-        
-        -- Distance-based visibility for own nametag
-        local myChar = player.Character
-        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-            local isFar = false
-            local dist = 0
-            
-            -- Check distance to nearest other player
-            for _, otherPlr in ipairs(PM.Svc.Players:GetPlayers()) do
-                if otherPlr ~= player and otherPlr.Character and otherPlr.Character:FindFirstChild("HumanoidRootPart") then
-                    local otherHRP = otherPlr.Character.HumanoidRootPart
-                    local d = (myChar.HumanoidRootPart.Position - otherHRP.Position).Magnitude
-                    if dist == 0 or d < dist then
-                        dist = d
-                    end
-                end
-            end
-            
-            isFar = dist > 50
-            
-            displayNameLabel.Visible = not isFar
-            usernameLabel.Visible = not isFar
-            smallLabel.Visible = isFar
-            
-            if isFar then
-                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
-            else
-                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
-            end
-        end
     end)
     
     nametagGui = billboard
