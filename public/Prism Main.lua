@@ -25,7 +25,7 @@ if readfile then
     pcall(function()
         local data = readfile(SETTINGS_FILE)
         if data then
-            local settings = game:GetService("HttpService"):JSONDecode(data)
+            local settings = gthame:GetService("HttpService"):JSONDecode(data)
             PM.autoExecutePrism = settings.autoExecutePrism or false
             PM.autoExecuteCommands = settings.autoExecuteCommands ~= false
             PM.terminalKeybind = settings.terminalKeybind or "F6"
@@ -60,17 +60,85 @@ PM.tween = function(obj, time, props, style)
     return PM.Svc.TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quad), props):Play()
 end
 
--- Image download and loading utilities (Infinite Yield method)
+-- Centralized file download system
 local httprequest = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
 local waxgetcustomasset = getcustomasset or getsynasset
 
-PM.downloadImage = function(url, localPath)
-    -- Download image using executor HTTP with binary mode
+-- File registry - add all files here
+PM.FileRegistry = {
+    nametags = {
+        kavrenoo = {
+            url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png",
+            path = "prism/nametags/kavrenoo.png"
+        },
+        kavrenoo_frame0 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_0.png", path = "prism/nametags/Kavrenoo/frame_0.png"},
+        kavrenoo_frame1 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_1.png", path = "prism/nametags/Kavrenoo/frame_1.png"},
+        kavrenoo_frame2 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_2.png", path = "prism/nametags/Kavrenoo/frame_2.png"},
+        kavrenoo_frame3 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_3.png", path = "prism/nametags/Kavrenoo/frame_3.png"},
+        kavrenoo_frame4 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_4.png", path = "prism/nametags/Kavrenoo/frame_4.png"},
+        kavrenoo_frame5 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_5.png", path = "prism/nametags/Kavrenoo/frame_5.png"},
+        kavrenoo_frame6 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_6.png", path = "prism/nametags/Kavrenoo/frame_6.png"},
+        kavrenoo_frame7 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_7.png", path = "prism/nametags/Kavrenoo/frame_7.png"},
+        kavrenoo_frame8 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_8.png", path = "prism/nametags/Kavrenoo/frame_8.png"},
+        kavrenoo_frame9 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_9.png", path = "prism/nametags/Kavrenoo/frame_9.png"},
+        kavrenoo_frame10 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_10.png", path = "prism/nametags/Kavrenoo/frame_10.png"},
+        kavrenoo_frame11 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_11.png", path = "prism/nametags/Kavrenoo/frame_11.png"},
+        kavrenoo_frame12 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_12.png", path = "prism/nametags/Kavrenoo/frame_12.png"},
+        kavrenoo_frame13 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_13.png", path = "prism/nametags/Kavrenoo/frame_13.png"},
+        kavrenoo_frame14 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_14.png", path = "prism/nametags/Kavrenoo/frame_14.png"},
+        kavrenoo_frame15 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_15.png", path = "prism/nametags/Kavrenoo/frame_15.png"},
+        kavrenoo_frame16 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_16.png", path = "prism/nametags/Kavrenoo/frame_16.png"},
+        kavrenoo_frame17 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_17.png", path = "prism/nametags/Kavrenoo/frame_17.png"},
+        kavrenoo_frame18 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_18.png", path = "prism/nametags/Kavrenoo/frame_18.png"},
+        kavrenoo_frame19 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_19.png", path = "prism/nametags/Kavrenoo/frame_19.png"},
+        kavrenoo_frame20 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_20.png", path = "prism/nametags/Kavrenoo/frame_20.png"},
+        kavrenoo_frame21 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_21.png", path = "prism/nametags/Kavrenoo/frame_21.png"},
+        kavrenoo_frame22 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_22.png", path = "prism/nametags/Kavrenoo/frame_22.png"},
+    },
+}
+
+-- Nametag configuration (grouped by person for easier editing)
+local NAMETAG_CONFIG = {
+    kavrenoo = {
+        userIds = {7275889224, 5712636024},
+        imagePath = "prism/nametags/kavrenoo.png",  -- Full path to downloaded file
+        borderColor = Color3.fromRGB(255, 255, 255),
+        gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
+        gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
+        typingText = "Owner",
+        distanceLabel = "P",  -- Letter to show when far away
+        -- Animated frame settings
+        isAnimated = true,
+        frameBasePath = "prism/nametags/Kavrenoo/frame_",
+        frameCount = 23,
+        frameTime = 0.1  -- Time per frame in seconds
+    },
+}
+
+-- Check if user has a custom nametag
+local function getNametagConfig(userId)
+    for personName, config in pairs(NAMETAG_CONFIG) do
+        for _, id in ipairs(config.userIds) do
+            if id == userId then
+                return config
+            end
+        end
+    end
+    return nil
+end
+
+-- Download a single file by category and name
+PM.downloadFile = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return false, "File not found in registry"
+    end
+
     local success, imageData
     if httprequest then
         success, imageData = pcall(function()
             local response = httprequest({
-                Url = url,
+                Url = file.url,
                 Method = "GET",
                 Headers = {
                     ["Content-Type"] = "application/octet-stream"
@@ -79,9 +147,8 @@ PM.downloadImage = function(url, localPath)
             return response.Body or response
         end)
     else
-        -- Fallback to game:HttpGet
         success, imageData = pcall(function()
-            return game:HttpGet(url)
+            return game:HttpGet(file.url)
         end)
     end
 
@@ -90,34 +157,77 @@ PM.downloadImage = function(url, localPath)
     end
 
     -- Create folders if needed
-    local folderPath = localPath:match("^(.-)/[^/]+$")
+    local folderPath = file.path:match("^(.-)/[^/]+$")
     if folderPath and makefolder and not isfolder(folderPath) then
         makefolder(folderPath)
     end
 
     -- Save to file
     local successWrite = pcall(function()
-        writefile(localPath, imageData)
+        writefile(file.path, imageData)
     end)
 
     if not successWrite then
         return false, "Failed to write file"
     end
 
-    return true, localPath
+    return true, file.path
 end
 
-PM.loadImage = function(localPath)
-    -- Load using getcustomasset (executor-specific)
+-- Download all files in a category
+PM.downloadCategory = function(category)
+    local categoryFiles = PM.FileRegistry[category]
+    if not categoryFiles then
+        return false, "Category not found"
+    end
+
+    local results = {}
+    for name, file in pairs(categoryFiles) do
+        local success, result = PM.downloadFile(category, name)
+        results[name] = {success = success, result = result}
+    end
+    return true, results
+end
+
+-- Load a downloaded file as an asset
+PM.loadAsset = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return nil
+    end
+
     if waxgetcustomasset then
         local success, result = pcall(function()
-            return waxgetcustomasset(localPath)
+            return waxgetcustomasset(file.path)
         end)
         if success and result and result ~= "" then
             return result
         end
     end
     return nil
+end
+
+-- Check if a file is already downloaded
+PM.isDownloaded = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return false
+    end
+    return isfile(file.path)
+end
+
+-- Auto-download all registered files on execute
+PM.downloadAllFiles = function()
+    for category, files in pairs(PM.FileRegistry) do
+        for name, file in pairs(files) do
+            task.spawn(function()
+                local success, result = PM.downloadFile(category, name)
+                if not success then
+                    warn("Failed to download " .. category .. "/" .. name .. ": " .. tostring(result))
+                end
+            end)
+        end
+    end
 end
 
 PM.C = {
@@ -144,101 +254,7 @@ local autoSyncEnabled = true
 local autoSyncInterval = 2
 local originalDisplayTypes = {}
 
--- Special owner user IDs for custom nametags
-local OWNER_USER_IDS = {
-    [7275889224] = true,  -- Soul / Tampon
-    [5712636024] = true,  -- Kavrenoo
-}
 
--- Special bypass user IDs for custom nametags (works like owner)
-local BYPASS_USER_IDS = {
-    [2228948805] = true,  -- Ramen
-}
-
--- Special optix user IDs for custom nametags (works like bypass but no typing effect)
-local OPTIX_USER_IDS = {
-    [2326644104] = true,  -- Optix
-}
-
--- Custom nametag users with their settings
-local CUSTOM_USER_IDS = {
-    [11311052888] = {
-        assetId = "81487439997829",
-        borderColor = Color3.fromRGB(165, 122, 90),
-        bgColor = nil
-    },  -- jazzy
-    [8880656259] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [194578] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [8012850] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [3441987937] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [5399716865] = {
-        assetId = "136681110958416",
-        borderColor = Color3.fromRGB(128, 64, 192),
-        bgColor = nil,
-        typingText = "Daddy"
-    },
-    [1675739196] = {
-        assetId = "79000613041903",
-        borderColor = Color3.fromRGB(20, 20, 20),
-        bgColor = nil
-    },
-    [11620576090] = {
-        assetId = "84178544959286",
-        borderColor = Color3.fromRGB(0, 0, 0),
-        bgColor = nil,
-        hideText = true  -- Hides username and display name
-    },
-    [1196547606] = {
-        assetId = "136492923299035",
-        borderColor = Color3.fromRGB(92, 58, 122),
-        bgColor = nil
-    },
-}
-
--- Check if user is an owner
-local function isOwner(userId)
-    return OWNER_USER_IDS[userId] ~= nil
-end
-
--- Check if user is a bypass user (special role like owner)
-local function isBypassUser(userId) 
-    return BYPASS_USER_IDS[userId] ~= nil
-end
-
--- Check if user is an optix user (special role like bypass but no typing effect)
-local function isOptixUser(userId)
-    return OPTIX_USER_IDS[userId] ~= nil
-end
-
--- Check if user has custom nametag
-local function isCustomUser(userId)
-    return CUSTOM_USER_IDS[userId] ~= nil
-end
-
--- Get custom user settings
-local function getCustomUserSettings(userId)
-    return CUSTOM_USER_IDS[userId]
-end
 
 -- Typing effect system for owner nametags
 local typingEffectConnections = {}
@@ -254,14 +270,11 @@ local function startTypingEffect(textLabel, displayName, typingText)
     local connections = {}
     local targetText = displayName .. "  " .. (typingText or "Owner") -- Space for the dot
     local dotChar = "•"
-    local currentText = ""
-    local currentIndex = 1
-    local isTyping = true
+    local visibleLength = 0
+    local isHiding = false
     local showCursor = true
     local lastCursorToggle = tick()
-    local lastTypingUpdate = tick()
-    local isBackspacing = false
-    local lastBackspaceUpdate = tick()
+    local lastUpdate = tick()
     local lastCycleStart = tick()
     
     -- Find the position where the dot should be (after displayName + space)
@@ -279,48 +292,31 @@ local function startTypingEffect(textLabel, displayName, typingText)
         
         -- Check if we need to start a new cycle (every 5 seconds)
         if now - lastCycleStart >= 5 then
-            isBackspacing = true
+            isHiding = true
             lastCycleStart = now
         end
         
-        -- Handle typing or backspacing
-        if isBackspacing then
-            if now - lastBackspaceUpdate >= 0.05 then -- Backspace speed
-                if #currentText > 0 then
-                    currentText = currentText:sub(1, -2)
+        -- Handle showing or hiding characters
+        if now - lastUpdate >= 0.05 then
+            if isHiding then
+                if visibleLength > 0 then
+                    visibleLength = visibleLength - 1
                 else
-                    isBackspacing = false
-                    currentIndex = 1
+                    isHiding = false
                 end
-                lastBackspaceUpdate = now
-            end
-        else
-            if now - lastTypingUpdate >= 0.08 then -- Typing speed
-                if currentIndex <= #targetText then
-                    currentText = targetText:sub(1, currentIndex)
-                    currentIndex = currentIndex + 1
+            else
+                if visibleLength < #targetText then
+                    visibleLength = visibleLength + 1
                 end
-                lastTypingUpdate = now
             end
+            lastUpdate = now
         end
         
-        -- Insert the dot at the correct position with visibility control
-        local displayText = currentText
-        local dotVisible = false
+        -- Build display text with visible characters
+        local displayText = targetText:sub(1, visibleLength)
         
-        -- Show dot when typing has passed the dot position
-        if not isBackspacing and currentIndex > dotPosition then
-            dotVisible = true
-        -- Hide dot when backspacing has passed the dot position (check actual text length)
-        elseif isBackspacing and #currentText < dotPosition then
-            dotVisible = false
-        -- Keep dot visible if we're in the middle of the text (not backspacing)
-        elseif not isBackspacing and #currentText >= dotPosition then
-            dotVisible = true
-        -- Keep dot visible during backspacing if we haven't reached it yet
-        elseif isBackspacing and #currentText >= dotPosition then
-            dotVisible = true
-        end
+        -- Handle dot visibility
+        local dotVisible = not isHiding and visibleLength >= dotPosition
         
         -- Insert the dot at the correct position
         if dotVisible then
@@ -347,13 +343,72 @@ local function stopTypingEffect(textLabel)
     end
 end
 
+-- Frame animation system for pre-split frames
+local frameAnimationConnections = {}
+
+local function startFrameAnimation(imageLabel, config)
+    if not config.isAnimated or config.frameCount <= 1 then
+        return
+    end
+
+    -- Stop any existing animation for this image
+    if frameAnimationConnections[imageLabel] then
+        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
+            connection:Disconnect()
+        end
+    end
+
+    local connections = {}
+    local currentFrame = 0
+    local lastFrameUpdate = tick()
+    local frameCount = config.frameCount or 1
+    local frameTime = config.frameTime or 0.1
+    local frameBasePath = config.frameBasePath or ""
+
+    local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        local now = tick()
+
+        -- Update frame
+        if now - lastFrameUpdate >= frameTime then
+            currentFrame = (currentFrame + 1) % frameCount
+            lastFrameUpdate = now
+
+            -- Load the next frame
+            local framePath = frameBasePath .. currentFrame .. ".png"
+            if isfile and isfile(framePath) then
+                local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+                if frameAsset then
+                    imageLabel.Image = frameAsset
+                end
+            end
+        end
+    end)
+
+    table.insert(connections, heartbeatConnection)
+    frameAnimationConnections[imageLabel] = connections
+end
+
+local function stopFrameAnimation(imageLabel)
+    if frameAnimationConnections[imageLabel] then
+        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
+            connection:Disconnect()
+        end
+        frameAnimationConnections[imageLabel] = nil
+    end
+end
+
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
     local playerGui = player:FindFirstChild("PlayerGui")
-    
+
     -- Stop all typing effects
     for textLabel, _ in pairs(typingEffectConnections) do
         stopTypingEffect(textLabel)
+    end
+
+    -- Stop all frame animations
+    for imageLabel, _ in pairs(frameAnimationConnections) do
+        stopFrameAnimation(imageLabel)
     end
     
     -- Clear own nametag from PlayerGui
@@ -437,35 +492,14 @@ local function createNametag()
         end
     end
     
-    local isOwnerUser = isOwner(player.UserId)
-    local isBypassUser = isBypassUser(player.UserId)
-    local isOptixUser = isOptixUser(player.UserId)
-    local isCustomUser = isCustomUser(player.UserId)
-    local customSettings = isCustomUser and getCustomUserSettings(player.UserId) or nil
     local userId = player.UserId
-
-
-
-    -- Custom colors for owners
-    local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(255, 255, 255)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
-
-    -- Custom colors for bypass users
-    local bypassBgColor = nil  -- No background color for bypass users (using image)
-    local bypassBorderColor = Color3.fromRGB(82, 39, 86)  -- Bypass border color
-    local bypassBorderColorBright = Color3.fromRGB(123, 59, 129)  -- Brighter version (1.5x)
-    local bypassImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Bypass image URL
-
-    -- Custom colors for optix users
-    local optixBgColor = nil  -- No background color for optix users (using image)
-    local optixBorderColor = Color3.fromRGB(43, 45, 47)  -- Optix border color
-    local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
-    local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
-
-    -- Use custom settings if available, otherwise use owner/bypass/optix settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
+    local config = getNametagConfig(userId)
+    local hasCustomTag = config ~= nil  -- Local player always gets custom tag if in config
+    
+    local userBgColor = nil
+    local userBorderColor = config and config.borderColor or C.sep
+    local userGradientColor = config and config.gradientColor or nil
+    local userGradientSpinColor = config and config.gradientSpinColor or nil
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag"
@@ -494,19 +528,13 @@ local function createNametag()
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
-            math.floor(customSettings.borderColor.R * 1.5),
-            math.floor(customSettings.borderColor.G * 1.5),
-            math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
+    if hasCustomTag and userGradientColor and userGradientSpinColor then
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, brightColor),
-            ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, brightColor),
-            ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, brightColor),
+            ColorSequenceKeypoint.new(0, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.25, userGradientColor),
+            ColorSequenceKeypoint.new(0.5, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.75, userGradientColor),
+            ColorSequenceKeypoint.new(1, userGradientSpinColor),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -526,148 +554,55 @@ local function createNametag()
     frame.BackgroundTransparency = userBgColor and 1 or 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
-    
-    -- Add background image for owners, bypass, optix, and custom users (behind content)
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local bgImage = Instance.new("ImageLabel")
-        bgImage.Name = "BgImage"
-        bgImage.Size = UDim2.new(1, 0, 1, 0)
-        bgImage.Position = UDim2.new(0, 0, 0, 0)
-        bgImage.BackgroundTransparency = 1
 
-        -- Check if using imageUrl or assetId
-        if isOwnerUser and ownerImageUrl then
-            -- Download and load owner image from URL
-            local localPath = "prism/nametags/owner.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isBypassUser and bypassImageUrl then
-            -- Download and load bypass image from URL
-            local localPath = "prism/nametags/bypass.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(bypassImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isOptixUser and optixImageUrl then
-            -- Download and load optix image from URL
-            local localPath = "prism/nametags/optix.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(optixImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isCustomUser and customSettings.imageUrl then
-            -- Download and load from URL
-            local localPath = "prism/nametags/" .. userId .. ".png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        else
-            -- Use assetId
-            bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
-        end
+    -- Add background image for custom nametags
+    if hasCustomTag and config.imagePath then
+        -- Check if file exists and load it
+        if isfile and isfile(config.imagePath) then
+            local customAsset = waxgetcustomasset and waxgetcustomasset(config.imagePath)
+            if customAsset then
+                local bgImage = Instance.new("ImageLabel")
+                bgImage.Name = "BgImage"
+                bgImage.Size = UDim2.new(1, 0, 1, 0)
+                bgImage.Position = UDim2.new(0, 0, 0, 0)
+                bgImage.BackgroundTransparency = 1
+                bgImage.Image = customAsset
+                bgImage.ImageTransparency = 0
+                bgImage.ScaleType = Enum.ScaleType.Stretch
+                bgImage.ZIndex = -1
+                bgImage.Parent = frame
 
-        bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
-        bgImage.ZIndex = -1
-        bgImage.Parent = frame
-        
-        local bgCorner = Instance.new("UICorner")
-        bgCorner.CornerRadius = UDim.new(0, 8)
-        bgCorner.Parent = bgImage
-        
-        -- Handle sprite sheet animation
-        if isCustomUser and customSettings.isAnimated then
-            local frameCount = customSettings.frameCount or 4
-            local frameSpeed = customSettings.frameSpeed or 0.1
-            local currentFrame = 0
-            local lastFrameTime = tick()
-            
-            -- Sprite sheet dimensions (assuming standard 512x512, adjust if needed)
-            local spriteWidth = customSettings.spriteWidth or 512
-            local spriteHeight = customSettings.spriteHeight or 512
-            local frameWidth = spriteWidth / frameCount
-            
-            -- Setup sprite sheet animation using ImageRectOffset
-            bgImage.ScaleType = Enum.ScaleType.Slice
-            bgImage.SliceCenter = Rect.new(0, 0, 0, 0)
-            
-            -- Set initial image rect
-            bgImage.ImageRectOffset = Vector2.new(0, 0)
-            bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
-            
-            -- Animation loop
-            local animationConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
-                local now = tick()
-                if now - lastFrameTime >= frameSpeed then
-                    currentFrame = (currentFrame + 1) % frameCount
-                    lastFrameTime = now
-                    
-                    -- Calculate image rect for current frame (horizontal sprite sheet)
-                    local xOffset = currentFrame * frameWidth
-                    bgImage.ImageRectOffset = Vector2.new(xOffset, 0)
-                    bgImage.ImageRectSize = Vector2.new(frameWidth, spriteHeight)
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(0, 8)
+                bgCorner.Parent = bgImage
+
+                -- Start frame animation if configured
+                if config.isAnimated then
+                    startFrameAnimation(bgImage, config)
                 end
-            end)
-            
-            -- Store connection for cleanup
-            if not nametagGui.AnimationConnections then
-                nametagGui.AnimationConnections = {}
             end
-            table.insert(nametagGui.AnimationConnections, animationConnection)
         end
     end
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
-    
+
     local displayNameLabel = Instance.new("TextLabel")
     displayNameLabel.Name = "DisplayName"
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = (isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText)) and "" or player.DisplayName
+    displayNameLabel.Text = (hasCustomTag and config.typingText) and "" or player.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = isBypassUser and 12 or 14
+    displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
-    if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
-        startTypingEffect(displayNameLabel, player.DisplayName, typingText)
+    -- Start typing effect for custom nametags with typing text
+    if hasCustomTag and config.typingText then
+        startTypingEffect(displayNameLabel, player.DisplayName, config.typingText)
     end
     
     local usernameLabel = Instance.new("TextLabel")
@@ -676,23 +611,17 @@ local function createNametag()
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. player.Name
-    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomUser) and C.text or C.textDim
+    usernameLabel.TextColor3 = hasCustomTag and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
-    -- Hide text if requested
-    if isCustomUser and customSettings and customSettings.hideText then
-        displayNameLabel.Visible = false
-        usernameLabel.Visible = false
-    end
-    
     local smallLabel = Instance.new("TextLabel")
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
+    smallLabel.Text = hasCustomTag and config.distanceLabel or "P"
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
@@ -700,13 +629,6 @@ local function createNametag()
     smallLabel.TextYAlignment = Enum.TextYAlignment.Center
     smallLabel.Visible = false
     smallLabel.Parent = frame
-    
-    -- Hide text if requested
-    if isCustomUser and customSettings and customSettings.hideText then
-        displayNameLabel.Visible = false
-        usernameLabel.Visible = false
-        smallLabel.Visible = false
-    end
     
     nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
@@ -734,7 +656,13 @@ local function removeNametag()
         if displayNameLabel then
             stopTypingEffect(displayNameLabel)
         end
-        
+
+        -- Stop frame animation
+        local bgImage = nametagGui:FindFirstChild("TagFrame") and nametagGui.TagFrame:FindFirstChild("BgImage")
+        if bgImage then
+            stopFrameAnimation(bgImage)
+        end
+
         -- Stop animation connections
         if nametagGui.AnimationConnections then
             for _, connection in ipairs(nametagGui.AnimationConnections) do
@@ -772,10 +700,6 @@ local function restoreDefaultNametag(plr)
     end
 end
 
-local function isSpecialUser(userId)
-    return isOwner(userId) or isBypassUser(userId) or isCustomUser(userId)
-end
-
 local function toggleNametag()
     nametagEnabled = not nametagEnabled
     if nametagEnabled then
@@ -797,24 +721,6 @@ local function toggleNametag()
                 hideDefaultNametag(plr)
             end
         end
-        -- Hide default nametags for bypass users (only if they have prism nametags)
-        for userId in pairs(BYPASS_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    hideDefaultNametag(plr)
-                end
-            end
-        end
-        -- Hide default nametags for optix users (only if they have prism nametags)
-        for userId in pairs(OPTIX_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    hideDefaultNametag(plr)
-                end
-            end
-        end
     else
         if nametagGui then
             nametagGui.Enabled = false
@@ -830,24 +736,6 @@ local function toggleNametag()
             local plr = PM.Svc.Players:GetPlayerByUserId(userId)
             if plr then
                 restoreDefaultNametag(plr)
-            end
-        end
-        -- Restore default nametags for bypass users (only if they had prism nametags)
-        for userId in pairs(BYPASS_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    restoreDefaultNametag(plr)
-                end
-            end
-        end
-        -- Restore default nametags for optix users (only if they had prism nametags)
-        for userId in pairs(OPTIX_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    restoreDefaultNametag(plr)
-                end
             end
         end
     end
@@ -874,35 +762,27 @@ local function createOtherNametag(plrObj)
         end
     end
     
-    local isOwnerUser = isOwner(plrObj.UserId)
-    local isBypassUser = isBypassUser(plrObj.UserId)
-    local isOptixUser = isOptixUser(plrObj.UserId)
-    local isCustomUser = isCustomUser(plrObj.UserId)
-    local customSettings = isCustomUser and getCustomUserSettings(plrObj.UserId) or nil
     local userId = plrObj.UserId
-
-
-
-    -- Custom colors for owners
-    local ownerBgColor = nil  -- No background color for owners (using image)
-    local ownerBorderColor = Color3.fromRGB(209, 159, 139)  -- Owner border color
-    local ownerImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png"  -- Owner image URL
-
-    -- Custom colors for bypass users
-    local bypassBgColor = nil  -- No background color for bypass users (using image)
-    local bypassBorderColor = Color3.fromRGB(82, 39, 86)  -- Bypass border color
-    local bypassBorderColorBright = Color3.fromRGB(123, 59, 129)  -- Brighter version (1.5x)
-    local bypassImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/ramen.png"  -- Bypass image URL
-
-    -- Custom colors for optix users
-    local optixBgColor = nil  -- No background color for optix users (using image)
-    local optixBorderColor = Color3.fromRGB(43, 45, 47)  -- Optix border color
-    local optixBorderColorBright = Color3.fromRGB(65, 68, 71)  -- Brighter version (1.5x)
-    local optixImageUrl = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/cunt.png"  -- Optix image URL
-
-    -- Use custom settings if available, otherwise use owner/bypass/optix settings
-    local userBgColor = customSettings and customSettings.bgColor or (isOwnerUser and ownerBgColor or (isBypassUser and bypassBgColor or (isOptixUser and optixBgColor or nil)))
-    local userBorderColor = customSettings and customSettings.borderColor or (isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or C.sep)))
+    local config = getNametagConfig(userId)
+    
+    -- Check if user is in API
+    local data = readFromAPI()
+    local isInAPI = false
+    if data and data.users then
+        for _, user in ipairs(data.users) do
+            if tostring(user.userId) == tostring(userId) then
+                isInAPI = true
+                break
+            end
+        end
+    end
+    
+    local hasCustomTag = config ~= nil and isInAPI
+    
+    local userBgColor = nil
+    local userBorderColor = config and config.borderColor or C.sep
+    local userGradientColor = config and config.gradientColor or nil
+    local userGradientSpinColor = config and config.gradientSpinColor or nil
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -931,19 +811,13 @@ local function createOtherNametag(plrObj)
     bgCorner.Parent = bgFrame
     
     local bgGradient = Instance.new("UIGradient")
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local gradientColor = isOwnerUser and ownerBorderColor or (isBypassUser and bypassBorderColor or (isOptixUser and optixBorderColor or userBorderColor))
-        local brightColor = isOwnerUser and Color3.fromRGB(245, 245, 245) or (isBypassUser and bypassBorderColorBright or (isOptixUser and optixBorderColorBright or (customSettings and customSettings.borderColor and Color3.fromRGB(
-            math.floor(customSettings.borderColor.R * 1.5),
-            math.floor(customSettings.borderColor.G * 1.5),
-            math.floor(customSettings.borderColor.B * 1.5)
-        ) or Color3.fromRGB(230, 180, 220))))  -- Brighter version (1.5x)
+    if hasCustomTag and userGradientColor and userGradientSpinColor then
         bgGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, brightColor),
-            ColorSequenceKeypoint.new(0.25, gradientColor),
-            ColorSequenceKeypoint.new(0.5, brightColor),
-            ColorSequenceKeypoint.new(0.75, gradientColor),
-            ColorSequenceKeypoint.new(1, brightColor),
+            ColorSequenceKeypoint.new(0, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.25, userGradientColor),
+            ColorSequenceKeypoint.new(0.5, userGradientSpinColor),
+            ColorSequenceKeypoint.new(0.75, userGradientColor),
+            ColorSequenceKeypoint.new(1, userGradientSpinColor),
         })
     else
         bgGradient.Color = ColorSequence.new({
@@ -964,107 +838,55 @@ local function createOtherNametag(plrObj)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Parent = billboard
-    
-    -- Add background image for owners, bypass, optix, and custom users
-    if isOwnerUser or isBypassUser or isOptixUser or isCustomUser then
-        local bgImage = Instance.new("ImageLabel")
-        bgImage.Name = "BgImage"
-        bgImage.Size = UDim2.new(1, 0, 1, 0)
-        bgImage.Position = UDim2.new(0, 0, 0, 0)
-        bgImage.BackgroundTransparency = 1
 
-        -- Check if using imageUrl or assetId
-        if isOwnerUser and ownerImageUrl then
-            -- Download and load owner image from URL
-            local localPath = "prism/nametags/owner.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(ownerImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
+    -- Add background image for custom nametags
+    if hasCustomTag and config.imagePath then
+        -- Check if file exists and load it
+        if isfile and isfile(config.imagePath) then
+            local customAsset = waxgetcustomasset and waxgetcustomasset(config.imagePath)
+            if customAsset then
+                local bgImage = Instance.new("ImageLabel")
+                bgImage.Name = "BgImage"
+                bgImage.Size = UDim2.new(1, 0, 1, 0)
+                bgImage.Position = UDim2.new(0, 0, 0, 0)
+                bgImage.BackgroundTransparency = 1
+                bgImage.Image = customAsset
+                bgImage.ImageTransparency = 0
+                bgImage.ScaleType = Enum.ScaleType.Stretch
+                bgImage.ZIndex = -1
+                bgImage.Parent = frame
+
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(0, 8)
+                bgCorner.Parent = bgImage
+
+                -- Start frame animation if configured
+                if config.isAnimated then
+                    startFrameAnimation(bgImage, config)
                 end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isBypassUser and bypassImageUrl then
-            -- Download and load bypass image from URL
-            local localPath = "prism/nametags/bypass.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(bypassImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isOptixUser and optixImageUrl then
-            -- Download and load optix image from URL
-            local localPath = "prism/nametags/optix.png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(optixImageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        elseif isCustomUser and customSettings.imageUrl then
-            -- Download and load from URL
-            local localPath = "prism/nametags/" .. userId .. ".png"
-            task.spawn(function()
-                local success, path = PM.downloadImage(customSettings.imageUrl, localPath)
-                if success then
-                    local assetId = PM.loadImage(path)
-                    if assetId then
-                        bgImage.Image = assetId
-                    end
-                end
-            end)
-            -- Set default temporarily while downloading
-            bgImage.Image = "rbxassetid://97439274483409"
-        else
-            -- Use assetId
-            bgImage.Image = isCustomUser and "rbxassetid://" .. customSettings.assetId or "rbxassetid://97439274483409"
+            end
         end
-
-        bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
-        bgImage.ZIndex = -1
-        bgImage.Parent = frame
-
-        local bgCorner = Instance.new("UICorner")
-        bgCorner.CornerRadius = UDim.new(0, 8)
-        bgCorner.Parent = bgImage
     end
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
-    
+
     local displayNameLabel = Instance.new("TextLabel")
     displayNameLabel.Name = "DisplayName"
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
-    displayNameLabel.Text = ((isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText))) and "" or plrObj.DisplayName
+    displayNameLabel.Text = (hasCustomTag and config.typingText) and "" or plrObj.DisplayName
     displayNameLabel.TextColor3 = C.text
-    displayNameLabel.TextSize = isBypassUser and 12 or 14
+    displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
     
-    -- Start typing effect for owner nametags and custom users with typing text (optix users have no typing effect)
-    if isOwnerUser or isBypassUser or (isCustomUser and customSettings and customSettings.typingText) then
-        local typingText = (isCustomUser and customSettings.typingText) or (isBypassUser and "Kody's Property" or "Owner")
-        startTypingEffect(displayNameLabel, plrObj.DisplayName, typingText)
+    -- Start typing effect for custom nametags with typing text
+    if hasCustomTag and config.typingText then
+        startTypingEffect(displayNameLabel, plrObj.DisplayName, config.typingText)
     end
     
     local usernameLabel = Instance.new("TextLabel")
@@ -1073,23 +895,17 @@ local function createOtherNametag(plrObj)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = (isOwnerUser or isBypassUser or isCustomUser) and C.text or C.textDim
+    usernameLabel.TextColor3 = hasCustomTag and C.text or C.textDim
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
-    -- Hide text if requested
-    if isCustomUser and customSettings and customSettings.hideText then
-        displayNameLabel.Visible = false
-        usernameLabel.Visible = false
-    end
-    
     local smallLabel = Instance.new("TextLabel")
     smallLabel.Name = "SmallLabel"
     smallLabel.Size = UDim2.new(1, 0, 1, 0)
     smallLabel.BackgroundTransparency = 1
-    smallLabel.Text = "P"  -- Always "P" for owner, bypass, and custom users
+    smallLabel.Text = hasCustomTag and config.distanceLabel or "P"
     smallLabel.TextColor3 = C.text
     smallLabel.TextSize = 20
     smallLabel.Font = Enum.Font.GothamBold
@@ -1097,11 +913,6 @@ local function createOtherNametag(plrObj)
     smallLabel.TextYAlignment = Enum.TextYAlignment.Center
     smallLabel.Visible = false
     smallLabel.Parent = frame
-    
-    -- Hide small label if text is hidden
-    if isCustomUser and customSettings and customSettings.hideText then
-        smallLabel.Visible = false
-    end
     
     -- Click to teleport behind target
     frame.InputBegan:Connect(function(input)
@@ -1141,18 +952,10 @@ local function createOtherNametag(plrObj)
             local dist = (myHRP.Position - targetHRP.Position).Magnitude
             local isFar = dist > 50
             
-            -- Handle visibility based on distance and hideText setting
-            if isCustomUser and customSettings and customSettings.hideText then
-                -- Always hide text labels when hideText is true
-                displayNameLabel.Visible = false
-                usernameLabel.Visible = false
-                smallLabel.Visible = false
-            else
-                -- Normal distance-based visibility
-                displayNameLabel.Visible = not isFar
-                usernameLabel.Visible = not isFar
-                smallLabel.Visible = isFar
-            end
+            -- Normal distance-based visibility
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
             
             if isFar then
                 PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
@@ -1189,8 +992,14 @@ local function removeOtherNametag(userId)
             if displayNameLabel then
                 stopTypingEffect(displayNameLabel)
             end
+
+            -- Stop frame animation
+            local bgImage = otherNametags[userId].gui:FindFirstChild("TagFrame") and otherNametags[userId].gui.TagFrame:FindFirstChild("BgImage")
+            if bgImage then
+                stopFrameAnimation(bgImage)
+            end
         end
-        
+
         if otherNametags[userId].connection then
             otherNametags[userId].connection:Disconnect()
         end
@@ -1266,44 +1075,6 @@ local function updateOtherNametags()
                         createOtherNametag(plrObj)
                     end
                 end)
-            end
-        end
-    end
-
-    -- Create nametags for bypass users (only if in API)
-    for userId in pairs(BYPASS_USER_IDS) do
-        if prismUsers[userId] then
-            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plrObj and not otherNametags[userId] then
-                if plrObj.Character then
-                    createOtherNametag(plrObj)
-                else
-                    plrObj.CharacterAdded:Connect(function(char)
-                        task.wait(0.5)
-                        if BYPASS_USER_IDS[userId] and prismUsers[userId] and not otherNametags[userId] then
-                            createOtherNametag(plrObj)
-                        end
-                    end)
-                end
-            end
-        end
-    end
-
-    -- Create nametags for optix users (only if in API)
-    for userId in pairs(OPTIX_USER_IDS) do
-        if prismUsers[userId] then
-            local plrObj = PM.Svc.Players:GetPlayerByUserId(userId)
-            if plrObj and not otherNametags[userId] then
-                if plrObj.Character then
-                    createOtherNametag(plrObj)
-                else
-                    plrObj.CharacterAdded:Connect(function(char)
-                        task.wait(0.5)
-                        if OPTIX_USER_IDS[userId] and prismUsers[userId] and not otherNametags[userId] then
-                            createOtherNametag(plrObj)
-                        end
-                    end)
-                end
             end
         end
     end
@@ -1480,10 +1251,15 @@ PM.PrismNametags = {
         for textLabel, _ in pairs(typingEffectConnections) do
             stopTypingEffect(textLabel)
         end
-        
+
+        -- Stop all frame animations
+        for imageLabel, _ in pairs(frameAnimationConnections) do
+            stopFrameAnimation(imageLabel)
+        end
+
         -- Stop auto-sync
         autoSyncEnabled = false
-        
+
         -- Restore default nametags for all prism users
         restoreDefaultNametag(PM.Svc.Players.LocalPlayer)
         for userId, tagData in pairs(otherNametags) do
@@ -1492,41 +1268,23 @@ PM.PrismNametags = {
                 restoreDefaultNametag(plr)
             end
         end
-        -- Restore default nametags for bypass users (only if they had prism nametags)
-        for userId in pairs(BYPASS_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    restoreDefaultNametag(plr)
-                end
-            end
-        end
-        -- Restore default nametags for optix users (only if they had prism nametags)
-        for userId in pairs(OPTIX_USER_IDS) do
-            if otherNametags[userId] then
-                local plr = PM.Svc.Players:GetPlayerByUserId(userId)
-                if plr then
-                    restoreDefaultNametag(plr)
-                end
-            end
-        end
-        
+
         -- Clear all nametags
         clearAllNametags()
-        
+
         -- Disconnect heartbeat connections
         if nametagConnection then
             nametagConnection:Disconnect()
             nametagConnection = nil
         end
-        
+
         for userId, tagData in pairs(otherNametags) do
             if tagData.connection then
                 tagData.connection:Disconnect()
             end
         end
         otherNametags = {}
-        
+
         -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
         if player then
@@ -1534,7 +1292,7 @@ PM.PrismNametags = {
                 deleteFromAPI(player.UserId)
             end)
         end
-        
+
         -- Reset flags
         nametagGui = nil
         nametagEnabled = false
@@ -3846,6 +3604,11 @@ PM.createMainGUI = function()
 end
 
 repeat task.wait() until LP
+
+-- Auto-download all registered files
+task.spawn(function()
+    PM.downloadAllFiles()
+end)
 
 pcall(PM.createMainGUI)
 
