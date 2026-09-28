@@ -82,7 +82,8 @@ local NAMETAG_CONFIG = {
         borderColor = Color3.fromRGB(255, 255, 255),
         gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
         gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
-        typingText = "Owner"
+        typingText = "Owner",
+        distanceLabel = "P"  -- Letter to show when far away
     },
 }
 
@@ -406,7 +407,8 @@ local function createNametag()
     
     local userId = player.UserId
     local config = getNametagConfig(userId)
-    local hasCustomTag = config ~= nil
+    local isInAPI = isUserInAPI(userId)
+    local hasCustomTag = config ~= nil and isInAPI
     
     local userBgColor = nil
     local userBorderColor = config and config.borderColor or C.sep
@@ -524,6 +526,19 @@ local function createNametag()
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = hasCustomTag and config.distanceLabel or "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
     nametagConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
         if bgGradient and bgGradient.Parent then
@@ -537,6 +552,36 @@ local function createNametag()
             billboard.Enabled = nametagEnabled
         else
             billboard.Enabled = false
+        end
+        
+        -- Distance-based visibility for own nametag
+        local myChar = player.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+            local isFar = false
+            local dist = 0
+            
+            -- Check distance to nearest other player
+            for _, otherPlr in ipairs(PM.Svc.Players:GetPlayers()) do
+                if otherPlr ~= player and otherPlr.Character and otherPlr.Character:FindFirstChild("HumanoidRootPart") then
+                    local otherHRP = otherPlr.Character.HumanoidRootPart
+                    local d = (myChar.HumanoidRootPart.Position - otherHRP.Position).Magnitude
+                    if dist == 0 or d < dist then
+                        dist = d
+                    end
+                end
+            end
+            
+            isFar = dist > 50
+            
+            displayNameLabel.Visible = not isFar
+            usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
+            
+            if isFar then
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
+            else
+                PM.tween(billboard, 0.1, {Size = UDim2.new(0, 150, 0, 50)})
+            end
         end
     end)
     
@@ -652,7 +697,8 @@ local function createOtherNametag(plrObj)
     
     local userId = plrObj.UserId
     local config = getNametagConfig(userId)
-    local hasCustomTag = config ~= nil
+    local isInAPI = isUserInAPI(userId)
+    local hasCustomTag = config ~= nil and isInAPI
     
     local userBgColor = nil
     local userBorderColor = config and config.borderColor or C.sep
@@ -771,6 +817,19 @@ local function createOtherNametag(plrObj)
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
     usernameLabel.Parent = frame
     
+    local smallLabel = Instance.new("TextLabel")
+    smallLabel.Name = "SmallLabel"
+    smallLabel.Size = UDim2.new(1, 0, 1, 0)
+    smallLabel.BackgroundTransparency = 1
+    smallLabel.Text = hasCustomTag and config.distanceLabel or "P"
+    smallLabel.TextColor3 = C.text
+    smallLabel.TextSize = 20
+    smallLabel.Font = Enum.Font.GothamBold
+    smallLabel.TextXAlignment = Enum.TextXAlignment.Center
+    smallLabel.TextYAlignment = Enum.TextYAlignment.Center
+    smallLabel.Visible = false
+    smallLabel.Parent = frame
+    
     -- Click to teleport behind target
     frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -812,6 +871,7 @@ local function createOtherNametag(plrObj)
             -- Normal distance-based visibility
             displayNameLabel.Visible = not isFar
             usernameLabel.Visible = not isFar
+            smallLabel.Visible = isFar
             
             if isFar then
                 PM.tween(billboard, 0.1, {Size = UDim2.new(0, 40, 0, 40)})
@@ -897,6 +957,18 @@ local function readFromAPI()
     end
     
     return nil
+end
+
+local function isUserInAPI(userId)
+    local data = readFromAPI()
+    if not data or not data.users then return false end
+    
+    for _, user in ipairs(data.users) do
+        if tostring(user.userId) == tostring(userId) then
+            return true
+        end
+    end
+    return false
 end
 
 local function updateOtherNametags()
