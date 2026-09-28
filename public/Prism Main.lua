@@ -60,17 +60,32 @@ PM.tween = function(obj, time, props, style)
     return PM.Svc.TweenService:Create(obj, TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quad), props):Play()
 end
 
--- Image download and loading utilities (Infinite Yield method)
+-- Centralized file download system
 local httprequest = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
 local waxgetcustomasset = getcustomasset or getsynasset
 
-PM.downloadImage = function(url, localPath)
-    -- Download image using executor HTTP with binary mode
+-- File registry - add all files here
+PM.FileRegistry = {
+    nametags = {
+        kavrenoo = {
+            url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png",
+            path = "prism/nametags/kavrenoo.png"
+        },
+    },
+}
+
+-- Download a single file by category and name
+PM.downloadFile = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return false, "File not found in registry"
+    end
+
     local success, imageData
     if httprequest then
         success, imageData = pcall(function()
             local response = httprequest({
-                Url = url,
+                Url = file.url,
                 Method = "GET",
                 Headers = {
                     ["Content-Type"] = "application/octet-stream"
@@ -79,9 +94,8 @@ PM.downloadImage = function(url, localPath)
             return response.Body or response
         end)
     else
-        -- Fallback to game:HttpGet
         success, imageData = pcall(function()
-            return game:HttpGet(url)
+            return game:HttpGet(file.url)
         end)
     end
 
@@ -90,34 +104,63 @@ PM.downloadImage = function(url, localPath)
     end
 
     -- Create folders if needed
-    local folderPath = localPath:match("^(.-)/[^/]+$")
+    local folderPath = file.path:match("^(.-)/[^/]+$")
     if folderPath and makefolder and not isfolder(folderPath) then
         makefolder(folderPath)
     end
 
     -- Save to file
     local successWrite = pcall(function()
-        writefile(localPath, imageData)
+        writefile(file.path, imageData)
     end)
 
     if not successWrite then
         return false, "Failed to write file"
     end
 
-    return true, localPath
+    return true, file.path
 end
 
-PM.loadImage = function(localPath)
-    -- Load using getcustomasset (executor-specific)
+-- Download all files in a category
+PM.downloadCategory = function(category)
+    local categoryFiles = PM.FileRegistry[category]
+    if not categoryFiles then
+        return false, "Category not found"
+    end
+
+    local results = {}
+    for name, file in pairs(categoryFiles) do
+        local success, result = PM.downloadFile(category, name)
+        results[name] = {success = success, result = result}
+    end
+    return true, results
+end
+
+-- Load a downloaded file as an asset
+PM.loadAsset = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return nil
+    end
+
     if waxgetcustomasset then
         local success, result = pcall(function()
-            return waxgetcustomasset(localPath)
+            return waxgetcustomasset(file.path)
         end)
         if success and result and result ~= "" then
             return result
         end
     end
     return nil
+end
+
+-- Check if a file is already downloaded
+PM.isDownloaded = function(category, name)
+    local file = PM.FileRegistry[category] and PM.FileRegistry[category][name]
+    if not file then
+        return false
+    end
+    return isfile(file.path)
 end
 
 PM.C = {
