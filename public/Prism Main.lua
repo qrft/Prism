@@ -71,57 +71,30 @@ PM.FileRegistry = {
             url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png",
             path = "prism/nametags/kavrenoo.png"
         },
+        kavrenoo_spritesheet = {
+            url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoogif.png",
+            path = "prism/nametags/kavrenoogif.png"
+        },
     },
 }
-
--- Register kavrenoo animation frames dynamically
-for i = 1, 67 do
-    local frameNum = string.format("%03d", i)
-    PM.FileRegistry.nametags["kavrenoo_frame" .. i] = {
-        url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/ezgif-frame-" .. frameNum .. ".png",
-        path = "prism/nametags/Kavrenoo/ezgif-frame-" .. frameNum .. ".png"
-    }
-end
-
--- Pre-load animation frames into memory cache
-PM.FrameCache = {}
-
-local function preloadAnimationFrames(config)
-    if not config.isAnimated then return end
-
-    local cacheKey = config.frameBasePath
-    if PM.FrameCache[cacheKey] then return end -- Already cached
-
-    PM.FrameCache[cacheKey] = {}
-
-    for i = 1, config.frameCount do
-        local frameNum = string.format("%03d", i)
-        local framePath = config.frameBasePath .. frameNum .. ".png"
-
-        if isfile and isfile(framePath) then
-            local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
-            if frameAsset then
-                PM.FrameCache[cacheKey][i] = frameAsset
-            end
-        end
-    end
-end
 
 -- Nametag configuration (grouped by person for easier editing)
 local NAMETAG_CONFIG = {
     kavrenoo = {
         userIds = {7275889224, 5712636024},
-        imagePath = "prism/nametags/kavrenoo.png",  -- Full path to downloaded file
+        imagePath = "prism/nametags/kavrenoogif.png",  -- Sprite sheet path
         borderColor = Color3.fromRGB(255, 255, 255),
         gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
         gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
         typingText = "Owner",
         distanceLabel = "P",  -- Letter to show when far away
-        -- Animated frame settings
+        -- Sprite sheet animation settings
         isAnimated = true,
-        frameBasePath = "prism/nametags/Kavrenoo/ezgif-frame-",
-        frameCount = 67,
-        frameTime = 0.033  -- 30 fps = 0.033s per frame
+        isSpriteSheet = true,
+        frameCount = 23,
+        frameTime = 0.1,  -- Adjust based on original gif speed
+        framesPerRow = 6,
+        spriteSheetSize = Vector2.new(6144, 1444)  -- Total sprite sheet dimensions (6 frames * 1024px width, 4 rows * 361px height)
     },
 }
 
@@ -361,9 +334,6 @@ local function startFrameAnimation(imageLabel, config)
         return
     end
 
-    -- Pre-load frames into cache
-    preloadAnimationFrames(config)
-
     -- Stop any existing animation for this image
     if frameAnimationConnections[imageLabel] then
         for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
@@ -376,26 +346,60 @@ local function startFrameAnimation(imageLabel, config)
     local lastFrameUpdate = tick()
     local frameCount = config.frameCount or 1
     local frameTime = config.frameTime or 0.1
-    local frameBasePath = config.frameBasePath or ""
-    local cacheKey = frameBasePath
 
-    local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
-        local now = tick()
+    -- Sprite sheet animation
+    if config.isSpriteSheet then
+        local framesPerRow = config.framesPerRow or 1
+        local spriteSheetSize = config.spriteSheetSize or Vector2.new(900, 600)
+        local frameWidth = 1024  -- Individual frame width
+        local frameHeight = 361  -- Individual frame height
 
-        -- Update frame
-        if now - lastFrameUpdate >= frameTime then
-            currentFrame = (currentFrame % frameCount) + 1
-            lastFrameUpdate = now
+        -- Set initial frame
+        imageLabel.ImageRectOffset = Vector2.new(0, 0)
+        imageLabel.ImageRectSize = Vector2.new(frameWidth, frameHeight)
 
-            -- Use pre-loaded frame from cache
-            local frameCache = PM.FrameCache[cacheKey]
-            if frameCache and frameCache[currentFrame] then
-                imageLabel.Image = frameCache[currentFrame]
+        local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+            local now = tick()
+
+            if now - lastFrameUpdate >= frameTime then
+                currentFrame = (currentFrame % frameCount) + 1
+                lastFrameUpdate = now
+
+                -- Calculate sprite sheet position
+                local col = (currentFrame - 1) % framesPerRow
+                local row = math.floor((currentFrame - 1) / framesPerRow)
+
+                imageLabel.ImageRectOffset = Vector2.new(col * frameWidth, row * frameHeight)
+                imageLabel.ImageRectSize = Vector2.new(frameWidth, frameHeight)
             end
-        end
-    end)
+        end)
 
-    table.insert(connections, heartbeatConnection)
+        table.insert(connections, heartbeatConnection)
+    else
+        -- Original frame loading method (fallback)
+        local frameBasePath = config.frameBasePath or ""
+
+        local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+            local now = tick()
+
+            if now - lastFrameUpdate >= frameTime then
+                currentFrame = (currentFrame % frameCount) + 1
+                lastFrameUpdate = now
+
+                local frameNumber = string.format("%03d", currentFrame)
+                local framePath = frameBasePath .. frameNumber .. ".png"
+                if isfile and isfile(framePath) then
+                    local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+                    if frameAsset then
+                        imageLabel.Image = frameAsset
+                    end
+                end
+            end
+        end)
+
+        table.insert(connections, heartbeatConnection)
+    end
+
     frameAnimationConnections[imageLabel] = connections
 end
 
