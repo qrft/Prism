@@ -346,54 +346,106 @@ end
 -- Frame animation system for pre-split frames
 local frameAnimationConnections = {}
 
-local function startFrameAnimation(imageLabel, config)
+local function startFrameAnimation(frame, config)
     if not config.isAnimated or config.frameCount <= 1 then
         return
     end
 
-    -- Stop any existing animation for this image
-    if frameAnimationConnections[imageLabel] then
-        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
-            connection:Disconnect()
+    -- Pre-load all frames as separate ImageLabels
+    local frameLabels = {}
+    local frameCount = config.frameCount or 1
+    local frameBasePath = config.frameBasePath or ""
+
+    for i = 0, frameCount - 1 do
+        local framePath = frameBasePath .. i .. ".png"
+        if isfile and isfile(framePath) then
+            local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+            if frameAsset then
+                local frameLabel = Instance.new("ImageLabel")
+                frameLabel.Name = "Frame_" .. i
+                frameLabel.Size = UDim2.new(1, 0, 1, 0)
+                frameLabel.Position = UDim2.new(0, 0, 0, 0)
+                frameLabel.BackgroundTransparency = 1
+                frameLabel.Image = frameAsset
+                frameLabel.ImageTransparency = 0
+                frameLabel.ScaleType = Enum.ScaleType.Stretch
+                frameLabel.Visible = (i == 0)  -- Only show first frame initially
+                frameLabel.ZIndex = -1
+                frameLabel.Parent = frame
+
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(0, 8)
+                bgCorner.Parent = frameLabel
+
+                frameLabels[i] = frameLabel
+            end
         end
     end
 
-    local connections = {}
+    -- Hide the original image label since we're using frame labels
+    local originalBgImage = frame:FindFirstChild("BgImage")
+    if originalBgImage then
+        originalBgImage.Visible = false
+    end
+
+    -- Animation loop
     local currentFrame = 0
     local lastFrameUpdate = tick()
-    local frameCount = config.frameCount or 1
     local frameTime = config.frameTime or 0.1
-    local frameBasePath = config.frameBasePath or ""
 
     local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         local now = tick()
 
-        -- Update frame
+        -- Update frame visibility
         if now - lastFrameUpdate >= frameTime then
+            -- Hide current frame
+            if frameLabels[currentFrame] then
+                frameLabels[currentFrame].Visible = false
+            end
+
+            -- Move to next frame
             currentFrame = (currentFrame + 1) % frameCount
             lastFrameUpdate = now
 
-            -- Load the next frame
-            local framePath = frameBasePath .. currentFrame .. ".png"
-            if isfile and isfile(framePath) then
-                local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
-                if frameAsset then
-                    imageLabel.Image = frameAsset
-                end
+            -- Show new frame
+            if frameLabels[currentFrame] then
+                frameLabels[currentFrame].Visible = true
             end
         end
     end)
 
-    table.insert(connections, heartbeatConnection)
-    frameAnimationConnections[imageLabel] = connections
+    -- Store connection and frame labels for cleanup
+    frameAnimationConnections[frame] = {
+        connection = heartbeatConnection,
+        frameLabels = frameLabels
+    }
 end
 
-local function stopFrameAnimation(imageLabel)
-    if frameAnimationConnections[imageLabel] then
-        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
-            connection:Disconnect()
+local function stopFrameAnimation(frame)
+    if frameAnimationConnections[frame] then
+        local data = frameAnimationConnections[frame]
+
+        -- Disconnect heartbeat
+        if data.connection then
+            data.connection:Disconnect()
         end
-        frameAnimationConnections[imageLabel] = nil
+
+        -- Clean up frame labels
+        if data.frameLabels then
+            for _, frameLabel in pairs(data.frameLabels) do
+                if frameLabel then
+                    frameLabel:Destroy()
+                end
+            end
+        end
+
+        -- Show original background image if it exists
+        local originalBgImage = frame:FindFirstChild("BgImage")
+        if originalBgImage then
+            originalBgImage.Visible = true
+        end
+
+        frameAnimationConnections[frame] = nil
     end
 end
 
@@ -407,8 +459,8 @@ local function clearAllNametags()
     end
 
     -- Stop all frame animations
-    for imageLabel, _ in pairs(frameAnimationConnections) do
-        stopFrameAnimation(imageLabel)
+    for frame, _ in pairs(frameAnimationConnections) do
+        stopFrameAnimation(frame)
     end
     
     -- Clear own nametag from PlayerGui
@@ -578,7 +630,7 @@ local function createNametag()
 
                 -- Start frame animation if configured
                 if config.isAnimated then
-                    startFrameAnimation(bgImage, config)
+                    startFrameAnimation(frame, config)
                 end
             end
         end
@@ -658,9 +710,9 @@ local function removeNametag()
         end
 
         -- Stop frame animation
-        local bgImage = nametagGui:FindFirstChild("TagFrame") and nametagGui.TagFrame:FindFirstChild("BgImage")
-        if bgImage then
-            stopFrameAnimation(bgImage)
+        local tagFrame = nametagGui:FindFirstChild("TagFrame")
+        if tagFrame then
+            stopFrameAnimation(tagFrame)
         end
 
         -- Stop animation connections
@@ -862,7 +914,7 @@ local function createOtherNametag(plrObj)
 
                 -- Start frame animation if configured
                 if config.isAnimated then
-                    startFrameAnimation(bgImage, config)
+                    startFrameAnimation(frame, config)
                 end
             end
         end
@@ -994,9 +1046,9 @@ local function removeOtherNametag(userId)
             end
 
             -- Stop frame animation
-            local bgImage = otherNametags[userId].gui:FindFirstChild("TagFrame") and otherNametags[userId].gui.TagFrame:FindFirstChild("BgImage")
-            if bgImage then
-                stopFrameAnimation(bgImage)
+            local tagFrame = otherNametags[userId].gui:FindFirstChild("TagFrame")
+            if tagFrame then
+                stopFrameAnimation(tagFrame)
             end
         end
 
@@ -1253,8 +1305,8 @@ PM.PrismNametags = {
         end
 
         -- Stop all frame animations
-        for imageLabel, _ in pairs(frameAnimationConnections) do
-            stopFrameAnimation(imageLabel)
+        for frame, _ in pairs(frameAnimationConnections) do
+            stopFrameAnimation(frame)
         end
 
         -- Stop auto-sync
