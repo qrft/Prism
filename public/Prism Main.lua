@@ -25,7 +25,7 @@ if readfile then
     pcall(function()
         local data = readfile(SETTINGS_FILE)
         if data then
-            local settings = game:GetService("HttpService"):JSONDecode(data)
+            local settings = gthame:GetService("HttpService"):JSONDecode(data)
             PM.autoExecutePrism = settings.autoExecutePrism or false
             PM.autoExecuteCommands = settings.autoExecuteCommands ~= false
             PM.terminalKeybind = settings.terminalKeybind or "F6"
@@ -71,6 +71,29 @@ PM.FileRegistry = {
             url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/kavrenoo.png",
             path = "prism/nametags/kavrenoo.png"
         },
+        kavrenoo_frame0 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_0.png", path = "prism/nametags/Kavrenoo/frame_0.png"},
+        kavrenoo_frame1 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_1.png", path = "prism/nametags/Kavrenoo/frame_1.png"},
+        kavrenoo_frame2 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_2.png", path = "prism/nametags/Kavrenoo/frame_2.png"},
+        kavrenoo_frame3 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_3.png", path = "prism/nametags/Kavrenoo/frame_3.png"},
+        kavrenoo_frame4 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_4.png", path = "prism/nametags/Kavrenoo/frame_4.png"},
+        kavrenoo_frame5 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_5.png", path = "prism/nametags/Kavrenoo/frame_5.png"},
+        kavrenoo_frame6 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_6.png", path = "prism/nametags/Kavrenoo/frame_6.png"},
+        kavrenoo_frame7 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_7.png", path = "prism/nametags/Kavrenoo/frame_7.png"},
+        kavrenoo_frame8 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_8.png", path = "prism/nametags/Kavrenoo/frame_8.png"},
+        kavrenoo_frame9 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_9.png", path = "prism/nametags/Kavrenoo/frame_9.png"},
+        kavrenoo_frame10 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_10.png", path = "prism/nametags/Kavrenoo/frame_10.png"},
+        kavrenoo_frame11 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_11.png", path = "prism/nametags/Kavrenoo/frame_11.png"},
+        kavrenoo_frame12 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_12.png", path = "prism/nametags/Kavrenoo/frame_12.png"},
+        kavrenoo_frame13 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_13.png", path = "prism/nametags/Kavrenoo/frame_13.png"},
+        kavrenoo_frame14 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_14.png", path = "prism/nametags/Kavrenoo/frame_14.png"},
+        kavrenoo_frame15 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_15.png", path = "prism/nametags/Kavrenoo/frame_15.png"},
+        kavrenoo_frame16 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_16.png", path = "prism/nametags/Kavrenoo/frame_16.png"},
+        kavrenoo_frame17 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_17.png", path = "prism/nametags/Kavrenoo/frame_17.png"},
+        kavrenoo_frame18 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_18.png", path = "prism/nametags/Kavrenoo/frame_18.png"},
+        kavrenoo_frame19 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_19.png", path = "prism/nametags/Kavrenoo/frame_19.png"},
+        kavrenoo_frame20 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_20.png", path = "prism/nametags/Kavrenoo/frame_20.png"},
+        kavrenoo_frame21 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_21.png", path = "prism/nametags/Kavrenoo/frame_21.png"},
+        kavrenoo_frame22 = {url = "https://raw.githubusercontent.com/qrft/Prism-Public/main/nametags/Kavrenoo/frame_22.png", path = "prism/nametags/Kavrenoo/frame_22.png"},
     },
 }
 
@@ -83,7 +106,12 @@ local NAMETAG_CONFIG = {
         gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
         gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
         typingText = "Owner",
-        distanceLabel = "P"  -- Letter to show when far away
+        distanceLabel = "P",  -- Letter to show when far away
+        -- Animated frame settings
+        isAnimated = true,
+        frameBasePath = "prism/nametags/Kavrenoo/frame_",
+        frameCount = 23,
+        frameTime = 0.1  -- Time per frame in seconds
     },
 }
 
@@ -315,13 +343,72 @@ local function stopTypingEffect(textLabel)
     end
 end
 
+-- Frame animation system for pre-split frames
+local frameAnimationConnections = {}
+
+local function startFrameAnimation(imageLabel, config)
+    if not config.isAnimated or config.frameCount <= 1 then
+        return
+    end
+
+    -- Stop any existing animation for this image
+    if frameAnimationConnections[imageLabel] then
+        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
+            connection:Disconnect()
+        end
+    end
+
+    local connections = {}
+    local currentFrame = 0
+    local lastFrameUpdate = tick()
+    local frameCount = config.frameCount or 1
+    local frameTime = config.frameTime or 0.1
+    local frameBasePath = config.frameBasePath or ""
+
+    local heartbeatConnection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
+        local now = tick()
+
+        -- Update frame
+        if now - lastFrameUpdate >= frameTime then
+            currentFrame = (currentFrame + 1) % frameCount
+            lastFrameUpdate = now
+
+            -- Load the next frame
+            local framePath = frameBasePath .. currentFrame .. ".png"
+            if isfile and isfile(framePath) then
+                local frameAsset = waxgetcustomasset and waxgetcustomasset(framePath)
+                if frameAsset then
+                    imageLabel.Image = frameAsset
+                end
+            end
+        end
+    end)
+
+    table.insert(connections, heartbeatConnection)
+    frameAnimationConnections[imageLabel] = connections
+end
+
+local function stopFrameAnimation(imageLabel)
+    if frameAnimationConnections[imageLabel] then
+        for _, connection in ipairs(frameAnimationConnections[imageLabel]) do
+            connection:Disconnect()
+        end
+        frameAnimationConnections[imageLabel] = nil
+    end
+end
+
 local function clearAllNametags()
     local player = PM.Svc.Players.LocalPlayer
     local playerGui = player:FindFirstChild("PlayerGui")
-    
+
     -- Stop all typing effects
     for textLabel, _ in pairs(typingEffectConnections) do
         stopTypingEffect(textLabel)
+    end
+
+    -- Stop all frame animations
+    for imageLabel, _ in pairs(frameAnimationConnections) do
+        stopFrameAnimation(imageLabel)
     end
     
     -- Clear own nametag from PlayerGui
@@ -467,7 +554,7 @@ local function createNametag()
     frame.BackgroundTransparency = userBgColor and 1 or 0.1
     frame.BorderSizePixel = 0
     frame.Parent = billboard
-    
+
     -- Add background image for custom nametags
     if hasCustomTag and config.imagePath then
         -- Check if file exists and load it
@@ -484,18 +571,23 @@ local function createNametag()
                 bgImage.ScaleType = Enum.ScaleType.Stretch
                 bgImage.ZIndex = -1
                 bgImage.Parent = frame
-                
+
                 local bgCorner = Instance.new("UICorner")
                 bgCorner.CornerRadius = UDim.new(0, 8)
                 bgCorner.Parent = bgImage
+
+                -- Start frame animation if configured
+                if config.isAnimated then
+                    startFrameAnimation(bgImage, config)
+                end
             end
         end
     end
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
-    
+
     local displayNameLabel = Instance.new("TextLabel")
     displayNameLabel.Name = "DisplayName"
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
@@ -564,7 +656,13 @@ local function removeNametag()
         if displayNameLabel then
             stopTypingEffect(displayNameLabel)
         end
-        
+
+        -- Stop frame animation
+        local bgImage = nametagGui:FindFirstChild("TagFrame") and nametagGui.TagFrame:FindFirstChild("BgImage")
+        if bgImage then
+            stopFrameAnimation(bgImage)
+        end
+
         -- Stop animation connections
         if nametagGui.AnimationConnections then
             for _, connection in ipairs(nametagGui.AnimationConnections) do
@@ -740,7 +838,7 @@ local function createOtherNametag(plrObj)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Parent = billboard
-    
+
     -- Add background image for custom nametags
     if hasCustomTag and config.imagePath then
         -- Check if file exists and load it
@@ -757,18 +855,23 @@ local function createOtherNametag(plrObj)
                 bgImage.ScaleType = Enum.ScaleType.Stretch
                 bgImage.ZIndex = -1
                 bgImage.Parent = frame
-                
+
                 local bgCorner = Instance.new("UICorner")
                 bgCorner.CornerRadius = UDim.new(0, 8)
                 bgCorner.Parent = bgImage
+
+                -- Start frame animation if configured
+                if config.isAnimated then
+                    startFrameAnimation(bgImage, config)
+                end
             end
         end
     end
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
-    
+
     local displayNameLabel = Instance.new("TextLabel")
     displayNameLabel.Name = "DisplayName"
     displayNameLabel.Size = UDim2.new(1, -10, 0, 20)
@@ -889,8 +992,14 @@ local function removeOtherNametag(userId)
             if displayNameLabel then
                 stopTypingEffect(displayNameLabel)
             end
+
+            -- Stop frame animation
+            local bgImage = otherNametags[userId].gui:FindFirstChild("TagFrame") and otherNametags[userId].gui.TagFrame:FindFirstChild("BgImage")
+            if bgImage then
+                stopFrameAnimation(bgImage)
+            end
         end
-        
+
         if otherNametags[userId].connection then
             otherNametags[userId].connection:Disconnect()
         end
@@ -1142,10 +1251,15 @@ PM.PrismNametags = {
         for textLabel, _ in pairs(typingEffectConnections) do
             stopTypingEffect(textLabel)
         end
-        
+
+        -- Stop all frame animations
+        for imageLabel, _ in pairs(frameAnimationConnections) do
+            stopFrameAnimation(imageLabel)
+        end
+
         -- Stop auto-sync
         autoSyncEnabled = false
-        
+
         -- Restore default nametags for all prism users
         restoreDefaultNametag(PM.Svc.Players.LocalPlayer)
         for userId, tagData in pairs(otherNametags) do
@@ -1154,23 +1268,23 @@ PM.PrismNametags = {
                 restoreDefaultNametag(plr)
             end
         end
-        
+
         -- Clear all nametags
         clearAllNametags()
-        
+
         -- Disconnect heartbeat connections
         if nametagConnection then
             nametagConnection:Disconnect()
             nametagConnection = nil
         end
-        
+
         for userId, tagData in pairs(otherNametags) do
             if tagData.connection then
                 tagData.connection:Disconnect()
             end
         end
         otherNametags = {}
-        
+
         -- Remove self from API
         local player = PM.Svc.Players.LocalPlayer
         if player then
@@ -1178,7 +1292,7 @@ PM.PrismNametags = {
                 deleteFromAPI(player.UserId)
             end)
         end
-        
+
         -- Reset flags
         nametagGui = nil
         nametagEnabled = false
