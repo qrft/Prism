@@ -776,13 +776,15 @@ local function createOtherNametag(plrObj)
             end
         end
     end
-    
+
+    -- Basic nametag for any Prism user in API, custom if in config
     local hasCustomTag = config ~= nil and isInAPI
-    
+    local hasBasicTag = isInAPI and not hasCustomTag
+
     local userBgColor = nil
-    local userBorderColor = config and config.borderColor or C.sep
-    local userGradientColor = config and config.gradientColor or nil
-    local userGradientSpinColor = config and config.gradientSpinColor or nil
+    local userBorderColor = hasCustomTag and config.borderColor or C.sep
+    local userGradientColor = hasCustomTag and config.gradientColor or nil
+    local userGradientSpinColor = hasCustomTag and config.gradientSpinColor or nil
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PrismNametag_" .. plrObj.UserId
@@ -878,24 +880,24 @@ local function createOtherNametag(plrObj)
     displayNameLabel.Position = UDim2.new(0, 5, 0, 5)
     displayNameLabel.BackgroundTransparency = 1
     displayNameLabel.Text = (hasCustomTag and config.typingText) and "" or plrObj.DisplayName
-    displayNameLabel.TextColor3 = C.text
+    displayNameLabel.TextColor3 = hasBasicTag and C.textDim or C.text
     displayNameLabel.TextSize = 14
     displayNameLabel.Font = Enum.Font.GothamBold
     displayNameLabel.TextXAlignment = Enum.TextXAlignment.Center
     displayNameLabel.Parent = frame
-    
+
     -- Start typing effect for custom nametags with typing text
     if hasCustomTag and config.typingText then
         startTypingEffect(displayNameLabel, plrObj.DisplayName, config.typingText)
     end
-    
+
     local usernameLabel = Instance.new("TextLabel")
     usernameLabel.Name = "Username"
     usernameLabel.Size = UDim2.new(1, -10, 0, 16)
     usernameLabel.Position = UDim2.new(0, 5, 0, 25)
     usernameLabel.BackgroundTransparency = 1
     usernameLabel.Text = "@ " .. plrObj.Name
-    usernameLabel.TextColor3 = hasCustomTag and C.text or C.textDim
+    usernameLabel.TextColor3 = hasBasicTag and C.textDim or (hasCustomTag and C.text or C.textDim)
     usernameLabel.TextSize = 11
     usernameLabel.Font = Enum.Font.Gotham
     usernameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -914,19 +916,21 @@ local function createOtherNametag(plrObj)
     smallLabel.Visible = false
     smallLabel.Parent = frame
     
-    -- Click to teleport behind target
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local myChar = PM.Svc.Players.LocalPlayer.Character
-            local targetChar = plrObj.Character
-            if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-                local myHRP = myChar.HumanoidRootPart
-                local targetHRP = targetChar.HumanoidRootPart
-                local behind = targetHRP.CFrame * CFrame.new(0, 0, 3)
-                myHRP.CFrame = CFrame.new(behind.Position, behind.Position + targetHRP.CFrame.LookVector)
+    -- Click to teleport behind target (only for custom nametags)
+    if hasCustomTag then
+        frame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local myChar = PM.Svc.Players.LocalPlayer.Character
+                local targetChar = plrObj.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                    local myHRP = myChar.HumanoidRootPart
+                    local targetHRP = targetChar.HumanoidRootPart
+                    local behind = targetHRP.CFrame * CFrame.new(0, 0, 3)
+                    myHRP.CFrame = CFrame.new(behind.Position, behind.Position + targetHRP.CFrame.LookVector)
+                end
             end
-        end
-    end)
+        end)
+    end
     
     local connection = PM.Svc.RunService.Heartbeat:Connect(function(dt)
         if not billboard or not billboard.Parent then return end
