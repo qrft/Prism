@@ -3248,6 +3248,7 @@ PM.WOA = {
     chunks = {},
     folders = {},
     baseY = 0,
+    startY = 0,
     up = false,
     down = false,
     Gui = nil
@@ -3290,7 +3291,8 @@ local function WOA_Create()
     if not root then return end
     WOA_Destroy()
     PM.WOA.enabled = true
-    PM.WOA.baseY = WOA_GetFootY(h, root)
+    PM.WOA.startY = WOA_GetFootY(h, root)
+    PM.WOA.baseY = PM.WOA.startY
 
     local RunService = game:GetService("RunService")
     local WOA_TILE = 256
@@ -3835,11 +3837,8 @@ registerCommand("walkonair", "Walk on invisible platform with height control", {
         DownBtn.MouseLeave:Connect(function() PM.WOA.down = false end)
 
         ResetBtn.MouseButton1Click:Connect(function()
-            if PM.WOA.enabled then
-                local h, root = WOA_GetHR()
-                if root then
-                    PM.WOA.baseY = WOA_GetFootY(h, root)
-                end
+            if PM.WOA.enabled and PM.WOA.startY ~= nil then
+                PM.WOA.baseY = PM.WOA.startY
             end
         end)
 
