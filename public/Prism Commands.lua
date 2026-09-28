@@ -3066,13 +3066,14 @@ registerCommand("tptool", "Click to teleport tool", {}, function(args)
         tool.Activated:Connect(function()
             local c = LP.Character
             if not c then return end
+            local h = c:FindFirstChildOfClass("Humanoid")
             local root = c:FindFirstChild("HumanoidRootPart")
             if not root then return end
 
             local mouse = LP:GetMouse()
+            local hipH = h and h.HipHeight or 2.3
             local pos = mouse.Hit.Position
-            root.CFrame = CFrame.new(pos.X, pos.Y + 3, pos.Z, select(4, root.CFrame:components()))
-            local h = c:FindFirstChildOfClass("Humanoid")
+            root.CFrame = CFrame.new(pos.X, pos.Y + hipH, pos.Z, select(4, root.CFrame:components()))
             if h then h.Sit = false; h.AutoRotate = true end
         end)
         
