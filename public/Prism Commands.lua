@@ -3348,8 +3348,24 @@ local function WOA_Create()
     local function WOAUpdate()
         local _, r = WOA_GetHR()
         if not r then return end
+        local oldBaseY = PM.WOA.baseY
         if PM.WOA.up then PM.WOA.baseY = PM.WOA.baseY + 0.2 end
         if PM.WOA.down then PM.WOA.baseY = PM.WOA.baseY - 0.2 end
+        local baseYChanged = PM.WOA.baseY ~= oldBaseY
+
+        if baseYChanged then
+            for key, folder in pairs(PM.WOA.folders) do
+                if folder and folder.Parent then
+                    for _, part in ipairs(folder:GetChildren()) do
+                        if part:IsA("Part") then
+                            local x, z = part.Position.X, part.Position.Z
+                            part.Position = Vector3.new(x, PM.WOA.baseY - 2.5, z)
+                        end
+                    end
+                end
+            end
+        end
+
         local pos = r.Position
         local cx = math.floor(pos.X / (WOA_TILE * WOA_CHUNK))
         local cz = math.floor(pos.Z / (WOA_TILE * WOA_CHUNK))
