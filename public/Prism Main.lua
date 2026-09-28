@@ -407,8 +407,7 @@ local function createNametag()
     
     local userId = player.UserId
     local config = getNametagConfig(userId)
-    local isInAPI = isUserInAPI(userId)
-    local hasCustomTag = config ~= nil and isInAPI
+    local hasCustomTag = config ~= nil  -- Local player always gets custom tag if in config
     
     local userBgColor = nil
     local userBorderColor = config and config.borderColor or C.sep
@@ -697,7 +696,19 @@ local function createOtherNametag(plrObj)
     
     local userId = plrObj.UserId
     local config = getNametagConfig(userId)
-    local isInAPI = isUserInAPI(userId)
+    
+    -- Check if user is in API
+    local data = readFromAPI()
+    local isInAPI = false
+    if data and data.users then
+        for _, user in ipairs(data.users) do
+            if tostring(user.userId) == tostring(userId) then
+                isInAPI = true
+                break
+            end
+        end
+    end
+    
     local hasCustomTag = config ~= nil and isInAPI
     
     local userBgColor = nil
@@ -957,18 +968,6 @@ local function readFromAPI()
     end
     
     return nil
-end
-
-local function isUserInAPI(userId)
-    local data = readFromAPI()
-    if not data or not data.users then return false end
-    
-    for _, user in ipairs(data.users) do
-        if tostring(user.userId) == tostring(userId) then
-            return true
-        end
-    end
-    return false
 end
 
 local function updateOtherNametags()
