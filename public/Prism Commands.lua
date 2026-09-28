@@ -500,8 +500,9 @@ local function cleanupPrism()
     
     -- Cleanup Walk On Air
     if PM.WOA then
-        if PM.WOA.renderConn then pcall(function() PM.WOA.renderConn:Disconnect() end) end
-        if PM.WOA.platform then pcall(function() PM.WOA.platform:Destroy() end) end
+        if PM.WOA.connection then pcall(function() PM.WOA.connection:Disconnect() end) end
+        local f = workspace:FindFirstChild("PrismWOAFolder")
+        if f then pcall(function() f:Destroy() end) end
         if PM.WOA.Gui then pcall(function() PM.WOA.Gui:Destroy() end) end
         PM.WOA = nil
     end
@@ -3065,54 +3066,13 @@ registerCommand("tptool", "Click to teleport tool", {}, function(args)
         tool.Activated:Connect(function()
             local c = LP.Character
             if not c then return end
-            local h = c:FindFirstChildOfClass("Humanoid")
             local root = c:FindFirstChild("HumanoidRootPart")
             if not root then return end
 
             local mouse = LP:GetMouse()
-            local hipH = h and h.HipHeight or 2.3
-            local hrpHalfHeight = root.Size.Y * 0.5
-            local sinkBuffer = math.max(0.5, hipH * 0.15) + hrpHalfHeight * 0.25
-            local hit = mouse.Hit.Position
-
-            local targetPos
-            if mouse.Target and PM.WOA and PM.WOA.enabled then
-                -- WOA active: confirm real ground below the hit point
-                local rcParams = RaycastParams.new()
-                local excludes = { c }
-                if PM.WOA.platform then table.insert(excludes, PM.WOA.platform) end
-                rcParams.FilterDescendantsInstances = excludes
-                rcParams.FilterType = Enum.RaycastFilterType.Exclude
-                local groundCheck = workspace:Raycast(Vector3.new(hit.X, hit.Y + 0.5, hit.Z), Vector3.new(0, -15000, 0), rcParams)
-                if groundCheck then
-                    targetPos = Vector3.new(hit.X, hit.Y + hipH + sinkBuffer, hit.Z)
-                else
-                    targetPos = Vector3.new(hit.X, PM.WOA.baseY + hipH + 0.5, hit.Z)
-                end
-            elseif PM.WOA and PM.WOA.enabled then
-                -- Aimed at void with WOA: project camera ray onto WOA plane
-                local cam = workspace.CurrentCamera
-                local UIS = game:GetService("UserInputService")
-                local mousePos = UIS:GetMouseLocation()
-                local unitRay = cam:ScreenPointToRay(mousePos.X, mousePos.Y)
-                local planeY = PM.WOA.baseY
-                local dirY = unitRay.Direction.Y
-                local projX, projZ
-                if math.abs(dirY) > 0.0001 then
-                    local t = (planeY - unitRay.Origin.Y) / dirY
-                    local p = unitRay.Origin + unitRay.Direction * math.max(t, 0)
-                    projX, projZ = p.X, p.Z
-                else
-                    projX, projZ = hit.X, hit.Z
-                end
-                targetPos = Vector3.new(projX, PM.WOA.baseY + hipH + 0.5, projZ)
-            else
-                targetPos = Vector3.new(hit.X, hit.Y + hipH + sinkBuffer, hit.Z)
-            end
-
-            local lookDir = (Vector3.new(targetPos.X, root.Position.Y, targetPos.Z) - root.Position)
-            lookDir = lookDir.Magnitude > 0.01 and lookDir.Unit or root.CFrame.LookVector
-            root.CFrame = CFrame.new(targetPos, targetPos + lookDir)
+            local pos = mouse.Hit.Position
+            root.CFrame = CFrame.new(pos.X, pos.Y + 3, pos.Z, select(4, root.CFrame:components()))
+            local h = c:FindFirstChildOfClass("Humanoid")
             if h then h.Sit = false; h.AutoRotate = true end
         end)
         
@@ -3280,8 +3240,17 @@ registerCommand("hitlersalute", "Hitler salute tool", {}, function(args)
     end)
 end)
 
--- Walk On Air state
-PM.WOA = { enabled = false, platform = nil, baseY = 0, startY = nil, up = false, down = false, renderConn = nil, Gui = nil }
+-- Walk On Air state (procedural chunk-based like infinite baseplate)
+PM.WOA = {
+    enabled = false,
+    connection = nil,
+    chunks = {},
+    folders = {},
+    baseY = 0,
+    up = false,
+    down = false,
+    Gui = nil
+}
 
 local function WOA_GetHR()
     local char = LP.Character
@@ -3305,29 +3274,94 @@ end
 
 local function WOA_Destroy()
     if not PM.WOA then return end
-    if PM.WOA.renderConn then PM.WOA.renderConn:Disconnect(); PM.WOA.renderConn = nil end
-    if PM.WOA.platform then PM.WOA.platform:Destroy(); PM.WOA.platform = nil end
-    PM.WOA.enabled = false; PM.WOA.up = false; PM.WOA.down = false
+    if PM.WOA.connection then PM.WOA.connection:Disconnect(); PM.WOA.connection = nil end
+    local f = workspace:FindFirstChild("PrismWOAFolder")
+    if f then pcall(function() f:Destroy() end) end
+    PM.WOA.chunks = {}
+    PM.WOA.folders = {}
+    PM.WOA.enabled = false
+    PM.WOA.up = false
+    PM.WOA.down = false
 end
 
 local function WOA_Create()
-    local h, root = WOA_GetHR(); if not root then return end
-    WOA_Destroy(); PM.WOA.enabled = true; PM.WOA.startY = WOA_GetFootY(h, root); PM.WOA.baseY = PM.WOA.startY
-    local part = Instance.new("Part")
-    part.Name = "PrismWalkAirPlatform"
-    part.Size = Vector3.new(20, 5, 20)
-    part.Anchored = true; part.CanCollide = true; part.Material = Enum.Material.SmoothPlastic
-    part.Transparency = 1; part.CastShadow = false
-    part.CFrame = CFrame.new(root.Position.X, PM.WOA.baseY - 2.5, root.Position.Z)
-    part.Parent = workspace
-    PM.WOA.platform = part
+    local h, root = WOA_GetHR()
+    if not root then return end
+    WOA_Destroy()
+    PM.WOA.enabled = true
+    PM.WOA.baseY = WOA_GetFootY(h, root)
+
     local RunService = game:GetService("RunService")
-    PM.WOA.renderConn = RunService.RenderStepped:Connect(function()
-        if not PM.WOA.enabled then return end
-        local _, r = WOA_GetHR(); if not r or not PM.WOA.platform then return end
-        if PM.WOA.up   then PM.WOA.baseY = PM.WOA.baseY + 0.2 end
+    local WOA_TILE = 256
+    local WOA_CHUNK = 8
+    local WOA_RENDER = 2
+    local WOA_UNLOAD = 3
+
+    PM.WOA.chunks = {}
+    PM.WOA.folders = {}
+
+    local function WOAGetFolder()
+        local f = workspace:FindFirstChild("PrismWOAFolder")
+        if not f then f = Instance.new("Folder"); f.Name = "PrismWOAFolder"; f.Parent = workspace end
+        return f
+    end
+
+    local function WOAGenChunk(cx, cz)
+        local key = cx .. "," .. cz
+        if PM.WOA.chunks[key] then return end
+        PM.WOA.chunks[key] = true
+        local folder = Instance.new("Folder")
+        folder.Name = "PrismWOAChunk_" .. key
+        folder.Parent = WOAGetFolder()
+        PM.WOA.folders[key] = folder
+        for x = 0, WOA_CHUNK - 1 do
+            for z = 0, WOA_CHUNK - 1 do
+                local part = Instance.new("Part")
+                part.Name = "PrismWOATile"
+                part.Anchored = true
+                part.Locked = true
+                part.Size = Vector3.new(WOA_TILE, 5, WOA_TILE)
+                part.Position = Vector3.new((cx * WOA_CHUNK + x) * WOA_TILE, PM.WOA.baseY - 2.5, (cz * WOA_CHUNK + z) * WOA_TILE)
+                part.Material = Enum.Material.SmoothPlastic
+                part.Transparency = 1
+                part.CanCollide = true
+                part.CastShadow = false
+                part.TopSurface = Enum.SurfaceType.Smooth
+                part.BottomSurface = Enum.SurfaceType.Smooth
+                part.Parent = folder
+            end
+        end
+    end
+
+    local function WOAUnloadFar(cx, cz)
+        for key in pairs(PM.WOA.chunks) do
+            local x, z = key:match("([^,]+),([^,]+)")
+            x, z = tonumber(x), tonumber(z)
+            if math.abs(x - cx) > WOA_UNLOAD or math.abs(z - cz) > WOA_UNLOAD then
+                if PM.WOA.folders[key] then PM.WOA.folders[key]:Destroy(); PM.WOA.folders[key] = nil end
+                PM.WOA.chunks[key] = nil
+            end
+        end
+    end
+
+    local function WOAUpdate()
+        local _, r = WOA_GetHR()
+        if not r then return end
+        if PM.WOA.up then PM.WOA.baseY = PM.WOA.baseY + 0.2 end
         if PM.WOA.down then PM.WOA.baseY = PM.WOA.baseY - 0.2 end
-        PM.WOA.platform.CFrame = CFrame.new(r.Position.X, PM.WOA.baseY - 2.5, r.Position.Z)
+        local pos = r.Position
+        local cx = math.floor(pos.X / (WOA_TILE * WOA_CHUNK))
+        local cz = math.floor(pos.Z / (WOA_TILE * WOA_CHUNK))
+        for x = -WOA_RENDER, WOA_RENDER do
+            for z = -WOA_RENDER, WOA_RENDER do
+                WOAGenChunk(cx + x, cz + z)
+            end
+        end
+        WOAUnloadFar(cx, cz)
+    end
+
+    PM.WOA.connection = RunService.Heartbeat:Connect(function()
+        if PM.WOA.enabled then WOAUpdate() end
     end)
 end
 
@@ -3784,15 +3818,16 @@ registerCommand("walkonair", "Walk on invisible platform with height control", {
         DownBtn.MouseLeave:Connect(function() PM.WOA.down = false end)
 
         ResetBtn.MouseButton1Click:Connect(function()
-            if PM.WOA.enabled and PM.WOA.startY ~= nil then
-                PM.WOA.baseY = PM.WOA.startY
+            if PM.WOA.enabled then
+                local h, root = WOA_GetHR()
+                if root then
+                    PM.WOA.baseY = WOA_GetFootY(h, root)
+                end
             end
         end)
 
         ScreenGui.Destroying:Connect(function()
             WOA_Destroy()
-            local plat = workspace:FindFirstChild("PrismWalkAirPlatform")
-            if plat then pcall(function() plat:Destroy() end) end
         end)
     end)
 
