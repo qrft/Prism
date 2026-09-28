@@ -78,7 +78,7 @@ PM.FileRegistry = {
 local NAMETAG_CONFIG = {
     kavrenoo = {
         userIds = {7275889224, 5712636024},
-        assetId = "kavrenoo",  -- References file registry name
+        imagePath = "prism/nametags/kavrenoo.png",  -- Full path to downloaded file
         borderColor = Color3.fromRGB(255, 255, 255),
         gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
         gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
@@ -468,29 +468,27 @@ local function createNametag()
     frame.Parent = billboard
     
     -- Add background image for custom nametags
-    if hasCustomTag and config.assetId then
-        local bgImage = Instance.new("ImageLabel")
-        bgImage.Name = "BgImage"
-        bgImage.Size = UDim2.new(1, 0, 1, 0)
-        bgImage.Position = UDim2.new(0, 0, 0, 0)
-        bgImage.BackgroundTransparency = 1
-        
-        -- Load from file registry
-        local assetId = PM.loadAsset("nametags", config.assetId)
-        if assetId then
-            bgImage.Image = assetId
-        else
-            bgImage.Image = "rbxassetid://97439274483409"
+    if hasCustomTag and config.imagePath then
+        -- Check if file exists and load it
+        if isfile and isfile(config.imagePath) then
+            local customAsset = waxgetcustomasset and waxgetcustomasset(config.imagePath)
+            if customAsset then
+                local bgImage = Instance.new("ImageLabel")
+                bgImage.Name = "BgImage"
+                bgImage.Size = UDim2.new(1, 0, 1, 0)
+                bgImage.Position = UDim2.new(0, 0, 0, 0)
+                bgImage.BackgroundTransparency = 1
+                bgImage.Image = customAsset
+                bgImage.ImageTransparency = 0
+                bgImage.ScaleType = Enum.ScaleType.Stretch
+                bgImage.ZIndex = -1
+                bgImage.Parent = frame
+                
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(0, 8)
+                bgCorner.Parent = bgImage
+            end
         end
-        
-        bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
-        bgImage.ZIndex = -1
-        bgImage.Parent = frame
-        
-        local bgCorner = Instance.new("UICorner")
-        bgCorner.CornerRadius = UDim.new(0, 8)
-        bgCorner.Parent = bgImage
     end
     
     local corner = Instance.new("UICorner")
@@ -717,29 +715,27 @@ local function createOtherNametag(plrObj)
     frame.Parent = billboard
     
     -- Add background image for custom nametags
-    if hasCustomTag and config.assetId then
-        local bgImage = Instance.new("ImageLabel")
-        bgImage.Name = "BgImage"
-        bgImage.Size = UDim2.new(1, 0, 1, 0)
-        bgImage.Position = UDim2.new(0, 0, 0, 0)
-        bgImage.BackgroundTransparency = 1
-        
-        -- Load from file registry
-        local assetId = PM.loadAsset("nametags", config.assetId)
-        if assetId then
-            bgImage.Image = assetId
-        else
-            bgImage.Image = "rbxassetid://97439274483409"
+    if hasCustomTag and config.imagePath then
+        -- Check if file exists and load it
+        if isfile and isfile(config.imagePath) then
+            local customAsset = waxgetcustomasset and waxgetcustomasset(config.imagePath)
+            if customAsset then
+                local bgImage = Instance.new("ImageLabel")
+                bgImage.Name = "BgImage"
+                bgImage.Size = UDim2.new(1, 0, 1, 0)
+                bgImage.Position = UDim2.new(0, 0, 0, 0)
+                bgImage.BackgroundTransparency = 1
+                bgImage.Image = customAsset
+                bgImage.ImageTransparency = 0
+                bgImage.ScaleType = Enum.ScaleType.Stretch
+                bgImage.ZIndex = -1
+                bgImage.Parent = frame
+                
+                local bgCorner = Instance.new("UICorner")
+                bgCorner.CornerRadius = UDim.new(0, 8)
+                bgCorner.Parent = bgImage
+            end
         end
-        
-        bgImage.ImageTransparency = 0
-        bgImage.ScaleType = Enum.ScaleType.Stretch
-        bgImage.ZIndex = -1
-        bgImage.Parent = frame
-        
-        local bgCorner = Instance.new("UICorner")
-        bgCorner.CornerRadius = UDim.new(0, 8)
-        bgCorner.Parent = bgImage
     end
     
     local corner = Instance.new("UICorner")
