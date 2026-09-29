@@ -3072,7 +3072,12 @@ registerCommand("tptool", "Click to teleport tool", {}, function(args)
             local mouse = LP:GetMouse()
             local hipH = h and h.HipHeight or 2.3
             local pos = mouse.Hit.Position
-            root.CFrame = CFrame.new(pos.X, pos.Y + hipH, pos.Z, select(4, root.CFrame:components()))
+            local targetPos = Vector3.new(pos.X, pos.Y + hipH, pos.Z)
+
+            -- Calculate look direction to face the teleport destination
+            local lookDir = (Vector3.new(pos.X, root.Position.Y, pos.Z) - root.Position)
+            lookDir = lookDir.Magnitude > 0.01 and lookDir.Unit or root.CFrame.LookVector
+            root.CFrame = CFrame.new(targetPos, targetPos + lookDir)
             if h then h.Sit = false; h.AutoRotate = true end
         end)
         
