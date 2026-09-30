@@ -3657,6 +3657,8 @@ end)
 pcall(PM.createMainGUI)
 
 -- Initialize nametag system
+repeat task.wait() until LP
+
 clearAllNametags()
 local player = PM.Svc.Players.LocalPlayer
 if player.Character then
