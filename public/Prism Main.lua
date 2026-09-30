@@ -25,7 +25,7 @@ if readfile then
     pcall(function()
         local data = readfile(SETTINGS_FILE)
         if data then
-            local settings = gthame:GetService("HttpService"):JSONDecode(data)
+            local settings = game:GetService("HttpService"):JSONDecode(data)
             PM.autoExecutePrism = settings.autoExecutePrism or false
             PM.autoExecuteCommands = settings.autoExecuteCommands ~= false
             PM.terminalKeybind = settings.terminalKeybind or "F6"
@@ -2523,7 +2523,7 @@ pcall(PM.createMainGUI)
 -- Load nametag system from URL
 task.spawn(function()
     local success, PrismNametags = pcall(function()
-        return loadstring(game:HttpGet("https://encode.lol/prisimNametag.lua"))()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/qrft/Prism/main/public/Prism%20Nametags.lua"))()
     end)
     if success then
         PM.PrismNametags = PrismNametags
