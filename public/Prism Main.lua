@@ -101,17 +101,16 @@ PM.FileRegistry = {
 local NAMETAG_CONFIG = {
     kavrenoo = {
         userIds = {7275889224, 5712636024},
-        imagePath = nil,  -- Not needed for animated nametags
+        imagePath = nil,
         borderColor = Color3.fromRGB(255, 255, 255),
-        gradientColor = Color3.fromRGB(255, 255, 255),  -- Main gradient color
-        gradientSpinColor = Color3.fromRGB(245, 245, 245),  -- Spin gradient color
+        gradientColor = Color3.fromRGB(255, 255, 255),
+        gradientSpinColor = Color3.fromRGB(245, 245, 245),
         typingText = "Owner",
-        distanceLabel = "P",  -- Letter to show when far away
-        -- Animated frame settings
+        distanceLabel = "P",
         isAnimated = true,
         frameBasePath = "prism/nametags/Kavrenoo/frame_",
         frameCount = 23,
-        frameTime = 0.1  -- Time per frame in seconds
+        frameTime = 0.1
     },
 }
 
@@ -255,6 +254,7 @@ local originalDisplayTypes = {}
 
 -- Typing effect system for owner nametags
 local typingEffectConnections = {}
+local frameLabelsRegistry = {}
 
 local function startTypingEffect(textLabel, displayName, typingText)
     -- Stop any existing typing effect for this label
@@ -366,7 +366,7 @@ local function startFrameAnimation(parentFrame, config)
                 frameLabel.Image = frameAsset
                 frameLabel.ImageTransparency = 0
                 frameLabel.ScaleType = Enum.ScaleType.Stretch
-                frameLabel.Visible = (i == 0)  -- Only show first frame initially
+                frameLabel.Visible = (i == 0)
                 frameLabel.ZIndex = -1
                 frameLabel.Parent = parentFrame
 
@@ -384,8 +384,8 @@ local function startFrameAnimation(parentFrame, config)
         return
     end
 
-    -- Store frame labels for cleanup
-    parentFrame.FrameLabels = frameLabels
+    -- Store frame labels in registry instead of on the frame itself
+    frameLabelsRegistry[parentFrame] = frameLabels
 
     -- Start animation
     local currentFrame = 0
@@ -424,17 +424,20 @@ local function stopFrameAnimation(parentFrame)
         frameAnimationConnections[parentFrame] = nil
     end
 
-    -- Clean up frame labels safely
-    local success, frameLabels = pcall(function()
-        return parentFrame.FrameLabels
-    end)
-    if success and frameLabels then
+    -- Clean up frame labels from registry
+    local frameLabels = frameLabelsRegistry[parentFrame]
+    if frameLabels then
         for _, frameLabel in pairs(frameLabels) do
             pcall(function() frameLabel:Destroy() end)
         end
-        pcall(function()
-            parentFrame.FrameLabels = nil
-        end)
+        frameLabelsRegistry[parentFrame] = nil
+    end
+
+    -- Also clean up any remaining frame children
+    for _, child in ipairs(parentFrame:GetChildren()) do
+        if child.Name:sub(1, 6) == "Frame_" then
+            pcall(function() child:Destroy() end)
+        end
     end
 end
 
@@ -700,7 +703,7 @@ local function removeNametag()
 
         -- Stop frame animation
         local tagFrame = nametagGui:FindFirstChild("TagFrame")
-        if tagFrame then
+        if tagFrame and frameAnimationConnections[tagFrame] then
             stopFrameAnimation(tagFrame)
         end
 
@@ -1036,7 +1039,7 @@ local function removeOtherNametag(userId)
 
             -- Stop frame animation
             local tagFrame = otherNametags[userId].gui:FindFirstChild("TagFrame")
-            if tagFrame then
+            if tagFrame and frameAnimationConnections[tagFrame] then
                 stopFrameAnimation(tagFrame)
             end
         end
@@ -3652,16 +3655,6 @@ task.spawn(function()
 end)
 
 pcall(PM.createMainGUI)
-
--- Load and initialize standalone nametag system
-task.spawn(function()
-    local success, PrismNametags = pcall(function()
-        return loadstring(readfile("prism/public/Prism Nametags.lua"))()
-    end)
-    if success then
-        PM.PrismNametags = PrismNametags
-    end
-end)
 
 -- Initialize nametag system
 clearAllNametags()
