@@ -427,12 +427,17 @@ local function stopFrameAnimation(parentFrame)
         frameAnimationConnections[parentFrame] = nil
     end
 
-    -- Clean up frame labels
-    if parentFrame.FrameLabels then
-        for _, frameLabel in pairs(parentFrame.FrameLabels) do
+    -- Clean up frame labels safely
+    local success, frameLabels = pcall(function()
+        return parentFrame.FrameLabels
+    end)
+    if success and frameLabels then
+        for _, frameLabel in pairs(frameLabels) do
             pcall(function() frameLabel:Destroy() end)
         end
-        parentFrame.FrameLabels = nil
+        pcall(function()
+            parentFrame.FrameLabels = nil
+        end)
     end
 end
 
