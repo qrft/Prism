@@ -456,7 +456,11 @@ PM.createMainGUI = function()
             PM.isNameTagsEnabled = false
             button.MouseButton1Click:Connect(function()
                 PM.playClickSound()
-                PM.isNameTagsEnabled = PM.PrismNametags.toggle()
+                if PM.PrismNametags then
+                    PM.isNameTagsEnabled = PM.PrismNametags.toggle()
+                else
+                    PM.isNameTagsEnabled = false
+                end
                 if PM.isTerminalOpen then
                     PM.isTerminalOpen = false
                     PM.hideTerminalPanel()
