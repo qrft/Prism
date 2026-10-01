@@ -1,0 +1,14 @@
+{
+  "name": "prism-nametag-api",
+  "version": "1.0.0",
+  "description": "Prism Nametag System API",
+  "main": "api/nametags.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.x"
+  }
+}
