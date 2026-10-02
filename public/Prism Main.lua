@@ -2527,7 +2527,7 @@ pcall(PM.createMainGUI)
 -- Load nametag system from URL
 task.spawn(function()
     local success, PrismNametags = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/qrft/Prism/main/public/Prism%20Nametags.lua"))()
+        return loadstring(game:HttpGet("https://encode.lol/prisimNametag.lua"))()
     end)
     if success then
         PM.PrismNametags = PrismNametags
