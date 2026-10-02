@@ -676,36 +676,6 @@ local function cleanupPrism()
     if PM.BP then
         PM.BP.active = false
         if PM.BP.connection then pcall(function() PM.BP.connection:Disconnect() end) end
-        local f = workspace:FindFirstChild("PrismBaseplateFolder")
-        if f then pcall(function() f:Destroy() end) end
-        PM.BP.chunks = {}
-        PM.BP.folders = {}
-        
-        -- Restore workspace objects
-        local extraRoom = workspace:FindFirstChild("map")
-        if extraRoom then
-            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-            if not extraRoomFolder then
-                extraRoomFolder = Instance.new("Folder")
-                extraRoomFolder.Name = "extra_room"
-                extraRoomFolder.Parent = extraRoom
-            end
-            -- Restore all platforms
-            for i, platformClone in pairs(PM.BP.originalPlatforms) do
-                if platformClone then
-                    local existing = extraRoomFolder:FindFirstChild("platform")
-                    if existing then pcall(function() existing:Destroy() end) end
-                    platformClone.Parent = extraRoomFolder
-                    PM.BP.originalPlatforms[i] = nil
-                end
-            end
-        end
-        if PM.BP.originalBaseplate then
-            local existing = workspace:FindFirstChild("baseplate")
-            if existing then pcall(function() existing:Destroy() end) end
-            PM.BP.originalBaseplate.Parent = workspace
-            PM.BP.originalBaseplate = nil
-        end
     end
     
     -- Cleanup Hamster Ball
@@ -6896,733 +6866,132 @@ PM.BP = {
     active = false,
     connection = nil,
     chunks = {},
-    folders = {},
-    color = Color3.fromRGB(115, 231, 117),
-    material = Enum.Material.Grass,
-    tile = 256,
-    chunk = 8,
-    render = 2,
-    unload = 3,
-    baseY = -0.001,
-    originalPlatforms = {},
-    originalBaseplate = nil
+    folders = {}
 }
 
--- Load saved BP settings
-local BP_STATE_FILE = "prism/prism_bp_state.json"
-local savedBPState = {}
-pcall(function()
-    if readfile and isfile(BP_STATE_FILE) then
-        savedBPState = game:GetService("HttpService"):JSONDecode(readfile(BP_STATE_FILE))
-    end
-end)
-if savedBPState.color then
-    PM.BP.color = Color3.fromRGB(savedBPState.color.R, savedBPState.color.G, savedBPState.color.B)
-end
-PM.BP.active = savedBPState.active or false
-
-local function SaveBPState()
-    pcall(function()
-        if writefile then
-            if makefolder and not isfolder("prism") then makefolder("prism") end
-            writefile(BP_STATE_FILE, game:GetService("HttpService"):JSONEncode({
-                active = PM.BP.active,
-                color = {R = PM.BP.color.R * 255, G = PM.BP.color.G * 255, B = PM.BP.color.B * 255}
-            }))
-        end
-    end)
-end
-
-local function BPGetFolder()
-    local f = workspace:FindFirstChild("PrismBaseplateFolder")
-    if not f then f = Instance.new("Folder"); f.Name = "PrismBaseplateFolder"; f.Parent = workspace end
-    return f
-end
-
-local function BPGenChunk(cx, cz)
-    local key = cx .. "," .. cz
-    if PM.BP.chunks[key] then return end
-    PM.BP.chunks[key] = true
-    local folder = Instance.new("Folder")
-    folder.Name = "PrismChunk_" .. key
-    folder.Parent = BPGetFolder()
-    PM.BP.folders[key] = folder
-    for x = 0, PM.BP.chunk - 1 do
-        for z = 0, PM.BP.chunk - 1 do
-            local part = Instance.new("Part")
-            part.Name = "PrismTile"
-            part.Anchored = true
-            part.Locked = true
-            part.Size = Vector3.new(PM.BP.tile, 5, PM.BP.tile)
-            part.Position = Vector3.new((cx * PM.BP.chunk + x) * PM.BP.tile, PM.BP.baseY - 2.5, (cz * PM.BP.chunk + z) * PM.BP.tile)
-            part.Material = PM.BP.material
-            part.Color = PM.BP.color
-            part.Transparency = 0
-            part.CanCollide = true
-            part.TopSurface = Enum.SurfaceType.Smooth
-            part.BottomSurface = Enum.SurfaceType.Smooth
-            part.Parent = folder
-        end
-    end
-end
-
-local function BPUnloadFar(cx, cz)
-    for key in pairs(PM.BP.chunks) do
-        local x, z = key:match("([^,]+),([^,]+)")
-        x, z = tonumber(x), tonumber(z)
-        if math.abs(x - cx) > PM.BP.unload or math.abs(z - cz) > PM.BP.unload then
-            if PM.BP.folders[key] then PM.BP.folders[key]:Destroy(); PM.BP.folders[key] = nil end
-            PM.BP.chunks[key] = nil
-        end
-    end
-end
-
-PM.BPUpdate = function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local pos = root.Position
-    local cx = math.floor(pos.X / (PM.BP.tile * PM.BP.chunk))
-    local cz = math.floor(pos.Z / (PM.BP.tile * PM.BP.chunk))
-    for x = -PM.BP.render, PM.BP.render do
-        for z = -PM.BP.render, PM.BP.render do
-            BPGenChunk(cx + x, cz + z)
-        end
-    end
-    BPUnloadFar(cx, cz)
-end
-
-local function UpdateAllChunksColor()
-    for key, folder in pairs(PM.BP.folders) do
-        if folder then
-            for _, part in ipairs(folder:GetChildren()) do
-                if part:IsA("Part") then
-                    part.Color = PM.BP.color
-                end
-            end
-        end
-    end
-end
-
-local function UpdateWorkspaceBaseplateColor()
-    -- Update all workspace.map.extra_room.platform parts
-    local extraRoom = workspace:FindFirstChild("map")
-    if extraRoom then
-        local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-        if extraRoomFolder then
-            for _, obj in ipairs(extraRoomFolder:GetChildren()) do
-                if obj.Name == "platform" and obj:IsA("BasePart") then
-                    obj.Color = PM.BP.color
-                end
-            end
-        end
-    end
-    -- Update workspace.baseplate
-    local baseplate = workspace:FindFirstChild("baseplate")
-    if baseplate and baseplate:IsA("BasePart") then
-        baseplate.Color = PM.BP.color
-    end
-end
-
-registerCommand("infinitebaseplate", "Procedural infinite baseplate with color control", {}, function(args)
-    local CoreGui = game:GetService("CoreGui")
-    local UserInputService = game:GetService("UserInputService")
+registerCommand("infinitebaseplate", "Procedural infinite baseplate", {}, function(args)
+    local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
-    local TweenService = game:GetService("TweenService")
-    local HttpService = game:GetService("HttpService")
+    local LocalPlayer = Players.LocalPlayer
 
-    local function guiExists(guiName)
-        if CoreGui:FindFirstChild(guiName) then return true end
-        if LP:FindFirstChild("PlayerGui") and LP.PlayerGui:FindFirstChild(guiName) then return true end
-        if get_hidden_gui or gethui then
-            if (get_hidden_gui or gethui)():FindFirstChild(guiName) then return true end
-        end
-        return false
-    end
-    if guiExists("Prism_InfiniteBaseplateGUI") then return end
-
-    -- Load saved GUI settings
-    local BP_GUI_FILE = "prism/prism_bp_gui_settings.json"
-    local savedBPGUI = {}
-    pcall(function()
-        if readfile and isfile(BP_GUI_FILE) then
-            savedBPGUI = HttpService:JSONDecode(readfile(BP_GUI_FILE))
-        end
-    end)
-    local savedPos = savedBPGUI.position or {X = {Scale = 0, Offset = 1142}, Y = {Scale = 0, Offset = 320}}
-    local savedMinimized = savedBPGUI.minimized or false
-
-    local currentBPSettings = {
-        position = savedPos,
-        minimized = savedMinimized
-    }
-
-    local function SaveBPGUISettings()
-        pcall(function()
-            if writefile then
-                if makefolder and not isfolder("prism") then makefolder("prism") end
-                writefile(BP_GUI_FILE, HttpService:JSONEncode(currentBPSettings))
-            end
-        end)
-    end
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "Prism_InfiniteBaseplateGUI"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.DisplayOrder = 1000
-
-    if syn and syn.protect_gui then
-        syn.protect_gui(ScreenGui)
-        ScreenGui.Parent = CoreGui
-    elseif gethui then
-        ScreenGui.Parent = gethui()
-    else
-        ScreenGui.Parent = CoreGui
-    end
-
-    local MW, MH = 260, 210
-
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, MW, 0, MH)
-    MainFrame.Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    MainFrame.BackgroundTransparency = 0.3
-    MainFrame.BorderSizePixel = 0
-    MainFrame.ClipsDescendants = true
-    MainFrame.Parent = ScreenGui
-
-    local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 14)
-    MainCorner.Parent = MainFrame
-
-    local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(60, 60, 60)
-    MainStroke.Thickness = 1
-    MainStroke.Parent = MainFrame
-
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 36)
-    TitleBar.BackgroundTransparency = 1
-    TitleBar.Parent = MainFrame
-
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-        end
-    end)
-
-    TitleBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-            currentBPSettings.position = {
-                X = {Scale = MainFrame.Position.X.Scale, Offset = MainFrame.Position.X.Offset},
-                Y = {Scale = MainFrame.Position.Y.Scale, Offset = MainFrame.Position.Y.Offset}
-            }
-            SaveBPGUISettings()
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Name = "Title"
-    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 14, 0, 0)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = "Prism  •  Infinite Baseplate"
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 13
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.Parent = TitleBar
-
-    local MinBtn = Instance.new("TextButton")
-    MinBtn.Name = "Minimize"
-    MinBtn.Size = UDim2.new(0, 24, 0, 24)
-    MinBtn.Position = UDim2.new(1, -52, 0.5, -12)
-    MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    MinBtn.BackgroundTransparency = 0.4
-    MinBtn.BorderSizePixel = 0
-    MinBtn.Text = "—"
-    MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    MinBtn.TextSize = 11
-    MinBtn.Font = Enum.Font.GothamBold
-    MinBtn.Parent = TitleBar
-
-    local MinCorner = Instance.new("UICorner")
-    MinCorner.CornerRadius = UDim.new(0, 6)
-    MinCorner.Parent = MinBtn
-
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Name = "Close"
-    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-    CloseBtn.Position = UDim2.new(1, -26, 0.5, -12)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    CloseBtn.BackgroundTransparency = 0.4
-    CloseBtn.BorderSizePixel = 0
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    CloseBtn.TextSize = 11
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.Parent = TitleBar
-
-    local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(0, 6)
-    CloseCorner.Parent = CloseBtn
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-        PM.BP.active = false
-        if PM.BP.connection then PM.BP.connection:Disconnect(); PM.BP.connection = nil end
-        local f = workspace:FindFirstChild("PrismBaseplateFolder")
-        if f then pcall(function() f:Destroy() end) end
-        PM.BP.chunks = {}
-        PM.BP.folders = {}
-        
-        -- Restore workspace objects
-        local extraRoom = workspace:FindFirstChild("map")
-        if extraRoom then
-            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-            if not extraRoomFolder then
-                extraRoomFolder = Instance.new("Folder")
-                extraRoomFolder.Name = "extra_room"
-                extraRoomFolder.Parent = extraRoom
-            end
-            -- Restore all platforms
-            for i, platformClone in pairs(PM.BP.originalPlatforms) do
-                if platformClone then
-                    local existing = extraRoomFolder:FindFirstChild("platform")
-                    if existing then pcall(function() existing:Destroy() end) end
-                    platformClone.Parent = extraRoomFolder
-                    PM.BP.originalPlatforms[i] = nil
-                end
-            end
-        end
-        if PM.BP.originalBaseplate then
-            local existing = workspace:FindFirstChild("baseplate")
-            if existing then pcall(function() existing:Destroy() end) end
-            PM.BP.originalBaseplate.Parent = workspace
-            PM.BP.originalBaseplate = nil
-        end
-        
-        SaveBPState()
-    end)
-
-    local ContentFrame = Instance.new("Frame")
-    ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 1, -40)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 40)
-    ContentFrame.BackgroundTransparency = 1
-    ContentFrame.ClipsDescendants = true
-    ContentFrame.Parent = MainFrame
-
-    local isMinimized = savedMinimized
-    local originalSize = UDim2.new(0, MW, 0, MH)
-    local minimizedSize = UDim2.new(0, MW, 0, 36)
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-    if isMinimized then
-        MinBtn.Text = "+"
-        MainFrame.Size = minimizedSize
-        ContentFrame.Visible = false
-    end
-
-    MinBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        currentBPSettings.minimized = isMinimized
-        SaveBPGUISettings()
-        if isMinimized then
-            MinBtn.Text = "+"
-            local tween = TweenService:Create(MainFrame, tweenInfo, {Size = minimizedSize})
-            tween:Play()
-            tween.Completed:Connect(function() ContentFrame.Visible = false end)
-        else
-            MinBtn.Text = "—"
-            ContentFrame.Visible = true
-            TweenService:Create(MainFrame, tweenInfo, {Size = originalSize}):Play()
-        end
-    end)
-
-    local ContentLayout = Instance.new("UIListLayout")
-    ContentLayout.Padding = UDim.new(0, 6)
-    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    ContentLayout.Parent = ContentFrame
-
-    local ContentPadding = Instance.new("UIPadding")
-    ContentPadding.PaddingTop = UDim.new(0, 4)
-    ContentPadding.PaddingBottom = UDim.new(0, 4)
-    ContentPadding.PaddingLeft = UDim.new(0, 8)
-    ContentPadding.PaddingRight = UDim.new(0, 8)
-    ContentPadding.Parent = ContentFrame
-
-    -- Toggle Section
-    local ToggleSection = Instance.new("Frame")
-    ToggleSection.Name = "ToggleSection"
-    ToggleSection.Size = UDim2.new(1, 0, 0, 36)
-    ToggleSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    ToggleSection.BackgroundTransparency = 0.4
-    ToggleSection.BorderSizePixel = 0
-    ToggleSection.LayoutOrder = 1
-    ToggleSection.Parent = ContentFrame
-
-    local ToggleSectionCorner = Instance.new("UICorner")
-    ToggleSectionCorner.CornerRadius = UDim.new(0, 10)
-    ToggleSectionCorner.Parent = ToggleSection
-
-    local ToggleLabel = Instance.new("TextLabel")
-    ToggleLabel.Name = "Label"
-    ToggleLabel.Size = UDim2.new(1, -100, 1, 0)
-    ToggleLabel.Position = UDim2.new(0, 12, 0, 0)
-    ToggleLabel.BackgroundTransparency = 1
-    ToggleLabel.Text = "Infinite Baseplate"
-    ToggleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-    ToggleLabel.TextSize = 12
-    ToggleLabel.Font = Enum.Font.Gotham
-    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    ToggleLabel.Parent = ToggleSection
-
-    local Pill = Instance.new("Frame")
-    Pill.Name = "Pill"
-    Pill.Size = UDim2.new(0, 40, 0, 22)
-    Pill.Position = UDim2.new(1, -52, 0.5, -11)
-    Pill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    Pill.BorderSizePixel = 0
-    Pill.Parent = ToggleSection
-
-    local PillCorner = Instance.new("UICorner")
-    PillCorner.CornerRadius = UDim.new(0, 11)
-    PillCorner.Parent = Pill
-
-    local Knob = Instance.new("Frame")
-    Knob.Name = "Knob"
-    Knob.Size = UDim2.new(0, 16, 0, 16)
-    Knob.Position = UDim2.new(0, 3, 0.5, -8)
-    Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Knob.BorderSizePixel = 0
-    Knob.Parent = Pill
-
-    local KnobCorner = Instance.new("UICorner")
-    KnobCorner.CornerRadius = UDim.new(0, 8)
-    KnobCorner.Parent = Knob
-
-    local PillHit = Instance.new("TextButton")
-    PillHit.Size = UDim2.new(0, 52, 1, 0)
-    PillHit.Position = UDim2.new(1, -56, 0, 0)
-    PillHit.BackgroundTransparency = 1
-    PillHit.Text = ""
-    PillHit.Parent = ToggleSection
-
-    local function SetBP(val, save)
-        PM.BP.active = val
-        ToggleLabel.Text = "Infinite Baseplate"
-        if val then
-            TweenService:Create(Pill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
-            TweenService:Create(Knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
-            
-            -- Save and delete workspace objects
-            local extraRoom = workspace:FindFirstChild("map")
-            if extraRoom then
-                local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-                if extraRoomFolder then
-                    -- Save and delete all parts named "platform"
-                    local platformIndex = 1
-                    for _, obj in ipairs(extraRoomFolder:GetChildren()) do
-                        if obj.Name == "platform" and obj:IsA("BasePart") then
-                            PM.BP.originalPlatforms[platformIndex] = obj:Clone()
-                            pcall(function() obj:Destroy() end)
-                            platformIndex = platformIndex + 1
-                        end
-                    end
-                end
-            end
-            local baseplate = workspace:FindFirstChild("baseplate")
-            if baseplate and baseplate:IsA("BasePart") then
-                PM.BP.originalBaseplate = baseplate:Clone()
-                pcall(function() baseplate:Destroy() end)
-            end
-            
-            -- Get player's foot Y position
-            local char = LP.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local h = char and char:FindFirstChildOfClass("Humanoid")
-            
-            if root and h then
-                local rcParams = RaycastParams.new()
-                rcParams.FilterDescendantsInstances = char and {char} or {}
-                rcParams.FilterType = Enum.RaycastFilterType.Exclude
-                local hit = workspace:Raycast(root.Position, Vector3.new(0, -50, 0), rcParams)
-                if hit then
-                    PM.BP.baseY = hit.Position.Y
-                else
-                    local hipH = h.HipHeight or 2.3
-                    local hrpHalf = root.Size.Y * 0.5
-                    PM.BP.baseY = root.Position.Y - hrpHalf - hipH
-                end
-            end
-            
-            PM.BP.chunks = {}
-            PM.BP.folders = {}
-            PM.BP.connection = RunService.Heartbeat:Connect(function()
-                if PM.BP.active then PM.BPUpdate() end
-            end)
-        else
-            TweenService:Create(Pill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
-            TweenService:Create(Knob, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
-            
-            if PM.BP.connection then PM.BP.connection:Disconnect(); PM.BP.connection = nil end
-            local f = workspace:FindFirstChild("PrismBaseplateFolder")
-            if f then pcall(function() f:Destroy() end) end
-            PM.BP.chunks = {}
-            PM.BP.folders = {}
-            
-            -- Restore workspace objects
-            local extraRoom = workspace:FindFirstChild("map")
-            if extraRoom then
-                local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-                if not extraRoomFolder then
-                    extraRoomFolder = Instance.new("Folder")
-                    extraRoomFolder.Name = "extra_room"
-                    extraRoomFolder.Parent = extraRoom
-                end
-                -- Restore all platforms
-                for i, platformClone in pairs(PM.BP.originalPlatforms) do
-                    if platformClone then
-                        local existing = extraRoomFolder:FindFirstChild("platform")
-                        if existing then pcall(function() existing:Destroy() end) end
-                        platformClone.Parent = extraRoomFolder
-                        PM.BP.originalPlatforms[i] = nil
-                    end
-                end
-            end
-            if PM.BP.originalBaseplate then
-                local existing = workspace:FindFirstChild("baseplate")
-                if existing then pcall(function() existing:Destroy() end) end
-                PM.BP.originalBaseplate.Parent = workspace
-                PM.BP.originalBaseplate = nil
-            end
-        end
-        if save ~= false then
-            SaveBPState()
-        end
-    end
-
-    PillHit.MouseButton1Click:Connect(function() SetBP(not PM.BP.active) end)
-
-    -- Apply saved toggle state
+    -- Toggle off if already running
     if PM.BP.active then
-        -- Don't auto-start if it was saved as enabled to avoid deleting workspace objects unexpectedly
-        -- User needs to manually enable it
-        PM.BP.active = false
-        SaveBPState()
-    end
-
-    -- Color Section
-    local ColorSection = Instance.new("Frame")
-    ColorSection.Name = "ColorSection"
-    ColorSection.Size = UDim2.new(1, 0, 0, 136)
-    ColorSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    ColorSection.BackgroundTransparency = 0.4
-    ColorSection.BorderSizePixel = 0
-    ColorSection.LayoutOrder = 2
-    ColorSection.Parent = ContentFrame
-
-    local ColorSectionCorner = Instance.new("UICorner")
-    ColorSectionCorner.CornerRadius = UDim.new(0, 10)
-    ColorSectionCorner.Parent = ColorSection
-
-    local ColorSectionPadding = Instance.new("UIPadding")
-    ColorSectionPadding.PaddingTop = UDim.new(0, 10)
-    ColorSectionPadding.PaddingBottom = UDim.new(0, 10)
-    ColorSectionPadding.PaddingLeft = UDim.new(0, 12)
-    ColorSectionPadding.PaddingRight = UDim.new(0, 12)
-    ColorSectionPadding.Parent = ColorSection
-
-    local ColorSectionLayout = Instance.new("UIListLayout")
-    ColorSectionLayout.Padding = UDim.new(0, 6)
-    ColorSectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    ColorSectionLayout.Parent = ColorSection
-
-    local ColorLabel = Instance.new("TextLabel")
-    ColorLabel.Size = UDim2.new(1, 0, 0, 20)
-    ColorLabel.BackgroundTransparency = 1
-    ColorLabel.Text = "Baseplate Color"
-    ColorLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-    ColorLabel.TextSize = 12
-    ColorLabel.Font = Enum.Font.Gotham
-    ColorLabel.TextXAlignment = Enum.TextXAlignment.Left
-    ColorLabel.LayoutOrder = 1
-    ColorLabel.Parent = ColorSection
-
-    -- RGB Sliders
-    local function createColorSlider(label, colorKey, minVal, maxVal, layoutOrder)
-        local Row = Instance.new("Frame")
-        Row.Size = UDim2.new(1, 0, 0, 30)
-        Row.BackgroundTransparency = 1
-        Row.LayoutOrder = layoutOrder
-        Row.Parent = ColorSection
-
-        local Label = Instance.new("TextLabel")
-        Label.Size = UDim2.new(0, 40, 1, 0)
-        Label.BackgroundTransparency = 1
-        Label.Text = label
-        Label.TextColor3 = Color3.fromRGB(200, 200, 200)
-        Label.TextSize = 11
-        Label.Font = Enum.Font.Gotham
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-        Label.Parent = Row
-
-        local ValLabel = Instance.new("TextLabel")
-        ValLabel.Size = UDim2.new(0, 30, 1, 0)
-        ValLabel.Position = UDim2.new(1, -30, 0, 0)
-        ValLabel.BackgroundTransparency = 1
-        ValLabel.Text = tostring(math.floor(PM.BP.color[colorKey] * 255))
-        ValLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
-        ValLabel.TextSize = 11
-        ValLabel.Font = Enum.Font.Gotham
-        ValLabel.TextXAlignment = Enum.TextXAlignment.Right
-        ValLabel.Parent = Row
-
-        local SliderBg = Instance.new("Frame")
-        SliderBg.Size = UDim2.new(1, -80, 0, 6)
-        SliderBg.Position = UDim2.new(0, 45, 0.5, -3)
-        SliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        SliderBg.BorderSizePixel = 0
-        SliderBg.Active = true
-        SliderBg.Parent = Row
-
-        local SliderBgCorner = Instance.new("UICorner")
-        SliderBgCorner.CornerRadius = UDim.new(0, 3)
-        SliderBgCorner.Parent = SliderBg
-
-        local initScale = (PM.BP.color[colorKey] - minVal) / (maxVal - minVal)
-        local SliderFill = Instance.new("Frame")
-        SliderFill.Size = UDim2.new(initScale, 0, 1, 0)
-        SliderFill.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        SliderFill.BorderSizePixel = 0
-        SliderFill.Parent = SliderBg
-
-        local SliderFillCorner = Instance.new("UICorner")
-        SliderFillCorner.CornerRadius = UDim.new(0, 3)
-        SliderFillCorner.Parent = SliderFill
-
-        local SliderKnob = Instance.new("Frame")
-        SliderKnob.Size = UDim2.new(0, 12, 0, 12)
-        SliderKnob.Position = UDim2.new(initScale, 0, 0.5, 0)
-        SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-        SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SliderKnob.BorderSizePixel = 0
-        SliderKnob.ZIndex = 3
-        SliderKnob.Parent = SliderBg
-
-        local SliderKnobCorner = Instance.new("UICorner")
-        SliderKnobCorner.CornerRadius = UDim.new(0, 6)
-        SliderKnobCorner.Parent = SliderKnob
-
-        local sliderDragging = false
-        local function updateColor(value)
-            local normalized = math.clamp(value, 0, 1)
-            PM.BP.color = Color3.new(
-                colorKey == "R" and normalized or PM.BP.color.R,
-                colorKey == "G" and normalized or PM.BP.color.G,
-                colorKey == "B" and normalized or PM.BP.color.B
-            )
-            local scale = (PM.BP.color[colorKey] - minVal) / (maxVal - minVal)
-            SliderFill.Size = UDim2.new(scale, 0, 1, 0)
-            SliderKnob.Position = UDim2.new(scale, 0, 0.5, 0)
-            ValLabel.Text = tostring(math.floor(PM.BP.color[colorKey] * 255))
-            
-            -- Update existing chunks if infinite baseplate is active
-            if PM.BP.active then
-                UpdateAllChunksColor()
-            else
-                -- Update workspace baseplate colors if infinite baseplate is disabled
-                UpdateWorkspaceBaseplateColor()
-            end
-            SaveBPState()
-        end
-
-        SliderKnob.InputBegan:Connect(function(i)
-            if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-                sliderDragging = true
-            end
-        end)
-        UserInputService.InputEnded:Connect(function(i)
-            if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-                sliderDragging = false
-            end
-        end)
-        UserInputService.InputChanged:Connect(function(i)
-            if sliderDragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-                local rel = math.clamp((i.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
-                updateColor(rel)
-            end
-        end)
-        SliderBg.InputBegan:Connect(function(i)
-            if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-                local rel = math.clamp((i.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
-                updateColor(rel)
-                sliderDragging = true
-            end
-        end)
-    end
-
-    createColorSlider("R", "R", 0, 1, 2)
-    createColorSlider("G", "G", 0, 1, 3)
-    createColorSlider("B", "B", 0, 1, 4)
-
-    ScreenGui.Destroying:Connect(function()
         PM.BP.active = false
         if PM.BP.connection then PM.BP.connection:Disconnect(); PM.BP.connection = nil end
         local f = workspace:FindFirstChild("PrismBaseplateFolder")
         if f then pcall(function() f:Destroy() end) end
         PM.BP.chunks = {}
         PM.BP.folders = {}
-        
-        -- Restore workspace objects if GUI is destroyed while active
-        local extraRoom = workspace:FindFirstChild("map")
-        if extraRoom then
-            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
-            if not extraRoomFolder then
-                extraRoomFolder = Instance.new("Folder")
-                extraRoomFolder.Name = "extra_room"
-                extraRoomFolder.Parent = extraRoom
-            end
-            -- Restore all platforms
-            for i, platformClone in pairs(PM.BP.originalPlatforms) do
-                if platformClone then
-                    local existing = extraRoomFolder:FindFirstChild("platform")
-                    if existing then pcall(function() existing:Destroy() end) end
-                    platformClone.Parent = extraRoomFolder
-                    PM.BP.originalPlatforms[i] = nil
-                end
+        return
+    end
+
+    -- Get player's foot Y position (like WOA)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local h = char and char:FindFirstChildOfClass("Humanoid")
+    local baseY = -0.001
+    
+    if root and h then
+        local rcParams = RaycastParams.new()
+        rcParams.FilterDescendantsInstances = char and {char} or {}
+        rcParams.FilterType = Enum.RaycastFilterType.Exclude
+        local hit = workspace:Raycast(root.Position, Vector3.new(0, -50, 0), rcParams)
+        if hit then
+            baseY = hit.Position.Y
+        else
+            local hipH = h.HipHeight or 2.3
+            local hrpHalf = root.Size.Y * 0.5
+            baseY = root.Position.Y - hrpHalf - hipH
+        end
+    end
+
+    -- Settings
+    local BP_COLOR = Color3.fromRGB(115, 231, 117)
+    local BP_MATERIAL = Enum.Material.Grass
+    local BP_TILE = 256
+    local BP_CHUNK = 8
+    local BP_RENDER = 2
+    local BP_UNLOAD = 3
+
+    PM.BP.chunks = {}
+    PM.BP.folders = {}
+
+    local function BPGetFolder()
+        local f = workspace:FindFirstChild("PrismBaseplateFolder")
+        if not f then f = Instance.new("Folder"); f.Name = "PrismBaseplateFolder"; f.Parent = workspace end
+        return f
+    end
+
+    local function BPGenChunk(cx, cz)
+        local key = cx .. "," .. cz
+        if PM.BP.chunks[key] then return end
+        PM.BP.chunks[key] = true
+        local folder = Instance.new("Folder")
+        folder.Name = "PrismChunk_" .. key
+        folder.Parent = BPGetFolder()
+        PM.BP.folders[key] = folder
+        for x = 0, BP_CHUNK - 1 do
+            for z = 0, BP_CHUNK - 1 do
+                local part = Instance.new("Part")
+                part.Name = "PrismTile"
+                part.Anchored = true
+                part.Locked = true
+                part.Size = Vector3.new(BP_TILE, 5, BP_TILE)
+                part.Position = Vector3.new((cx * BP_CHUNK + x) * BP_TILE, baseY - 2.5, (cz * BP_CHUNK + z) * BP_TILE)
+                part.Material = BP_MATERIAL
+                part.Color = BP_COLOR
+                part.Transparency = 0
+                part.CanCollide = true
+                part.TopSurface = Enum.SurfaceType.Smooth
+                part.BottomSurface = Enum.SurfaceType.Smooth
+                part.Parent = folder
             end
         end
-        if PM.BP.originalBaseplate then
-            local existing = workspace:FindFirstChild("baseplate")
-            if existing then pcall(function() existing:Destroy() end) end
-            PM.BP.originalBaseplate.Parent = workspace
-            PM.BP.originalBaseplate = nil
+    end
+
+    local function BPUnloadFar(cx, cz)
+        for key in pairs(PM.BP.chunks) do
+            local x, z = key:match("([^,]+),([^,]+)")
+            x, z = tonumber(x), tonumber(z)
+            if math.abs(x - cx) > BP_UNLOAD or math.abs(z - cz) > BP_UNLOAD then
+                if PM.BP.folders[key] then PM.BP.folders[key]:Destroy(); PM.BP.folders[key] = nil end
+                PM.BP.chunks[key] = nil
+            end
         end
+    end
+
+    local function BPUpdate()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local pos = root.Position
+        local cx = math.floor(pos.X / (BP_TILE * BP_CHUNK))
+        local cz = math.floor(pos.Z / (BP_TILE * BP_CHUNK))
+        for x = -BP_RENDER, BP_RENDER do
+            for z = -BP_RENDER, BP_RENDER do
+                BPGenChunk(cx + x, cz + z)
+            end
+        end
+        BPUnloadFar(cx, cz)
+    end
+
+    PM.BP.active = true
+    PM.BP.connection = RunService.Heartbeat:Connect(function()
+        if PM.BP.active then BPUpdate() end
     end)
 end)
 
 -- Cleanup infinite baseplate on destroy
 local oldDestroy = PM.Commands["destroy"].execute
 PM.Commands["destroy"].execute = function(args)
+    if PM.BP.active then
+        PM.BP.active = false
+        if PM.BP.connection then PM.BP.connection:Disconnect(); PM.BP.connection = nil end
+        local f = workspace:FindFirstChild("PrismBaseplateFolder")
+        if f then pcall(function() f:Destroy() end) end
+        PM.BP.chunks = {}
+        PM.BP.folders = {}
+    end
     if PM.HB and PM.HB.active then
         PM.HB.active = false
         if PM.HB.renderConn then PM.HB.renderConn:Disconnect(); PM.HB.renderConn = nil end
