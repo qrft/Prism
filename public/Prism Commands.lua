@@ -680,6 +680,32 @@ local function cleanupPrism()
         if f then pcall(function() f:Destroy() end) end
         PM.BP.chunks = {}
         PM.BP.folders = {}
+        
+        -- Restore workspace objects
+        local extraRoom = workspace:FindFirstChild("map")
+        if extraRoom then
+            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+            if not extraRoomFolder then
+                extraRoomFolder = Instance.new("Folder")
+                extraRoomFolder.Name = "extra_room"
+                extraRoomFolder.Parent = extraRoom
+            end
+            -- Restore all platforms
+            for i, platformClone in pairs(PM.BP.originalPlatforms) do
+                if platformClone then
+                    local existing = extraRoomFolder:FindFirstChild("platform")
+                    if existing then pcall(function() existing:Destroy() end) end
+                    platformClone.Parent = extraRoomFolder
+                    PM.BP.originalPlatforms[i] = nil
+                end
+            end
+        end
+        if PM.BP.originalBaseplate then
+            local existing = workspace:FindFirstChild("baseplate")
+            if existing then pcall(function() existing:Destroy() end) end
+            PM.BP.originalBaseplate.Parent = workspace
+            PM.BP.originalBaseplate = nil
+        end
     end
     
     -- Cleanup Hamster Ball
@@ -6877,7 +6903,9 @@ PM.BP = {
     chunk = 8,
     render = 2,
     unload = 3,
-    baseY = -0.001
+    baseY = -0.001,
+    originalPlatforms = {},
+    originalBaseplate = nil
 }
 
 -- Load saved BP settings
@@ -6977,12 +7005,16 @@ local function UpdateAllChunksColor()
 end
 
 local function UpdateWorkspaceBaseplateColor()
-    -- Update workspace.map.extra_room.platform
+    -- Update all workspace.map.extra_room.platform parts
     local extraRoom = workspace:FindFirstChild("map")
     if extraRoom then
-        local platform = extraRoom:FindFirstChild("extra_room") and extraRoom.extra_room:FindFirstChild("platform")
-        if platform and platform:IsA("BasePart") then
-            platform.Color = PM.BP.color
+        local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+        if extraRoomFolder then
+            for _, obj in ipairs(extraRoomFolder:GetChildren()) do
+                if obj.Name == "platform" and obj:IsA("BasePart") then
+                    obj.Color = PM.BP.color
+                end
+            end
         end
     end
     -- Update workspace.baseplate
@@ -7049,7 +7081,7 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
         ScreenGui.Parent = CoreGui
     end
 
-    local MW, MH = 260, 188
+    local MW, MH = 260, 210
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
@@ -7160,6 +7192,33 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
         if f then pcall(function() f:Destroy() end) end
         PM.BP.chunks = {}
         PM.BP.folders = {}
+        
+        -- Restore workspace objects
+        local extraRoom = workspace:FindFirstChild("map")
+        if extraRoom then
+            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+            if not extraRoomFolder then
+                extraRoomFolder = Instance.new("Folder")
+                extraRoomFolder.Name = "extra_room"
+                extraRoomFolder.Parent = extraRoom
+            end
+            -- Restore all platforms
+            for i, platformClone in pairs(PM.BP.originalPlatforms) do
+                if platformClone then
+                    local existing = extraRoomFolder:FindFirstChild("platform")
+                    if existing then pcall(function() existing:Destroy() end) end
+                    platformClone.Parent = extraRoomFolder
+                    PM.BP.originalPlatforms[i] = nil
+                end
+            end
+        end
+        if PM.BP.originalBaseplate then
+            local existing = workspace:FindFirstChild("baseplate")
+            if existing then pcall(function() existing:Destroy() end) end
+            PM.BP.originalBaseplate.Parent = workspace
+            PM.BP.originalBaseplate = nil
+        end
+        
         SaveBPState()
     end)
 
@@ -7274,6 +7333,28 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
             TweenService:Create(Pill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
             TweenService:Create(Knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -19, 0.5, -8)}):Play()
             
+            -- Save and delete workspace objects
+            local extraRoom = workspace:FindFirstChild("map")
+            if extraRoom then
+                local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+                if extraRoomFolder then
+                    -- Save and delete all parts named "platform"
+                    local platformIndex = 1
+                    for _, obj in ipairs(extraRoomFolder:GetChildren()) do
+                        if obj.Name == "platform" and obj:IsA("BasePart") then
+                            PM.BP.originalPlatforms[platformIndex] = obj:Clone()
+                            pcall(function() obj:Destroy() end)
+                            platformIndex = platformIndex + 1
+                        end
+                    end
+                end
+            end
+            local baseplate = workspace:FindFirstChild("baseplate")
+            if baseplate and baseplate:IsA("BasePart") then
+                PM.BP.originalBaseplate = baseplate:Clone()
+                pcall(function() baseplate:Destroy() end)
+            end
+            
             -- Get player's foot Y position
             local char = LP.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -7298,9 +7379,6 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
             PM.BP.connection = RunService.Heartbeat:Connect(function()
                 if PM.BP.active then PM.BPUpdate() end
             end)
-            
-            -- Update workspace baseplate color when enabled
-            UpdateWorkspaceBaseplateColor()
         else
             TweenService:Create(Pill, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
             TweenService:Create(Knob, TweenInfo.new(0.15), {Position = UDim2.new(0, 3, 0.5, -8)}):Play()
@@ -7310,6 +7388,32 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
             if f then pcall(function() f:Destroy() end) end
             PM.BP.chunks = {}
             PM.BP.folders = {}
+            
+            -- Restore workspace objects
+            local extraRoom = workspace:FindFirstChild("map")
+            if extraRoom then
+                local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+                if not extraRoomFolder then
+                    extraRoomFolder = Instance.new("Folder")
+                    extraRoomFolder.Name = "extra_room"
+                    extraRoomFolder.Parent = extraRoom
+                end
+                -- Restore all platforms
+                for i, platformClone in pairs(PM.BP.originalPlatforms) do
+                    if platformClone then
+                        local existing = extraRoomFolder:FindFirstChild("platform")
+                        if existing then pcall(function() existing:Destroy() end) end
+                        platformClone.Parent = extraRoomFolder
+                        PM.BP.originalPlatforms[i] = nil
+                    end
+                end
+            end
+            if PM.BP.originalBaseplate then
+                local existing = workspace:FindFirstChild("baseplate")
+                if existing then pcall(function() existing:Destroy() end) end
+                PM.BP.originalBaseplate.Parent = workspace
+                PM.BP.originalBaseplate = nil
+            end
         end
         if save ~= false then
             SaveBPState()
@@ -7320,13 +7424,16 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
 
     -- Apply saved toggle state
     if PM.BP.active then
-        SetBP(true, false)
+        -- Don't auto-start if it was saved as enabled to avoid deleting workspace objects unexpectedly
+        -- User needs to manually enable it
+        PM.BP.active = false
+        SaveBPState()
     end
 
     -- Color Section
     local ColorSection = Instance.new("Frame")
     ColorSection.Name = "ColorSection"
-    ColorSection.Size = UDim2.new(1, 0, 0, 114)
+    ColorSection.Size = UDim2.new(1, 0, 0, 136)
     ColorSection.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     ColorSection.BackgroundTransparency = 0.4
     ColorSection.BorderSizePixel = 0
@@ -7338,14 +7445,14 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
     ColorSectionCorner.Parent = ColorSection
 
     local ColorSectionPadding = Instance.new("UIPadding")
-    ColorSectionPadding.PaddingTop = UDim.new(0, 8)
-    ColorSectionPadding.PaddingBottom = UDim.new(0, 8)
+    ColorSectionPadding.PaddingTop = UDim.new(0, 10)
+    ColorSectionPadding.PaddingBottom = UDim.new(0, 10)
     ColorSectionPadding.PaddingLeft = UDim.new(0, 12)
     ColorSectionPadding.PaddingRight = UDim.new(0, 12)
     ColorSectionPadding.Parent = ColorSection
 
     local ColorSectionLayout = Instance.new("UIListLayout")
-    ColorSectionLayout.Padding = UDim.new(0, 4)
+    ColorSectionLayout.Padding = UDim.new(0, 6)
     ColorSectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
     ColorSectionLayout.Parent = ColorSection
 
@@ -7363,7 +7470,7 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
     -- RGB Sliders
     local function createColorSlider(label, colorKey, minVal, maxVal, layoutOrder)
         local Row = Instance.new("Frame")
-        Row.Size = UDim2.new(1, 0, 0, 26)
+        Row.Size = UDim2.new(1, 0, 0, 30)
         Row.BackgroundTransparency = 1
         Row.LayoutOrder = layoutOrder
         Row.Parent = ColorSection
@@ -7438,10 +7545,13 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
             SliderKnob.Position = UDim2.new(scale, 0, 0.5, 0)
             ValLabel.Text = tostring(math.floor(PM.BP.color[colorKey] * 255))
             
-            -- Update existing chunks
-            UpdateAllChunksColor()
-            -- Update workspace baseplate
-            UpdateWorkspaceBaseplateColor()
+            -- Update existing chunks if infinite baseplate is active
+            if PM.BP.active then
+                UpdateAllChunksColor()
+            else
+                -- Update workspace baseplate colors if infinite baseplate is disabled
+                UpdateWorkspaceBaseplateColor()
+            end
             SaveBPState()
         end
 
@@ -7481,38 +7591,34 @@ registerCommand("infinitebaseplate", "Procedural infinite baseplate with color c
         if f then pcall(function() f:Destroy() end) end
         PM.BP.chunks = {}
         PM.BP.folders = {}
+        
+        -- Restore workspace objects if GUI is destroyed while active
+        local extraRoom = workspace:FindFirstChild("map")
+        if extraRoom then
+            local extraRoomFolder = extraRoom:FindFirstChild("extra_room")
+            if not extraRoomFolder then
+                extraRoomFolder = Instance.new("Folder")
+                extraRoomFolder.Name = "extra_room"
+                extraRoomFolder.Parent = extraRoom
+            end
+            -- Restore all platforms
+            for i, platformClone in pairs(PM.BP.originalPlatforms) do
+                if platformClone then
+                    local existing = extraRoomFolder:FindFirstChild("platform")
+                    if existing then pcall(function() existing:Destroy() end) end
+                    platformClone.Parent = extraRoomFolder
+                    PM.BP.originalPlatforms[i] = nil
+                end
+            end
+        end
+        if PM.BP.originalBaseplate then
+            local existing = workspace:FindFirstChild("baseplate")
+            if existing then pcall(function() existing:Destroy() end) end
+            PM.BP.originalBaseplate.Parent = workspace
+            PM.BP.originalBaseplate = nil
+        end
     end)
 end)
-
--- Auto-start infinite baseplate if saved as enabled
-if PM.BP.active then
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local h = char and char:FindFirstChildOfClass("Humanoid")
-    
-    if root and h then
-        local rcParams = RaycastParams.new()
-        rcParams.FilterDescendantsInstances = char and {char} or {}
-        rcParams.FilterType = Enum.RaycastFilterType.Exclude
-        local hit = workspace:Raycast(root.Position, Vector3.new(0, -50, 0), rcParams)
-        if hit then
-            PM.BP.baseY = hit.Position.Y
-        else
-            local hipH = h.HipHeight or 2.3
-            local hrpHalf = root.Size.Y * 0.5
-            PM.BP.baseY = root.Position.Y - hrpHalf - hipH
-        end
-    end
-    
-    PM.BP.chunks = {}
-    PM.BP.folders = {}
-    PM.BP.connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if PM.BP.active then PM.BPUpdate() end
-    end)
-    
-    -- Update workspace baseplate color when auto-started
-    UpdateWorkspaceBaseplateColor()
-end
 
 -- Cleanup infinite baseplate on destroy
 local oldDestroy = PM.Commands["destroy"].execute
